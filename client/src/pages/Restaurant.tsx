@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Star, Clock } from 'lucide-react';
+import { ArrowRight, Star, Clock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import MenuItemCard from '../components/MenuItemCard';
 import type { Restaurant, MenuItem } from '@shared/schema';
+import { getRestaurantStatus, canOrderFromRestaurant } from '../utils/restaurantHours';
 
 export default function Restaurant() {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +45,9 @@ export default function Restaurant() {
     );
   }
 
+  const restaurantStatus = getRestaurantStatus(restaurant);
+  const orderStatus = canOrderFromRestaurant(restaurant);
+
   return (
     <div>
       {/* Restaurant Header */}
@@ -75,14 +80,25 @@ export default function Restaurant() {
               <span>{restaurant.deliveryTime}</span>
             </div>
             <Badge 
-              variant={restaurant.isOpen ? "default" : "destructive"}
-              className={restaurant.isOpen ? "bg-green-500 hover:bg-green-500" : ""}
+              variant={restaurantStatus.isOpen ? "default" : "destructive"}
+              className={restaurantStatus.statusColor === 'green' ? "bg-green-500 hover:bg-green-500" : 
+                        restaurantStatus.statusColor === 'yellow' ? "bg-yellow-500 hover:bg-yellow-500" : ""}
             >
-              {restaurant.isOpen ? 'مفتوح' : 'مغلق'}
+              {restaurantStatus.isOpen ? 'مفتوح' : 'مغلق'}
             </Badge>
           </div>
         </div>
       </div>
+
+      {/* Restaurant Status Alert */}
+      {!orderStatus.canOrder && (
+        <Alert className="m-4 border-red-200 bg-red-50">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            {orderStatus.message}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Menu Categories */}
       <div className="sticky top-0 bg-background border-b border-border z-30">
@@ -118,7 +134,12 @@ export default function Restaurant() {
           </div>
         ) : filteredMenuItems.length ? (
           filteredMenuItems.map((item) => (
-            <MenuItemCard key={item.id} item={item} />
+            <MenuItemCard 
+              key={item.id} 
+              item={item} 
+              disabled={!orderStatus.canOrder}
+              disabledMessage={orderStatus.message}
+            />
           ))
         ) : (
           <div className="text-center text-muted-foreground py-8">

@@ -49,6 +49,11 @@ export const restaurants = pgTable("restaurants", {
   minimumOrder: integer("minimum_order").default(0),
   deliveryFee: integer("delivery_fee").default(0),
   categoryId: varchar("category_id").references(() => categories.id),
+  openingTime: text("opening_time").default("08:00"), // وقت الفتح
+  closingTime: text("closing_time").default("23:00"), // وقت الإغلاق
+  workingDays: text("working_days").default("0,1,2,3,4,5,6"), // أيام العمل (0=الأحد, 6=السبت)
+  isTemporarilyClosed: boolean("is_temporarily_closed").default(false), // إغلاق مؤقت
+  temporaryCloseReason: text("temporary_close_reason"), // سبب الإغلاق المؤقت
   createdAt: timestamp("created_at").defaultNow(),
 });
 

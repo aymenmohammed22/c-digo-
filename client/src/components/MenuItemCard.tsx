@@ -7,14 +7,26 @@ import { useToast } from '@/hooks/use-toast';
 
 interface MenuItemCardProps {
   item: MenuItem;
+  disabled?: boolean;
+  disabledMessage?: string;
 }
 
-export default function MenuItemCard({ item }: MenuItemCardProps) {
+export default function MenuItemCard({ item, disabled = false, disabledMessage }: MenuItemCardProps) {
   const { addItem } = useCart();
   const { toast } = useToast();
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    if (disabled && disabledMessage) {
+      toast({
+        title: "لا يمكن الطلب",
+        description: disabledMessage,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     addItem(item);
     toast({
       title: "تمت الإضافة للسلة",
@@ -72,7 +84,7 @@ export default function MenuItemCard({ item }: MenuItemCardProps) {
           <Button
             onClick={handleAddToCart}
             className={isSpecialOffer ? 'bg-green-500 hover:bg-green-600 text-white' : ''}
-            disabled={!item.isAvailable}
+            disabled={!item.isAvailable || disabled}
             data-testid={`button-add-to-cart-${item.id}`}
           >
             {item.isAvailable ? 'إضافة' : 'غير متوفر'}

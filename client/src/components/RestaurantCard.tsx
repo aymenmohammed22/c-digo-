@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, Clock } from 'lucide-react';
 import type { Restaurant } from '@shared/schema';
+import { getRestaurantStatus } from '../utils/restaurantHours';
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
@@ -9,9 +10,11 @@ interface RestaurantCardProps {
 }
 
 export default function RestaurantCard({ restaurant, onClick }: RestaurantCardProps) {
+  const status = getRestaurantStatus(restaurant);
+  
   return (
     <Card 
-      className="overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      className={`overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer ${!status.isOpen ? 'opacity-75' : ''}`}
       onClick={onClick}
       data-testid={`restaurant-card-${restaurant.id}`}
     >
@@ -26,12 +29,21 @@ export default function RestaurantCard({ restaurant, onClick }: RestaurantCardPr
             {restaurant.name}
           </h4>
           <Badge 
-            variant={restaurant.isOpen ? "default" : "destructive"}
-            className={restaurant.isOpen ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+            variant={status.isOpen ? "default" : "destructive"}
+            className={status.statusColor === 'green' ? "bg-green-100 text-green-800 hover:bg-green-100" : 
+                      status.statusColor === 'yellow' ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100" : ""}
             data-testid={`restaurant-status-${restaurant.id}`}
           >
-            {restaurant.isOpen ? 'مفتوح' : 'مغلق'}
+            {status.isOpen ? 'مفتوح' : 'مغلق'}
           </Badge>
+        </div>
+        
+        {/* Restaurant status message */}
+        <div className="mb-2">
+          <p className={`text-xs ${status.statusColor === 'green' ? 'text-green-600' : 
+                                    status.statusColor === 'yellow' ? 'text-yellow-600' : 'text-red-600'}`}>
+            {status.message}
+          </p>
         </div>
         
         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">

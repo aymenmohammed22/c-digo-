@@ -117,9 +117,10 @@ export const specialOffers = pgTable("special_offers", {
 // ---------- Admin Users ----------
 export const adminUsers = pgTable("admin_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  userType: text("user_type").notNull(), // 'admin' or 'driver'
+  userType: text("user_type").notNull().default("admin"), // 'admin' or 'driver'
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -138,6 +139,7 @@ export const adminSessions = pgTable("admin_sessions", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  name: true,
 });
 
 export const insertCategorySchema = createInsertSchema(categories).omit({

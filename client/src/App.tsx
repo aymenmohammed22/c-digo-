@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "./context/CartContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { LocationProvider, useLocation } from "./context/LocationContext";
+import { LocationPermissionModal } from "./components/LocationPermissionModal";
 import Layout from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
@@ -19,17 +21,14 @@ import Location from "./pages/Location";
 import OrderTracking from "./pages/OrderTracking";
 import Settings from "./pages/Settings";
 import Privacy from "./pages/Privacy";
-import Admin from "./pages/Admin";
-import AdminCategories from "./pages/AdminCategories";
-import AdminOrders from "./pages/AdminOrders";
-import AdminDrivers from "./pages/AdminDrivers";
-import AdminRestaurants from "./pages/AdminRestaurants";
-import Delivery from "./pages/Delivery";
+// Admin pages removed - now handled separately
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
   const { isAuthenticated, userType, loading } = useAuth();
+  const { location } = useLocation();
   const [showLogin, setShowLogin] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(true);
 
   if (loading) {
     return (
@@ -42,44 +41,75 @@ function AuthenticatedApp() {
     );
   }
 
-  // Handle login routes
-  if (window.location.pathname === '/admin-login' || showLogin) {
+  // Handle admin login route
+  if (window.location.pathname === '/admin-login') {
     return (
       <LoginPage 
         onSuccess={() => {
-          setShowLogin(false);
-          window.location.href = '/';
+          if (userType === 'admin') {
+            window.location.href = '/admin/dashboard';
+          } else if (userType === 'driver') {
+            window.location.href = '/driver/dashboard';
+          } else {
+            window.location.href = '/';
+          }
         }} 
       />
     );
   }
 
-  // If authenticated, show appropriate dashboard
-  if (isAuthenticated) {
-    if (userType === 'admin') {
-      return (
-        <AdminDashboard 
-          onLogout={() => {
-            window.location.href = '/';
-          }} 
-        />
-      );
-    } else if (userType === 'driver') {
-      return (
-        <DriverDashboard 
-          onLogout={() => {
-            window.location.href = '/';
-          }} 
-        />
-      );
+  // Handle admin routes (completely separate from customer app)
+  if (window.location.pathname.startsWith('/admin/')) {
+    if (!isAuthenticated || userType !== 'admin') {
+      window.location.href = '/admin-login';
+      return null;
     }
+    return (
+      <AdminDashboard 
+        onLogout={() => {
+          window.location.href = '/admin-login';
+        }} 
+      />
+    );
   }
+
+  // Handle driver routes (completely separate from customer app)
+  if (window.location.pathname.startsWith('/driver/')) {
+    if (!isAuthenticated || userType !== 'driver') {
+      window.location.href = '/admin-login';
+      return null;
+    }
+    return (
+      <DriverDashboard 
+        onLogout={() => {
+          window.location.href = '/admin-login';
+        }} 
+      />
+    );
+  }
+
+  // Remove admin/driver routes from customer app routing
 
   // Default customer app
   return (
-    <Layout>
-      <Router />
-    </Layout>
+    <>
+      <Layout>
+        <Router />
+      </Layout>
+      
+      {showLocationModal && !location.hasPermission && (
+        <LocationPermissionModal
+          onPermissionGranted={(position) => {
+            console.log('تم منح الإذن للموقع:', position);
+            setShowLocationModal(false);
+          }}
+          onPermissionDenied={() => {
+            console.log('تم رفض الإذن للموقع');
+            setShowLocationModal(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -95,12 +125,6 @@ function Router() {
       <Route path="/orders" component={() => <OrderTracking />} />
       <Route path="/settings" component={Settings} />
       <Route path="/privacy" component={Privacy} />
-      <Route path="/admin" component={Admin} />
-      <Route path="/admin/categories" component={AdminCategories} />
-      <Route path="/admin/orders" component={AdminOrders} />
-      <Route path="/admin/drivers" component={AdminDrivers} />
-      <Route path="/admin/restaurants" component={AdminRestaurants} />
-      <Route path="/delivery" component={Delivery} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -111,12 +135,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
-          <AuthProvider>
-            <CartProvider>
-              <Toaster />
-              <AuthenticatedApp />
-            </CartProvider>
-          </AuthProvider>
+          <LocationProvider>
+            <AuthProvider>
+              <CartProvider>
+                <Toaster />
+                <AuthenticatedApp />
+              </CartProvider>
+            </AuthProvider>
+          </LocationProvider>
         </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>

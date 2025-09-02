@@ -40,8 +40,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
   };
 
   const fillAdminCredentials = () => {
-    setEmail('aymenpro124@gmail.com');
-    setPassword('777146387');
+    setEmail('admin@fooddelivery.com');
+    setPassword('admin123456');
   };
 
   const fillDriverCredentials = () => {

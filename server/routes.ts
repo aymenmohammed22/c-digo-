@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { dbStorage } from "./db";
+import { authService } from "./auth";
 import { 
   insertRestaurantSchema, 
   insertMenuItemSchema, 
@@ -13,6 +14,9 @@ import { randomUUID } from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Initialize default admin user on startup
+  await authService.createDefaultAdmin();
+  
   // Admin Authentication Routes
   app.post("/api/admin/login", async (req, res) => {
     try {
@@ -22,54 +26,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "البريد الإلكتروني وكلمة المرور مطلوبان" });
       }
 
-      // Check if it's the main admin
-      if (email === "aymenpro124@gmail.com" && password === "777146387") {
-        const token = randomUUID();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-        await dbStorage.createAdminSession({
-          adminId: "admin-main",
-          token,
-          userType: "admin",
-          expiresAt
-        });
-
-        res.json({
-          success: true,
-          token,
-          userType: "admin",
-          message: "تم تسجيل الدخول بنجاح"
-        });
-        return;
-      }
-
-      // Check for drivers in the drivers table
-      const drivers = await dbStorage.getDrivers();
-      const driver = drivers.find(d => d.phone === email && d.password === password);
+      // Use AuthService for login
+      const loginResult = await authService.loginAdmin(email, password);
       
-      if (driver) {
-        const token = randomUUID();
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-        await dbStorage.createAdminSession({
-          adminId: driver.id,
-          token,
-          userType: "driver",
-          expiresAt
-        });
-
+      if (loginResult.success) {
         res.json({
           success: true,
-          token,
-          userType: "driver",
-          driverId: driver.id,
+          token: loginResult.token,
+          userType: loginResult.userType,
           message: "تم تسجيل الدخول بنجاح"
         });
-        return;
+      } else {
+        res.status(401).json({ message: loginResult.message });
       }
-
-      res.status(401).json({ message: "بيانات تسجيل الدخول غير صحيحة" });
     } catch (error) {
+      console.error('خطأ في تسجيل الدخول:', error);
       res.status(500).json({ message: "خطأ في الخادم" });
     }
   });
@@ -94,18 +65,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "رمز التحقق مطلوب" });
       }
 
-      const session = await dbStorage.getAdminSession(token);
+      const validation = await authService.validateSession(token);
       
-      if (!session || session.expiresAt < new Date()) {
-        return res.status(401).json({ message: "انتهت صلاحية الجلسة" });
+      if (validation.valid) {
+        res.json({
+          valid: true,
+          userType: validation.userType,
+          adminId: validation.adminId
+        });
+      } else {
+        res.status(401).json({ message: "انتهت صلاحية الجلسة" });
       }
-
-      res.json({
-        valid: true,
-        userType: session.userType,
-        adminId: session.adminId
-      });
     } catch (error) {
+      console.error('خطأ في التحقق:', error);
       res.status(500).json({ message: "خطأ في الخادم" });
     }
   });

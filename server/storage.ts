@@ -162,6 +162,7 @@ export class MemStorage implements IStorage {
         category: "وجبات رمضان",
         isAvailable: true,
         isSpecialOffer: false,
+        originalPrice: null,
         restaurantId: "1",
       },
       {
@@ -173,6 +174,7 @@ export class MemStorage implements IStorage {
         category: "المشروبات",
         isAvailable: true,
         isSpecialOffer: false,
+        originalPrice: null,
         restaurantId: "1",
       },
       {

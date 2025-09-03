@@ -115,12 +115,18 @@ CREATE TABLE IF NOT EXISTS special_offers (
 -- جدول مستخدمي الأدمن
 CREATE TABLE IF NOT EXISTS admin_users (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL, -- ← تم إضافة هذا الحقل
     email TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     user_type TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- تحديث البيانات الأولية
+INSERT INTO admin_users (name, email, password, user_type) 
+VALUES ('مدير النظام', 'admin@alsarie-one.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')
+ON CONFLICT (email) DO NOTHING;
 
 -- جدول جلسات الأدمن
 CREATE TABLE IF NOT EXISTS admin_sessions (

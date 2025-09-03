@@ -4,17 +4,19 @@ import { dbStorage } from './db';
 import { type InsertAdminUser, type InsertAdminSession } from '@shared/schema';
 
 export class AuthService {
+  // دالة لتشفير كلمة المرور
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
   }
 
+  // دالة للتحقق من صحة كلمة المرور
   async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(password, hashedPassword);
   }
 
+  // دالة تسجيل الدخول للمدير
   async loginAdmin(email: string, password: string): Promise<{ success: boolean; token?: string; userType?: string; message?: string }> {
     try {
-      // البحث عن المدير في قاعدة البيانات
       const admin = await dbStorage.getAdminByEmail(email);
       
       if (!admin) {
@@ -25,14 +27,12 @@ export class AuthService {
         return { success: false, message: 'الحساب غير مفعل' };
       }
 
-      // التحقق من كلمة المرور
       const isPasswordValid = await this.verifyPassword(password, admin.password);
       
       if (!isPasswordValid) {
         return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
       }
 
-      // إنشاء جلسة جديدة
       const token = randomUUID();
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24); // انتهاء الصلاحية خلال 24 ساعة
@@ -57,6 +57,7 @@ export class AuthService {
     }
   }
 
+  // دالة التحقق من الجلسة
   async validateSession(token: string): Promise<{ valid: boolean; userType?: string; adminId?: string }> {
     try {
       const session = await dbStorage.getAdminSession(token);
@@ -65,9 +66,7 @@ export class AuthService {
         return { valid: false };
       }
 
-      // التحقق من انتهاء الصلاحية
       if (new Date() > session.expiresAt) {
-        // حذف الجلسة المنتهية الصلاحية
         await dbStorage.deleteAdminSession(token);
         return { valid: false };
       }
@@ -83,6 +82,7 @@ export class AuthService {
     }
   }
 
+  // دالة تسجيل الخروج
   async logout(token: string): Promise<boolean> {
     try {
       return await dbStorage.deleteAdminSession(token);
@@ -92,17 +92,17 @@ export class AuthService {
     }
   }
 
+  // دالة لإنشاء المدير الافتراضي إذا لم يكن موجودًا
   async createDefaultAdmin(): Promise<void> {
     try {
-      // التحقق من وجود مدير افتراضي
-      const existingAdmin = await dbStorage.getAdminByEmail('admin@fooddelivery.com');
+      const existingAdmin = await dbStorage.getAdminByEmail('admin@alsarie-one.com');
       
       if (!existingAdmin) {
         const hashedPassword = await this.hashPassword('admin123456');
         
         const defaultAdmin: InsertAdminUser = {
           name: 'مدير النظام',
-          email: 'admin@fooddelivery.com',
+          email: 'admin@alsarie-one.com',
           password: hashedPassword,
           userType: 'admin'
         };

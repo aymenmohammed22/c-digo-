@@ -93,36 +93,27 @@ export class AuthService {
   }
 
   // دالة لإنشاء المدير الافتراضي إذا لم يكن موجودًا
- async createDefaultAdmin(): Promise<void> {
-  try {
-    console.log('محاولة الاتصال بقاعدة البيانات...');
-    
-    // اختبار الاتصال أولاً
-    await dbStorage.testConnection();
-    
-    const existingAdmin = await dbStorage.getAdminByEmail('admin@alsarie-one.com');
-    
-    if (!existingAdmin) {
-      const hashedPassword = await this.hashPassword('admin123456');
+  async createDefaultAdmin(): Promise<void> {
+    try {
+      const existingAdmin = await dbStorage.getAdminByEmail('admin@alsarie-one.com');
       
-      const defaultAdmin: InsertAdminUser = {
-        name: 'مدير النظام',
-        email: 'admin@alsarie-one.com',
-        password: hashedPassword,
-        userType: 'admin'
-      };
+      if (!existingAdmin) {
+        const hashedPassword = await this.hashPassword('admin123456');
+        
+        const defaultAdmin: InsertAdminUser = {
+          name: 'مدير النظام',
+          email: 'admin@alsarie-one.com',
+          password: hashedPassword,
+          userType: 'admin'
+        };
 
-      await dbStorage.createAdminUser(defaultAdmin);
-      console.log('تم إنشاء المدير الافتراضي بنجاح');
-    } else {
-      console.log('المدير الافتراضي موجود بالفعل');
+        await dbStorage.createAdminUser(defaultAdmin);
+        console.log('تم إنشاء المدير الافتراضي بنجاح');
+      }
+    } catch (error) {
+      console.error('خطأ في إنشاء المدير الافتراضي:', error);
     }
-  } catch (error) {
-    console.error('خطأ في إنشاء المدير الافتراضي:', error);
-    // إعادة رمي الخطأ للتعامل معه في المستوى الأعلى
-    throw error;
   }
-}
 }
 
 export const authService = new AuthService();

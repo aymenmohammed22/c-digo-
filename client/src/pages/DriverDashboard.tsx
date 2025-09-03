@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { DriverControlPanel } from '../components/DriverControlPanel';
+import { useUiSettings } from '../context/UiSettingsContext';
 import { 
   Truck, 
   MapPin, 
@@ -13,7 +16,8 @@ import {
   Phone,
   CheckCircle,
   XCircle,
-  Package
+  Package,
+  Settings
 } from 'lucide-react';
 
 interface DriverDashboardProps {

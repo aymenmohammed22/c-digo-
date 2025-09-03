@@ -7,6 +7,7 @@ import { CartProvider } from "./context/CartContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LocationProvider, useLocation } from "./context/LocationContext";
+import { UiSettingsProvider } from "./context/UiSettingsContext";
 import { LocationPermissionModal } from "./components/LocationPermissionModal";
 import Layout from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
@@ -135,14 +136,16 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
-          <LocationProvider>
-            <AuthProvider>
-              <CartProvider>
-                <Toaster />
-                <AuthenticatedApp />
-              </CartProvider>
-            </AuthProvider>
-          </LocationProvider>
+          <UiSettingsProvider>
+            <LocationProvider>
+              <AuthProvider>
+                <CartProvider>
+                  <Toaster />
+                  <AuthenticatedApp />
+                </CartProvider>
+              </AuthProvider>
+            </LocationProvider>
+          </UiSettingsProvider>
         </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>

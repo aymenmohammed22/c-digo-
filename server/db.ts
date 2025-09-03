@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { 
   users, userAddresses, categories, restaurants, menuItems, orders, drivers, specialOffers,
-  adminUsers, adminSessions,
+  adminUsers, adminSessions, uiSettings,
   type User, type InsertUser,
   type UserAddress, type InsertUserAddress,
   type Category, type InsertCategory,
@@ -12,7 +12,8 @@ import {
   type Driver, type InsertDriver,
   type SpecialOffer, type InsertSpecialOffer,
   type AdminUser, type InsertAdminUser,
-  type AdminSession, type InsertAdminSession
+  type AdminSession, type InsertAdminSession,
+  type UiSettings, type InsertUiSettings
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { eq, and, lte } from "drizzle-orm";
@@ -302,6 +303,34 @@ export class DatabaseStorage implements IStorage {
     const now = new Date();
     const result = await db.delete(adminSessions).where(lte(adminSessions.expiresAt, now));
     return result.rowCount;
+  }
+
+  // UI Settings
+  async getUiSettings(): Promise<UiSettings[]> {
+    return await db.select().from(uiSettings).where(eq(uiSettings.isActive, true));
+  }
+
+  async getUiSetting(key: string): Promise<UiSettings | undefined> {
+    const [setting] = await db.select().from(uiSettings).where(eq(uiSettings.settingKey, key));
+    return setting;
+  }
+
+  async updateUiSetting(key: string, value: string): Promise<UiSettings | undefined> {
+    const [updated] = await db.update(uiSettings)
+      .set({ settingValue: value, updatedAt: new Date() })
+      .where(eq(uiSettings.settingKey, key))
+      .returning();
+    return updated;
+  }
+
+  async createUiSetting(setting: InsertUiSettings): Promise<UiSettings> {
+    const [newSetting] = await db.insert(uiSettings).values(setting).returning();
+    return newSetting;
+  }
+
+  async deleteUiSetting(key: string): Promise<boolean> {
+    const result = await db.delete(uiSettings).where(eq(uiSettings.settingKey, key));
+    return result.rowCount > 0;
   }
 }
 

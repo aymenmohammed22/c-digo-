@@ -5,7 +5,8 @@ import {
   type Order, type InsertOrder,
   type Driver, type InsertDriver,
   type SpecialOffer, type InsertSpecialOffer,
-  type User, type InsertUser
+  type User, type InsertUser,
+  type UiSettings, type InsertUiSettings
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -57,6 +58,13 @@ export interface IStorage {
   createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer>;
   updateSpecialOffer(id: string, offer: Partial<InsertSpecialOffer>): Promise<SpecialOffer | undefined>;
   deleteSpecialOffer(id: string): Promise<boolean>;
+
+  // UI Settings
+  getUiSettings?(): Promise<UiSettings[]>;
+  getUiSetting?(key: string): Promise<UiSettings | undefined>;
+  updateUiSetting?(key: string, value: string): Promise<UiSettings | undefined>;
+  createUiSetting?(setting: InsertUiSettings): Promise<UiSettings>;
+  deleteUiSetting?(key: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {

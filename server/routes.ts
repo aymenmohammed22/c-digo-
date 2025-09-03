@@ -8,7 +8,8 @@ import {
   insertOrderSchema, 
   insertDriverSchema, 
   insertCategorySchema, 
-  insertSpecialOfferSchema 
+  insertSpecialOfferSchema,
+  insertUiSettingsSchema
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -420,6 +421,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete special offer" });
+    }
+  });
+
+  // UI Settings Routes
+  app.get("/api/ui-settings", async (req, res) => {
+    try {
+      const settings = await dbStorage.getUiSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error('خطأ في جلب إعدادات الواجهة:', error);
+      res.status(500).json({ message: "Failed to fetch UI settings" });
+    }
+  });
+
+  app.get("/api/ui-settings/:key", async (req, res) => {
+    try {
+      const { key } = req.params;
+      const setting = await dbStorage.getUiSetting(key);
+      if (!setting) {
+        return res.status(404).json({ message: "الإعداد غير موجود" });
+      }
+      res.json(setting);
+    } catch (error) {
+      console.error('خطأ في جلب إعداد الواجهة:', error);
+      res.status(500).json({ message: "Failed to fetch UI setting" });
+    }
+  });
+
+  app.put("/api/ui-settings/:key", async (req, res) => {
+    try {
+      const { key } = req.params;
+      const { value } = req.body;
+      
+      if (!value) {
+        return res.status(400).json({ message: "قيمة الإعداد مطلوبة" });
+      }
+
+      const updated = await dbStorage.updateUiSetting(key, value);
+      if (!updated) {
+        return res.status(404).json({ message: "الإعداد غير موجود" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('خطأ في تحديث إعداد الواجهة:', error);
+      res.status(500).json({ message: "Failed to update UI setting" });
     }
   });
 

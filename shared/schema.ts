@@ -220,3 +220,23 @@ export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
 
 export type UserAddress = typeof userAddresses.$inferSelect;
 export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;
+
+// ---------- UI Settings ----------
+export const uiSettings = pgTable("ui_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  settingKey: text("setting_key").notNull().unique(),
+  settingValue: text("setting_value").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUiSettingsSchema = createInsertSchema(uiSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type UiSettings = typeof uiSettings.$inferSelect;
+export type InsertUiSettings = z.infer<typeof insertUiSettingsSchema>;

@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowRight, Bell, Globe, Moon, Sun, Lock, CreditCard, Smartphone } from 'lucide-react';
+import { ArrowRight, Bell, Globe, Moon, Sun, Lock, CreditCard, Smartphone, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
+import { UiControlPanel } from '@/components/UiControlPanel';
 
 interface SettingItem {
   key: string;
@@ -197,9 +199,22 @@ export default function Settings() {
         </div>
       </header>
 
-      <section className="p-4 space-y-6">
-        {/* Settings Groups */}
-        {settingsGroups.map((group) => {
+      <section className="p-4">
+        <Tabs defaultValue="general" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="general" className="flex items-center gap-2">
+              <SettingsIcon className="h-4 w-4" />
+              إعدادات عامة
+            </TabsTrigger>
+            <TabsTrigger value="ui-control" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              تحكم الواجهة
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="general" className="space-y-6 mt-6">
+            {/* Settings Groups */}
+            {settingsGroups.map((group) => {
           const Icon = group.icon;
           return (
             <Card key={group.title}>
@@ -276,44 +291,50 @@ export default function Settings() {
           );
         })}
 
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">إعدادات إضافية</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={action.testId}
-                  variant="ghost"
-                  className="w-full h-auto p-4 justify-between hover:bg-accent"
-                  onClick={action.action}
-                  data-testid={action.testId}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="h-6 w-6 text-primary" />
-                    <div className="text-right">
-                      <div className="font-medium text-foreground">{action.label}</div>
-                      <div className="text-sm text-muted-foreground">{action.description}</div>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground rotate-180" />
-                </Button>
-              );
-            })}
-          </CardContent>
-        </Card>
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">إعدادات إضافية</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {quickActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Button
+                      key={action.testId}
+                      variant="ghost"
+                      className="w-full h-auto p-4 justify-between hover:bg-accent"
+                      onClick={action.action}
+                      data-testid={action.testId}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-6 w-6 text-primary" />
+                        <div className="text-right">
+                          <div className="font-medium text-foreground">{action.label}</div>
+                          <div className="text-sm text-muted-foreground">{action.description}</div>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-muted-foreground rotate-180" />
+                    </Button>
+                  );
+                })}
+              </CardContent>
+            </Card>
 
-        {/* Sign Out */}
-        <Button
-          variant="destructive"
-          className="w-full"
-          data-testid="button-sign-out"
-        >
-          تسجيل الخروج
-        </Button>
+            {/* Sign Out */}
+            <Button
+              variant="destructive"
+              className="w-full"
+              data-testid="button-sign-out"
+            >
+              تسجيل الخروج
+            </Button>
+          </TabsContent>
+          
+          <TabsContent value="ui-control" className="mt-6">
+            <UiControlPanel />
+          </TabsContent>
+        </Tabs>
       </section>
     </div>
   );

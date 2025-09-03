@@ -185,6 +185,11 @@ export const insertAdminSessionSchema = createInsertSchema(adminSessions).omit({
   createdAt: true,
 });
 
+export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({
+  id: true,
+  createdAt: true,
+});
+
 // ---------- Types ----------
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -212,3 +217,6 @@ export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 
 export type AdminSession = typeof adminSessions.$inferSelect;
 export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
+
+export type UserAddress = typeof userAddresses.$inferSelect;
+export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;

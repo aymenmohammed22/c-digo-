@@ -283,7 +283,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ✅ دوال AdminSessions الإضافية
-  async getAdminSession(id: string): Promise<AdminSession | undefined> {
+  async getAdminSessionById(id: string): Promise<AdminSession | undefined> {
     const [session] = await db.select().from(adminSessions).where(eq(adminSessions.id, id));
     return session;
   }
@@ -293,7 +293,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async deleteAdminSession(id: string): Promise<boolean> {
+  async deleteAdminSessionById(id: string): Promise<boolean> {
     const result = await db.delete(adminSessions).where(eq(adminSessions.id, id));
     return result.rowCount > 0;
   }

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT,
     address TEXT,
     is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- جدول عناوين المستخدمين
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS user_addresses (
     address TEXT NOT NULL,
     details TEXT,
     is_default BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- جدول التصنيفات
@@ -47,7 +47,12 @@ CREATE TABLE IF NOT EXISTS restaurants (
     minimum_order INTEGER DEFAULT 0,
     delivery_fee INTEGER DEFAULT 0,
     category_id VARCHAR REFERENCES categories(id),
-    created_at TIMESTAMP DEFAULT NOW()
+    opening_time TEXT DEFAULT '08:00',
+    closing_time TEXT DEFAULT '23:00',
+    working_days TEXT DEFAULT '0,1,2,3,4,5,6',
+    is_temporarily_closed BOOLEAN DEFAULT false,
+    temporary_close_reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- جدول عناصر القائمة
@@ -74,7 +79,7 @@ CREATE TABLE IF NOT EXISTS drivers (
     is_active BOOLEAN DEFAULT true,
     current_location TEXT,
     earnings INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- جدول الطلبات
@@ -94,8 +99,8 @@ CREATE TABLE IF NOT EXISTS orders (
     estimated_time TEXT DEFAULT '30-45 دقيقة',
     restaurant_id VARCHAR REFERENCES restaurants(id),
     driver_id VARCHAR REFERENCES drivers(id),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- جدول العروض الخاصة
@@ -109,7 +114,7 @@ CREATE TABLE IF NOT EXISTS special_offers (
     minimum_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
     valid_until TIMESTAMP,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- جدول مستخدمي الأدمن
@@ -120,13 +125,9 @@ CREATE TABLE IF NOT EXISTS admin_users (
     password TEXT NOT NULL,
     user_type TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- تحديث البيانات الأولية
-INSERT INTO admin_users (name, email, password, user_type) 
-VALUES ('مدير النظام', 'admin@alsarie-one.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')
-ON CONFLICT (email) DO NOTHING;
 
 -- جدول جلسات الأدمن
 CREATE TABLE IF NOT EXISTS admin_sessions (
@@ -135,7 +136,7 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
     token TEXT NOT NULL UNIQUE,
     user_type TEXT NOT NULL,
     expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- إنشاء الفهارس لتحسين الأداء
@@ -153,63 +154,62 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_id);
 
 -- إدراج بيانات أولية للتطوير والاختبار
--- إضافة مستخدم أدمن افتراضي (كلمة المرور: admin123 - يجب تشفيرها في التطبيق الفعلي)
-INSERT INTO admin_users (email, password, user_type) 
-VALUES ('admin@alsarie-one.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')
+-- إضافة مستخدم أدمن افتراضي (كلمة المرور: admin123)
+INSERT INTO admin_users (name, email, password, user_type) 
+VALUES ('مدير النظام', 'admin@alsarie-one.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')
 ON CONFLICT (email) DO NOTHING;
 
 -- إضافة تصنيفات افتراضية
 INSERT INTO categories (name, icon) VALUES
-('مطاعم عربية', '🍽️'),
-('وجبات سريعة', '🍔'),
-('مشروبات', '☕'),
-('حلويات', '🍰'),
-('مأكولات بحرية', '🐟')
-ON CONFLICT (name) DO NOTHING;
+('طعام سريع', '🍔'),
+('مطاعم عربية', '🥘'),
+('حلويات', '🧁'),
+('مشروبات', '☕')
+ON CONFLICT DO NOTHING;
 
 -- إضافة مطاعم افتراضية
 INSERT INTO restaurants (name, description, image, delivery_time, category_id) 
 SELECT 
-    'مطعم اليمن السعيد',
-    'أشهى المأكولات اليمنية الأصيلة',
-    '/images/restaurants/yemen-saeed.jpg',
-    '45-60 دقيقة',
+    'مطعم البرغر الذهبي',
+    'أفضل برغر في المدينة',
+    'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400',
+    '20-30 دقيقة',
     id
-FROM categories WHERE name = 'مطاعم عربية'
-ON CONFLICT (name) DO NOTHING;
+FROM categories WHERE name = 'طعام سريع'
+ON CONFLICT DO NOTHING;
 
 INSERT INTO restaurants (name, description, image, delivery_time, category_id) 
 SELECT 
-    'برجر كينج',
-    'أشهى الوجبات السريعة العالمية',
-    '/images/restaurants/burger-king.jpg',
-    '30-45 دقيقة',
+    'مطعم اليمن السعيد',
+    'أشهى المأكولات اليمنية الأصيلة',
+    'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
+    '45-60 دقيقة',
     id
-FROM categories WHERE name = 'وجبات سريعة'
-ON CONFLICT (name) DO NOTHING;
+FROM categories WHERE name = 'مطاعم عربية'
+ON CONFLICT DO NOTHING;
 
 -- إضافة عناصر قائمة افتراضية
 INSERT INTO menu_items (name, description, price, image, category, restaurant_id)
 SELECT 
-    'مندي لحم',
-    'أكلة يمنية أصيلة بطعم لا يقاوم',
-    25000,
-    '/images/menu/mandi.jpg',
-    'أطباق رئيسية',
+    'برغر كلاسيك',
+    'برغر لحم بقري مع الخضار الطازجة',
+    2500,
+    'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400',
+    'برغر',
     id
-FROM restaurants WHERE name = 'مطعم اليمن السعيد'
-ON CONFLICT (name, restaurant_id) DO NOTHING;
+FROM restaurants WHERE name = 'مطعم البرغر الذهبي'
+ON CONFLICT DO NOTHING;
 
 INSERT INTO menu_items (name, description, price, image, category, restaurant_id)
 SELECT 
-    'همبرغر لحم',
-    'همبرغر لحم طازج مع الخضار والصلصة',
-    15000,
-    '/images/menu/hamburger.jpg',
-    'ساندويشات',
+    'مندي لحم',
+    'أكلة يمنية أصيلة بطعم لا يقاوم',
+    3500,
+    'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
+    'أطباق رئيسية',
     id
-FROM restaurants WHERE name = 'برجر كينج'
-ON CONFLICT (name, restaurant_id) DO NOTHING;
+FROM restaurants WHERE name = 'مطعم اليمن السعيد'
+ON CONFLICT DO NOTHING;
 
 -- إضافة سائق افتراضي
 INSERT INTO drivers (name, phone, password) 
@@ -221,9 +221,9 @@ INSERT INTO special_offers (title, description, image, discount_percent, minimum
 VALUES (
     'خصم 20% على أول طلب',
     'احصل على خصم 20% على طلبك الأول من تطبيق السريع ون',
-    '/images/offers/first-order.jpg',
+    'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400',
     20,
-    10000,
-    NOW() + INTERVAL '30 days'
+    1000,
+    CURRENT_TIMESTAMP + INTERVAL '30 days'
 )
-ON CONFLICT (title) DO NOTHING;
+ON CONFLICT DO NOTHING;

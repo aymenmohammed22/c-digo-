@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { dbStorage } from "./db";
+import { dbStorage } from "./db.js";
 import { authService } from "./auth";
 import { 
   insertRestaurantSchema, 
@@ -19,7 +19,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await authService.createDefaultAdmin();
   
   // Admin Authentication Routes
-  app.post("/api/admin/login", async (req, res) => {
+  app.post("/api/admin/login", async (req: { body: { email: any; password: any; }; }, res: { status: (arg0: number) => { (): any; new(): any; json: { (arg0: { message: string | undefined; }): void; new(): any; }; }; json: (arg0: { success: boolean; token: string | undefined; userType: string | undefined; message: string; }) => void; }) => {
     try {
       const { email, password } = req.body;
       
@@ -46,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/logout", async (req, res) => {
+  app.post("/api/admin/logout", async (req: { body: { token: any; }; }, res: { json: (arg0: { message: string; }) => void; status: (arg0: number) => { (): any; new(): any; json: { (arg0: { message: string; }): void; new(): any; }; }; }) => {
     try {
       const { token } = req.body;
       if (token) {

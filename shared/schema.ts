@@ -1,242 +1,209 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, decimal } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { pgTable, text, uuid, timestamp, boolean, integer, decimal, varchar } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// ---------- Users ----------
+// Users table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  username: varchar("username", { length: 50 }).notNull().unique(),
+  password: text("password").notNull(), // تمت الإضافة
   name: text("name").notNull(),
-  phone: text("phone"),
-  email: text("email"),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 100 }),
   address: text("address"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ---------- User Addresses ----------
+// User addresses table
 export const userAddresses = pgTable("user_addresses", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  type: text("type").notNull(), // home, work, other
-  label: text("label").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // تمت الإضافة: home, work, other
+  title: varchar("title", { length: 100 }).notNull(),
   address: text("address").notNull(),
-  details: text("details"),
-  isDefault: boolean("is_default").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+  details: text("details"), // تمت الإضافة
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ---------- Categories ----------
+// Categories table
 export const categories = pgTable("categories", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  icon: text("icon").notNull(),
-  isActive: boolean("is_active").default(true),
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  icon: varchar("icon", { length: 100 }).notNull(), // تم تغيير إلى notNull
+  isActive: boolean("is_active").default(true).notNull(),
 });
 
-// ---------- Restaurants ----------
+// Restaurants table
 export const restaurants = pgTable("restaurants", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
-  image: text("image").notNull(),
-  rating: text("rating").default("0.0"),
+  image: text("image").notNull(), // تم تغيير إلى notNull
+  rating: varchar("rating", { length: 10 }).default("0.0"),
   reviewCount: integer("review_count").default(0),
-  deliveryTime: text("delivery_time").notNull(),
-  isOpen: boolean("is_open").default(true),
-  minimumOrder: integer("minimum_order").default(0),
-  deliveryFee: integer("delivery_fee").default(0),
-  categoryId: varchar("category_id").references(() => categories.id),
-  openingTime: text("opening_time").default("08:00"), // وقت الفتح
-  closingTime: text("closing_time").default("23:00"), // وقت الإغلاق
-  workingDays: text("working_days").default("0,1,2,3,4,5,6"), // أيام العمل (0=الأحد, 6=السبت)
-  isTemporarilyClosed: boolean("is_temporarily_closed").default(false), // إغلاق مؤقت
-  temporaryCloseReason: text("temporary_close_reason"), // سبب الإغلاق المؤقت
-  createdAt: timestamp("created_at").defaultNow(),
+  deliveryTime: varchar("delivery_time", { length: 50 }).notNull(), // تم تغيير إلى notNull
+  isOpen: boolean("is_open").default(true).notNull(),
+  minimumOrder: decimal("minimum_order", { precision: 10, scale: 2 }).default("0"),
+  deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }).default("0"),
+  categoryId: uuid("category_id").references(() => categories.id),
+  openingTime: varchar("opening_time", { length: 50 }).default("08:00"), // تمت الإضافة
+  closingTime: varchar("closing_time", { length: 50 }).default("23:00"), // تمت الإضافة
+  workingDays: varchar("working_days", { length: 50 }).default("0,1,2,3,4,5,6"), // تمت الإضافة
+  isTemporarilyClosed: boolean("is_temporarily_closed").default(false), // تمت الإضافة
+  temporaryCloseReason: text("temporary_close_reason"), // تمت الإضافة
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ---------- Menu Items ----------
+// Menu items table
 export const menuItems = pgTable("menu_items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
-  price: integer("price").notNull(),
-  image: text("image").notNull(),
-  category: text("category").notNull(),
-  isAvailable: boolean("is_available").default(true),
-  isSpecialOffer: boolean("is_special_offer").default(false),
-  originalPrice: integer("original_price"),
-  restaurantId: varchar("restaurant_id").references(() => restaurants.id),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
+  image: text("image").notNull(), // تم تغيير إلى notNull
+  category: varchar("category", { length: 100 }).notNull(), // تم تغيير إلى notNull
+  isAvailable: boolean("is_available").default(true).notNull(),
+  isSpecialOffer: boolean("is_special_offer").default(false).notNull(),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
 });
 
-// ---------- Drivers ----------
+// Drivers table
 export const drivers = pgTable("drivers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  phone: text("phone").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull().unique(),
   password: text("password").notNull(),
-  isAvailable: boolean("is_available").default(true),
-  isActive: boolean("is_active").default(true),
-  currentLocation: text("current_location"),
-  earnings: integer("earnings").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
+  isAvailable: boolean("is_available").default(true).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  currentLocation: varchar("current_location", { length: 200 }),
+  earnings: decimal("earnings", { precision: 10, scale: 2 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ---------- Orders ----------
+// Orders table
 export const orders = pgTable("orders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  customerName: text("customer_name").notNull(),
-  customerPhone: text("customer_phone").notNull(),
-  customerEmail: text("customer_email"),
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerName: varchar("customer_name", { length: 100 }).notNull(),
+  customerPhone: varchar("customer_phone", { length: 20 }).notNull(),
+  customerEmail: varchar("customer_email", { length: 100 }),
   deliveryAddress: text("delivery_address").notNull(),
   notes: text("notes"),
-  paymentMethod: text("payment_method").notNull(),
-  status: text("status").default("pending"), // pending, confirmed, preparing, on_way, delivered, cancelled
-  items: text("items").notNull(), // JSON string of cart items
-  subtotal: integer("subtotal").notNull(),
-  deliveryFee: integer("delivery_fee").notNull(),
-  total: integer("total").notNull(),
-  estimatedTime: text("estimated_time").default("30-45 دقيقة"),
-  restaurantId: varchar("restaurant_id").references(() => restaurants.id),
-  driverId: varchar("driver_id").references(() => drivers.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // تمت الإضافة
+  status: varchar("status", { length: 50 }).default("pending").notNull(),
+  items: text("items").notNull(), // JSON string
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(), // تمت الإضافة
+  deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  estimatedTime: varchar("estimated_time", { length: 50 }).default("30-45 دقيقة"),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
+  driverId: uuid("driver_id").references(() => drivers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ---------- Special Offers ----------
+// Special offers table
 export const specialOffers = pgTable("special_offers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  image: text("image").notNull(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(), // تم تغيير إلى notNull
+  image: text("image").notNull(), // تمت الإضافة
   discountPercent: integer("discount_percent"),
-  discountAmount: integer("discount_amount"),
-  minimumOrder: integer("minimum_order").default(0),
-  isActive: boolean("is_active").default(true),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }),
+  minimumOrder: decimal("minimum_order", { precision: 10, scale: 2 }).default("0"),
   validUntil: timestamp("valid_until"),
-  createdAt: timestamp("created_at").defaultNow(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ---------- Admin Users ----------
+// Admin users table
 export const adminUsers = pgTable("admin_users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 100 }).notNull().unique(),
   password: text("password").notNull(),
-  userType: text("user_type").notNull().default("admin"), // 'admin' or 'driver'
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
+  userType: varchar("user_type", { length: 50 }).default("admin").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ---------- Admin Sessions ----------
+// Admin sessions table
 export const adminSessions = pgTable("admin_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  adminId: varchar("admin_id").references(() => adminUsers.id),
+  id: uuid("id").primaryKey().defaultRandom(),
+  adminId: uuid("admin_id").references(() => adminUsers.id).notNull(),
   token: text("token").notNull().unique(),
-  userType: text("user_type").notNull(),
+  userType: varchar("user_type", { length: 50 }).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ---------- Insert Schemas ----------
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  name: true,
+// UI settings table
+export const uiSettings = pgTable("ui_settings", {
+  id: uuid("id").primaryKey().defaultRandom(), // تمت الإضافة
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true), // تمت الإضافة
+  createdAt: timestamp("created_at").defaultNow().notNull(), // تمت الإضافة
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertCategorySchema = createInsertSchema(categories).omit({
-  id: true,
-});
-
-export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
-  id: true,
-});
-
-export const insertOrderSchema = createInsertSchema(orders).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertDriverSchema = createInsertSchema(drivers).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertSpecialOfferSchema = createInsertSchema(specialOffers).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertAdminSessionSchema = createInsertSchema(adminSessions).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({
-  id: true,
-  createdAt: true,
-});
-
-// ---------- Types ----------
-export type User = typeof users.$inferSelect;
+// Zod schemas for validation
+export const insertUserSchema = createInsertSchema(users);
+export const selectUserSchema = createSelectSchema(users);
+export type User = z.infer<typeof selectUserSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
-export type Category = typeof categories.$inferSelect;
-export type InsertCategory = z.infer<typeof insertCategorySchema>;
-
-export type Restaurant = typeof restaurants.$inferSelect;
-export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
-
-export type MenuItem = typeof menuItems.$inferSelect;
-export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
-
-export type Order = typeof orders.$inferSelect;
-export type InsertOrder = z.infer<typeof insertOrderSchema>;
-
-export type Driver = typeof drivers.$inferSelect;
-export type InsertDriver = z.infer<typeof insertDriverSchema>;
-
-export type SpecialOffer = typeof specialOffers.$inferSelect;
-export type InsertSpecialOffer = z.infer<typeof insertSpecialOfferSchema>;
-
-export type AdminUser = typeof adminUsers.$inferSelect;
-export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
-
-export type AdminSession = typeof adminSessions.$inferSelect;
-export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
-
-export type UserAddress = typeof userAddresses.$inferSelect;
+export const insertUserAddressSchema = createInsertSchema(userAddresses);
+export const selectUserAddressSchema = createSelectSchema(userAddresses);
+export type UserAddress = z.infer<typeof selectUserAddressSchema>;
 export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;
 
-// ---------- UI Settings ----------
-export const uiSettings = pgTable("ui_settings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  settingKey: text("setting_key").notNull().unique(),
-  settingValue: text("setting_value").notNull(),
-  description: text("description"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+export const insertCategorySchema = createInsertSchema(categories);
+export const selectCategorySchema = createSelectSchema(categories);
+export type Category = z.infer<typeof selectCategorySchema>;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
 
-export const insertUiSettingsSchema = createInsertSchema(uiSettings).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertRestaurantSchema = createInsertSchema(restaurants);
+export const selectRestaurantSchema = createSelectSchema(restaurants);
+export type Restaurant = z.infer<typeof selectRestaurantSchema>;
+export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
 
-export type UiSettings = typeof uiSettings.$inferSelect;
+export const insertMenuItemSchema = createInsertSchema(menuItems);
+export const selectMenuItemSchema = createSelectSchema(menuItems);
+export type MenuItem = z.infer<typeof selectMenuItemSchema>;
+export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
+
+export const insertOrderSchema = createInsertSchema(orders);
+export const selectOrderSchema = createSelectSchema(orders);
+export type Order = z.infer<typeof selectOrderSchema>;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+
+export const insertDriverSchema = createInsertSchema(drivers);
+export const selectDriverSchema = createSelectSchema(drivers);
+export type Driver = z.infer<typeof selectDriverSchema>;
+export type InsertDriver = z.infer<typeof insertDriverSchema>;
+
+export const insertSpecialOfferSchema = createInsertSchema(specialOffers);
+export const selectSpecialOfferSchema = createSelectSchema(specialOffers);
+export type SpecialOffer = z.infer<typeof selectSpecialOfferSchema>;
+export type InsertSpecialOffer = z.infer<typeof insertSpecialOfferSchema>;
+
+export const insertAdminUserSchema = createInsertSchema(adminUsers);
+export const selectAdminUserSchema = createSelectSchema(adminUsers);
+export type AdminUser = z.infer<typeof selectAdminUserSchema>;
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+
+export const insertAdminSessionSchema = createInsertSchema(adminSessions);
+export const selectAdminSessionSchema = createSelectSchema(adminSessions);
+export type AdminSession = z.infer<typeof selectAdminSessionSchema>;
+export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
+
+export const insertUiSettingsSchema = createInsertSchema(uiSettings);
+export const selectUiSettingsSchema = createSelectSchema(uiSettings);
+export type UiSettings = z.infer<typeof selectUiSettingsSchema>;
 export type InsertUiSettings = z.infer<typeof insertUiSettingsSchema>;

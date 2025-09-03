@@ -155,7 +155,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_i
 
 -- إدراج بيانات أولية للتطوير والاختبار
 -- إضافة مستخدم أدمن افتراضي (كلمة المرور: admin123)
-INSERT INTO admin_users (name, email, password, usertype) 
+INSERT INTO admin_users (name, email, password, user_type) 
 VALUES ('مدير النظام', 'admin@alsarie-one.com', 'admin123456', 'admin')
 ON CONFLICT (email) DO NOTHING;
 

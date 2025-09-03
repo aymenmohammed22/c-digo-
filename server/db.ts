@@ -1,3 +1,4 @@
+// db.ts
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { 
@@ -18,10 +19,33 @@ import {
 import { IStorage } from "./storage";
 import { eq, and, lte } from "drizzle-orm";
 
-const sql = neon(process.env.DATABASE_URL!);
+// تحسين الاتصال مع إعدادات SSL
+const sql = neon(process.env.DATABASE_URL!, {
+  fetchOptions: {
+    // إعدادات مهمة لبيئة الإنتاج
+    keepalive: true,
+    // إعدادات SSL إضافية إذا لزم الأمر
+  }
+});
+
 export const db = drizzle(sql);
 
+// إضافة دالة لاختبار الاتصال
+export async function testDatabaseConnection(): Promise<boolean> {
+  try {
+    await sql`SELECT 1`;
+    console.log('✅ تم الاتصال بقاعدة البيانات بنجاح');
+    return true;
+  } catch (error) {
+    console.error('❌ فشل الاتصال بقاعدة البيانات:', error);
+    return false;
+  }
+}
+
 export class DatabaseStorage implements IStorage {
+  testConnection() {
+    throw new Error('Method not implemented.');
+  }
   // Admin Authentication
   async createAdminUser(adminUser: InsertAdminUser): Promise<AdminUser> {
     const [newAdmin] = await db.insert(adminUsers).values(adminUser).returning();

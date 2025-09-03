@@ -1,88 +1,52 @@
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt'; // تم التعديل هنا
 import { randomUUID } from 'crypto';
 import { dbStorage } from './db';
 import { type InsertAdminUser, type InsertAdminSession } from '@shared/schema';
 
 export class AuthService {
-  // دالة لتشفير كلمة المرور
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 10);
   }
-
-  // دالة للتحقق من صحة كلمة المرور
   async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(password, hashedPassword);
   }
-
-  // دالة تسجيل الدخول للمدير
   async loginAdmin(email: string, password: string): Promise<{ success: boolean; token?: string; userType?: string; message?: string }> {
     try {
       const admin = await dbStorage.getAdminByEmail(email);
-      
-      if (!admin) {
-        return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
-      }
-
-      if (!admin.isActive) {
-        return { success: false, message: 'الحساب غير مفعل' };
-      }
-
+      if (!admin) return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
+      if (!admin.isActive) return { success: false, message: 'الحساب غير مفعل' };
       const isPasswordValid = await this.verifyPassword(password, admin.password);
-      
-      if (!isPasswordValid) {
-        return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
-      }
-
+      if (!isPasswordValid) return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
       const token = randomUUID();
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24); // انتهاء الصلاحية خلال 24 ساعة
-
+      expiresAt.setHours(expiresAt.getHours() + 24);
       const sessionData: InsertAdminSession = {
         adminId: admin.id,
         token,
         userType: admin.userType,
         expiresAt
       };
-
       await dbStorage.createAdminSession(sessionData);
-
-      return {
-        success: true,
-        token,
-        userType: admin.userType
-      };
+      return { success: true, token, userType: admin.userType };
     } catch (error) {
       console.error('خطأ في تسجيل الدخول:', error);
       return { success: false, message: 'حدث خطأ في الخادم' };
     }
   }
-
-  // دالة التحقق من الجلسة
   async validateSession(token: string): Promise<{ valid: boolean; userType?: string; adminId?: string }> {
     try {
       const session = await dbStorage.getAdminSession(token);
-      
-      if (!session) {
-        return { valid: false };
-      }
-
+      if (!session) return { valid: false };
       if (new Date() > session.expiresAt) {
         await dbStorage.deleteAdminSession(token);
         return { valid: false };
       }
-
-      return {
-        valid: true,
-        userType: session.userType,
-        adminId: session.adminId || undefined
-      };
+      return { valid: true, userType: session.userType, adminId: session.adminId || undefined };
     } catch (error) {
       console.error('خطأ في التحقق من الجلسة:', error);
       return { valid: false };
     }
   }
-
-  // دالة تسجيل الخروج
   async logout(token: string): Promise<boolean> {
     try {
       return await dbStorage.deleteAdminSession(token);
@@ -91,22 +55,18 @@ export class AuthService {
       return false;
     }
   }
-
-  // دالة لإنشاء المدير الافتراضي إذا لم يكن موجودًا
   async createDefaultAdmin(): Promise<void> {
     try {
       const existingAdmin = await dbStorage.getAdminByEmail('admin@alsarie-one.com');
-      
       if (!existingAdmin) {
-        const hashedPassword = await this.hashPassword('admin123456');
-        
+        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123456';
+        const hashedPassword = await this.hashPassword(adminPassword);
         const defaultAdmin: InsertAdminUser = {
           name: 'مدير النظام',
           email: 'admin@alsarie-one.com',
           password: hashedPassword,
           userType: 'admin'
         };
-
         await dbStorage.createAdminUser(defaultAdmin);
         console.log('تم إنشاء المدير الافتراضي بنجاح');
       }
@@ -115,5 +75,4 @@ export class AuthService {
     }
   }
 }
-
 export const authService = new AuthService();

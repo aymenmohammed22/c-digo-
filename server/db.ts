@@ -18,6 +18,10 @@ import {
 import { IStorage } from "./storage";
 import { eq, and, lte } from "drizzle-orm";
 
+// تحقق من وجود متغير البيئة
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be defined in environment variables");
+}
 const sql = neon(process.env.DATABASE_URL!);
 export const db = drizzle(sql);
 
@@ -62,54 +66,6 @@ export class DatabaseStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
-  }
-
-  // ✅ إضافة الدوال المفقودة من الواجهة
-  async updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined> {
-    const [updated] = await db.update(users).set(user).where(eq(users.id, id)).returning();
-    return updated;
-  }
-
-  // ✅ دوال UserAddresses المطلوبة
-  async getUserAddresses(userId: string): Promise<UserAddress[]> {
-    return await db.select().from(userAddresses).where(eq(userAddresses.userId, userId));
-  }
-
-  async getUserAddress(id: string): Promise<UserAddress | undefined> {
-    const [address] = await db.select().from(userAddresses).where(eq(userAddresses.id, id));
-    return address;
-  }
-
-  async createUserAddress(address: InsertUserAddress): Promise<UserAddress> {
-    const [newAddress] = await db.insert(userAddresses).values(address).returning();
-    return newAddress;
-  }
-
-  async updateUserAddress(id: string, address: Partial<InsertUserAddress>): Promise<UserAddress | undefined> {
-    const [updated] = await db.update(userAddresses).set(address).where(eq(userAddresses.id, id)).returning();
-    return updated;
-  }
-
-  async deleteUserAddress(id: string): Promise<boolean> {
-    const result = await db.delete(userAddresses).where(eq(userAddresses.id, id));
-    return result.rowCount > 0;
-  }
-
-  async setDefaultUserAddress(userId: string, addressId: string): Promise<boolean> {
-    // إزالة default من جميع العناوين
-    await db.update(userAddresses)
-      .set({ isDefault: false })
-      .where(eq(userAddresses.userId, userId));
-    
-    // تعيين العنوان المحدد كافتراضي
-    const result = await db.update(userAddresses)
-      .set({ isDefault: true })
-      .where(and(
-        eq(userAddresses.userId, userId),
-        eq(userAddresses.id, addressId)
-      ));
-    
-    return result.rowCount > 0;
   }
 
   // Categories
@@ -200,15 +156,6 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(orders).where(eq(orders.restaurantId, restaurantId));
   }
 
-  // ✅ الدوال الإضافية للطلبات
-  async getOrdersByDriver(driverId: string): Promise<Order[]> {
-    return await db.select().from(orders).where(eq(orders.driverId, driverId));
-  }
-
-  async getOrdersByStatus(status: string): Promise<Order[]> {
-    return await db.select().from(orders).where(eq(orders.status, status));
-  }
-
   async createOrder(order: InsertOrder): Promise<Order> {
     const [newOrder] = await db.insert(orders).values(order).returning();
     return newOrder;
@@ -269,67 +216,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSpecialOffer(id: string): Promise<boolean> {
     const result = await db.delete(specialOffers).where(eq(specialOffers.id, id));
-    return result.rowCount > 0;
-  }
-
-  // ✅ دوال Admin الإضافية
-  async getAdminUser(id: string): Promise<AdminUser | undefined> {
-    const [admin] = await db.select().from(adminUsers).where(eq(adminUsers.id, id));
-    return admin;
-  }
-
-  async updateAdminUser(id: string, adminUser: Partial<InsertAdminUser>): Promise<AdminUser | undefined> {
-    const [updated] = await db.update(adminUsers).set(adminUser).where(eq(adminUsers.id, id)).returning();
-    return updated;
-  }
-
-  // ✅ دوال AdminSessions الإضافية
-  async getAdminSessionById(id: string): Promise<AdminSession | undefined> {
-    const [session] = await db.select().from(adminSessions).where(eq(adminSessions.id, id));
-    return session;
-  }
-
-  async updateAdminSession(id: string, session: Partial<InsertAdminSession>): Promise<AdminSession | undefined> {
-    const [updated] = await db.update(adminSessions).set(session).where(eq(adminSessions.id, id)).returning();
-    return updated;
-  }
-
-  async deleteAdminSessionById(id: string): Promise<boolean> {
-    const result = await db.delete(adminSessions).where(eq(adminSessions.id, id));
-    return result.rowCount > 0;
-  }
-
-  async deleteExpiredAdminSessions(): Promise<number> {
-    const now = new Date();
-    const result = await db.delete(adminSessions).where(lte(adminSessions.expiresAt, now));
-    return result.rowCount;
-  }
-
-  // UI Settings
-  async getUiSettings(): Promise<UiSettings[]> {
-    return await db.select().from(uiSettings).where(eq(uiSettings.isActive, true));
-  }
-
-  async getUiSetting(key: string): Promise<UiSettings | undefined> {
-    const [setting] = await db.select().from(uiSettings).where(eq(uiSettings.settingKey, key));
-    return setting;
-  }
-
-  async updateUiSetting(key: string, value: string): Promise<UiSettings | undefined> {
-    const [updated] = await db.update(uiSettings)
-      .set({ settingValue: value, updatedAt: new Date() })
-      .where(eq(uiSettings.settingKey, key))
-      .returning();
-    return updated;
-  }
-
-  async createUiSetting(setting: InsertUiSettings): Promise<UiSettings> {
-    const [newSetting] = await db.insert(uiSettings).values(setting).returning();
-    return newSetting;
-  }
-
-  async deleteUiSetting(key: string): Promise<boolean> {
-    const result = await db.delete(uiSettings).where(eq(uiSettings.settingKey, key));
     return result.rowCount > 0;
   }
 }

@@ -155,8 +155,8 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_i
 
 -- إدراج بيانات أولية للتطوير والاختبار
 -- إضافة مستخدم أدمن افتراضي (كلمة المرور: admin123)
-INSERT INTO admin_users (name, email, password, user_type) 
-VALUES ('مدير النظام', 'admin@alsarie-one.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin')
+INSERT INTO admin_users (name, email, password, usertype) 
+VALUES ('مدير النظام', 'admin@alsarie-one.com', 'admin123456', 'admin')
 ON CONFLICT (email) DO NOTHING;
 
 -- إضافة تصنيفات افتراضية
@@ -213,7 +213,7 @@ ON CONFLICT DO NOTHING;
 
 -- إضافة سائق افتراضي
 INSERT INTO drivers (name, phone, password) 
-VALUES ('أحمد محمد', '+967711223344', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
+VALUES ('أحمد محمد', '+967771234567', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
 ON CONFLICT (phone) DO NOTHING;
 
 -- إضافة عروض خاصة

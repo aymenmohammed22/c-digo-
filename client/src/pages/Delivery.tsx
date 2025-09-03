@@ -19,7 +19,7 @@ export default function Delivery() {
     id: '1',
     name: 'أحمد محمد',
     phone: '+967771234567',
-    password: '',
+    password: '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
     isAvailable: true,
     isActive: true,
     currentLocation: 'صنعاء، شارع الزبيري',

@@ -2,7 +2,7 @@
   "dev": {
     "driver": "pg",
     "host": "localhost",
-    "database": "alsarie_one_db",
+    "database": "sareeonedb",
     "user": "postgres",
     "password": "password"
   },

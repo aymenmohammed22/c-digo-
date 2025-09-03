@@ -40,13 +40,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
   };
 
   const fillAdminCredentials = () => {
-    setEmail('admin@fooddelivery.com');
+    setEmail('admin@alsarie-one.com');
     setPassword('admin123456');
   };
 
   const fillDriverCredentials = () => {
     setEmail('+967771234567');
-    setPassword('password123');
+    setPassword('$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
   };
 
   return (

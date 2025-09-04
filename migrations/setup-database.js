@@ -2,9 +2,11 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import * as dotenv from "dotenv";
 import { 
-  categories, restaurants, menuItems, drivers, specialOffers, uiSettings, adminUsers
-} from "@shared/schema";
+  categories, restaurants, menuItems, drivers, specialOffers, uiSettings, adminUsers,
+  adminSessions, orders, users, userAddresses
+} from "./shared/schema.ts";
 import bcrypt from "bcrypt";
+import { eq } from "drizzle-orm";
 
 dotenv.config();
 
@@ -20,14 +22,21 @@ async function setupInitialData() {
   try {
     console.log("🚀 Setting up initial data...");
 
+    // التحقق من وجود بيانات مسبقاً وتخطي الإضافة إذا كانت موجودة
+    const existingCategories = await db.select().from(categories);
+    if (existingCategories.length > 0) {
+      console.log("📂 Categories already exist, skipping...");
+      return;
+    }
+
     // Create categories
     console.log("📂 Creating categories...");
     const categoryData = [
-      { name: "مطاعم", icon: "fas fa-utensils", isActive: true },
-      { name: "مقاهي", icon: "fas fa-coffee", isActive: true },
-      { name: "حلويات", icon: "fas fa-candy-cane", isActive: true },
-      { name: "سوبرماركت", icon: "fas fa-shopping-cart", isActive: true },
-      { name: "صيدليات", icon: "fas fa-pills", isActive: true },
+      { id: "1", name: "مطاعم", icon: "fas fa-utensils", isActive: true },
+      { id: "2", name: "مقاهي", icon: "fas fa-coffee", isActive: true },
+      { id: "3", name: "حلويات", icon: "fas fa-candy-cane", isActive: true },
+      { id: "4", name: "سوبرماركت", icon: "fas fa-shopping-cart", isActive: true },
+      { id: "5", name: "صيدليات", icon: "fas fa-pills", isActive: true },
     ];
 
     const createdCategories = await db.insert(categories).values(categoryData).returning();
@@ -37,6 +46,7 @@ async function setupInitialData() {
     console.log("🏪 Creating restaurants...");
     const restaurantData = [
       {
+        id: "1",
         name: "مطعم الوزيكو للعربكة",
         description: "مطعم يمني تقليدي متخصص في الأطباق الشعبية",
         image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
@@ -44,11 +54,17 @@ async function setupInitialData() {
         reviewCount: 4891,
         deliveryTime: "40-60 دقيقة",
         isOpen: true,
-        minimumOrder: "25",
-        deliveryFee: "5",
+        minimumOrder: 25,
+        deliveryFee: 5,
         categoryId: createdCategories[0].id,
+        openingTime: "08:00",
+        closingTime: "23:00",
+        workingDays: "0,1,2,3,4,5,6",
+        isTemporarilyClosed: false,
+        temporaryCloseReason: null,
       },
       {
+        id: "2",
         name: "حلويات الشام",
         description: "أفضل الحلويات الشامية والعربية",
         image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
@@ -56,11 +72,17 @@ async function setupInitialData() {
         reviewCount: 2341,
         deliveryTime: "30-45 دقيقة",
         isOpen: true,
-        minimumOrder: "15",
-        deliveryFee: "3",
+        minimumOrder: 15,
+        deliveryFee: 3,
         categoryId: createdCategories[2].id,
+        openingTime: "08:00",
+        closingTime: "23:00",
+        workingDays: "0,1,2,3,4,5,6",
+        isTemporarilyClosed: false,
+        temporaryCloseReason: null,
       },
       {
+        id: "3",
         name: "مقهى العروبة",
         description: "مقهى شعبي بالطابع العربي الأصيل",
         image: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
@@ -68,9 +90,14 @@ async function setupInitialData() {
         reviewCount: 1876,
         deliveryTime: "يفتح في 8:00 ص",
         isOpen: false,
-        minimumOrder: "20",
-        deliveryFee: "4",
+        minimumOrder: 20,
+        deliveryFee: 4,
         categoryId: createdCategories[1].id,
+        openingTime: "08:00",
+        closingTime: "23:00",
+        workingDays: "0,1,2,3,4,5,6",
+        isTemporarilyClosed: false,
+        temporaryCloseReason: null,
       }
     ];
 
@@ -81,40 +108,47 @@ async function setupInitialData() {
     console.log("🍽️ Creating menu items...");
     const menuItemData = [
       {
+        id: "1",
         name: "عربكة بالقشطة والعسل",
         description: "حلوى يمنية تقليدية بالقشطة الطازجة والعسل الطبيعي",
-        price: "55",
+        price: 55,
         image: "https://images.unsplash.com/photo-1551024506-0bccd828d307?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200",
         category: "وجبات رمضان",
         isAvailable: true,
         isSpecialOffer: false,
+        originalPrice: null,
         restaurantId: createdRestaurants[0].id,
       },
       {
+        id: "2",
         name: "معصوب بالقشطة والعسل",
         description: "طبق يمني شعبي بالموز والقشطة والعسل",
-        price: "55",
+        price: 55,
         image: "https://images.unsplash.com/photo-1565299507177-b0ac66763828?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200",
         category: "وجبات رمضان",
         isAvailable: true,
         isSpecialOffer: false,
+        originalPrice: null,
         restaurantId: createdRestaurants[0].id,
       },
       {
+        id: "3",
         name: "مياه معدنية 750 مل",
         description: "مياه طبيعية معدنية عالية الجودة",
-        price: "3",
+        price: 3,
         image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200",
         category: "المشروبات",
         isAvailable: true,
         isSpecialOffer: false,
+        originalPrice: null,
         restaurantId: createdRestaurants[0].id,
       },
       {
+        id: "4",
         name: "كومبو عربكة خاص",
         description: "عربكة + مطبق عادي + مشروب غازي",
-        price: "55",
-        originalPrice: "60",
+        price: 55,
+        originalPrice: 60,
         image: "https://images.unsplash.com/photo-1565299507177-b0ac66763828?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200",
         category: "العروض",
         isAvailable: true,
@@ -131,22 +165,24 @@ async function setupInitialData() {
     const hashedPassword = await bcrypt.hash("password123", 10);
     const driverData = [
       {
+        id: "1",
         name: "أحمد محمد",
         phone: "+967771234567",
         password: hashedPassword,
         isAvailable: true,
         isActive: true,
         currentLocation: "صنعاء",
-        earnings: "2500",
+        earnings: 2500,
       },
       {
+        id: "2",
         name: "علي حسن",
         phone: "+967779876543",
         password: hashedPassword,
         isAvailable: true,
         isActive: true,
         currentLocation: "تعز",
-        earnings: "3200",
+        earnings: 3200,
       }
     ];
 
@@ -157,18 +193,26 @@ async function setupInitialData() {
     console.log("🎁 Creating special offers...");
     const offerData = [
       {
+        id: "1",
         title: "خصم 20% على الطلبات فوق 100 ريال",
         description: "احصل على خصم 20% عند طلب بقيمة 100 ريال أو أكثر",
+        image: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400",
         discountPercent: 20,
-        minimumOrder: "100",
+        discountAmount: null,
+        minimumOrder: 100,
         isActive: true,
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       },
       {
+        id: "2",
         title: "توصيل مجاني",
         description: "توصيل مجاني للطلبات فوق 50 ريال",
-        discountAmount: "5",
-        minimumOrder: "50",
+        image: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400",
+        discountPercent: null,
+        discountAmount: 5,
+        minimumOrder: 50,
         isActive: true,
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       }
     ];
 
@@ -197,6 +241,7 @@ async function setupInitialData() {
     const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
     
     const adminData = {
+      id: "1",
       name: 'مدير النظام',
       email: 'admin@alsarie-one.com',
       password: hashedAdminPassword,

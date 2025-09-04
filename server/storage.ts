@@ -7,7 +7,7 @@ import {
   type SpecialOffer, type InsertSpecialOffer,
   type User, type InsertUser,
   type UiSettings, type InsertUiSettings
-} from "@shared/schema";
+} from "./shared/schema.ts";
 import { randomUUID } from "crypto";
 
 export interface IStorage {

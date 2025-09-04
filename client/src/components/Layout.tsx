@@ -10,9 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 
 interface LayoutProps {
   children: React.ReactNode;
+  onProfileIconClick?: () => void;
+  profileClickCount?: number;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, onProfileIconClick, profileClickCount = 0 }: LayoutProps) {
   const [location, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { getItemCount } = useCart();
@@ -21,12 +23,13 @@ export default function Layout({ children }: LayoutProps) {
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [showAdminButtons, setShowAdminButtons] = useState(false);
   
-  // States for profile click counter (الميزة الجديدة)
-  const [profileClickCount, setProfileClickCount] = useState(0);
+  // States for profile click counter
+  const [internalProfileClickCount, setInternalProfileClickCount] = useState(0);
   const [lastProfileClickTime, setLastProfileClickTime] = useState(0);
 
   const isHomePage = location === '/';
-  const isAdminPage = location === '/admin';
+  const isAdminPage = location.startsWith('/admin');
+  const isDeliveryPage = location.startsWith('/delivery');
 
   const navigationItems = [
     { icon: Home, label: 'الرئيسية', path: '/', testId: 'nav-home' },
@@ -44,55 +47,58 @@ export default function Layout({ children }: LayoutProps) {
     { icon: Shield, label: 'سياسة الخصوصية', path: '/privacy', testId: 'sidebar-privacy' },
   ];
 
-  // وظيفة التعامل مع النقر على أيقونة الملف الشخصي (الميزة الجديدة)
+  // وظيفة التعامل مع النقر على أيقونة الملف الشخصي
   const handleProfileIconClick = () => {
+    if (onProfileIconClick) {
+      // إذا تم تمرير الدالة من الأب، نستخدمها
+      onProfileIconClick();
+      return;
+    }
+
+    // وإلا نستخدم التنفيذ المحلي
     const currentTime = Date.now();
     
     // إذا مر أكثر من ثانيتين منذ آخر نقرة، نعيد العداد
     if (currentTime - lastProfileClickTime > 2000) {
-      setProfileClickCount(1);
+      setInternalProfileClickCount(1);
     } else {
-      setProfileClickCount(prev => prev + 1);
+      setInternalProfileClickCount(prev => prev + 1);
     }
     
     setLastProfileClickTime(currentTime);
 
-    // إذا وصل إلى 5 نقرات
-    if (profileClickCount + 1 === 5) {
+    // إذا وصل إلى 3 نقرات
+    if (internalProfileClickCount + 1 === 3) {
       toast({
-        title: "الوصول إلى وضع المطور",
-        description: "اختر الواجهة التي تريد الانتقال إليها",
+        title: "الوصول إلى لوحة التحكم",
+        description: "سيتم الانتقال إلى صفحة المدير",
       });
       
-      // عرض خيارات الانتقال
-      const choice = confirm("اختر الواجهة:\nموافق → لوحة التحكم (Admin)\nإلغاء → تطبيق السائق (Driver)");
-      
-      if (choice) {
-        window.location.href = '/admin-login';
-      } else {
-        window.location.href = '/admin-login?type=driver';
-      }
-      
-      setProfileClickCount(0);
-    } else if (profileClickCount + 1 > 2) {
+      // الانتقال إلى لوحة التحكم
+      window.location.href = '/admin-login';
+      setInternalProfileClickCount(0);
+    } else if (internalProfileClickCount + 1 > 1) {
       // إشعار بعد النقرات الأولى
       toast({
-        title: `نقرة ${profileClickCount + 1} من 5`,
-        description: "استمر للنقر للوصول إلى واجهات المطور",
+        title: `نقرة ${internalProfileClickCount + 1} من 3`,
+        description: "استمر للنقل للوصول إلى لوحة التحكم",
       });
     }
   };
 
   // إعادة تعيين عداد النقرات على الملف الشخصي بعد 2 ثانية
   useEffect(() => {
-    if (profileClickCount > 0) {
+    if (internalProfileClickCount > 0) {
       const timer = setTimeout(() => {
-        setProfileClickCount(0);
+        setInternalProfileClickCount(0);
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [profileClickCount, lastProfileClickTime]);
+  }, [internalProfileClickCount, lastProfileClickTime]);
+
+  // استخدام العداد الممرر من الأب أو المحلي
+  const displayProfileClickCount = onProfileIconClick ? profileClickCount : internalProfileClickCount;
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen shadow-xl relative">
@@ -145,75 +151,44 @@ export default function Layout({ children }: LayoutProps) {
                     );
                   })}
                   
-                  {showAdminButtons && (
-                    <div className="border-t border-border pt-4 mt-4">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-3 h-12"
-                        onClick={() => {
-                          setLocation('/admin-login');
-                          setSidebarOpen(false);
-                        }}
-                        data-testid="sidebar-admin"
-                      >
-                        <Settings className="h-5 w-5 text-blue-500" />
-                        <span className="text-foreground">لوحة التحكم</span>
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-3 h-12"
-                        onClick={() => {
-                          setLocation('/driver-login');
-                          setSidebarOpen(false);
-                        }}
-                        data-testid="sidebar-delivery"
-                      >
-                        <Truck className="h-5 w-5 text-green-500" />
-                        <span className="text-foreground">تطبيق السائقين</span>
-                      </Button>
-                    </div>
-                  )}
+                  {/* أزرار المدير والسائقين - تظهر دائمًا */}
+                  <div className="border-t border-border pt-4 mt-4">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-12"
+                      onClick={() => {
+                        setLocation('/admin-login');
+                        setSidebarOpen(false);
+                      }}
+                      data-testid="sidebar-admin"
+                    >
+                      <Settings className="h-5 w-5 text-blue-500" />
+                      <span className="text-foreground">لوحة التحكم</span>
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-12"
+                      onClick={() => {
+                        setLocation('/driver-login');
+                        setSidebarOpen(false);
+                      }}
+                      data-testid="sidebar-delivery"
+                    >
+                      <Truck className="h-5 w-5 text-green-500" />
+                      <span className="text-foreground">تطبيق السائقين</span>
+                    </Button>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
-            <div 
-              className="text-center cursor-pointer"
-              onClick={() => {
-                const newCount = logoClickCount + 1;
-                setLogoClickCount(newCount);
-                
-                if (newCount === 4) {
-                  setShowAdminButtons(true);
-                  setLogoClickCount(0);
-                  // Show login modal or navigate to login
-                  setLocation('/admin-login');
-                } else if (newCount > 4) {
-                  setLogoClickCount(0);
-                }
-                
-                // Reset counter after 3 seconds if not completed
-                setTimeout(() => {
-                  setLogoClickCount(0);
-                }, 3000);
-              }}
-            >
+            
+            <div className="text-center">
               <h1 className="text-lg font-bold text-primary">السريع ون</h1>
               <p className="text-xs text-muted-foreground">توصيل سريع</p>
-              {logoClickCount > 0 && logoClickCount < 4 && (
-                <div className="flex justify-center mt-1">
-                  {Array.from({ length: 4 }, (_, i) => (
-                    <div
-                      key={i}
-                      className={`w-2 h-2 rounded-full mx-1 ${
-                        i < logoClickCount ? 'bg-primary' : 'bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           </div>
+          
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -228,21 +203,21 @@ export default function Layout({ children }: LayoutProps) {
               )}
             </Button>
             
-            {/* أيقونة الملف الشخصي مع خاصية النقر المتعدد (الميزة الجديدة) */}
+            {/* أيقونة الملف الشخصي مع خاصية النقر المتعدد */}
             <Button
               variant="ghost"
               size="icon"
               onClick={handleProfileIconClick}
               className="relative"
-              title="النقر 5 مرات للوصول إلى واجهات المطور"
+              title="النقر 3 مرات للوصول إلى لوحة التحكم"
               data-testid="button-profile"
             >
               <User className="h-5 w-5" />
               
-              {/* مؤشر بصري للنقرات (اختياري) */}
-              {profileClickCount > 0 && (
+              {/* مؤشر بصري للنقرات */}
+              {displayProfileClickCount > 0 && (
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full text-xs text-white flex items-center justify-center">
-                  {profileClickCount}
+                  {displayProfileClickCount}
                 </div>
               )}
             </Button>
@@ -268,8 +243,8 @@ export default function Layout({ children }: LayoutProps) {
         {children}
       </main>
 
-      {/* Bottom Navigation - hide on admin page */}
-      {!isAdminPage && (
+      {/* Bottom Navigation - hide on admin and delivery pages */}
+      {!isAdminPage && !isDeliveryPage && (
         <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card border-t border-border px-4 py-2">
           <div className="flex justify-around items-center">
             {navigationItems.map((item) => {
@@ -297,8 +272,8 @@ export default function Layout({ children }: LayoutProps) {
         </nav>
       )}
 
-      {/* Floating Cart Button */}
-      {getItemCount() > 0 && !isAdminPage && <CartButton />}
+      {/* Floating Cart Button - hide on admin and delivery pages */}
+      {getItemCount() > 0 && !isAdminPage && !isDeliveryPage && <CartButton />}
     </div>
   );
 }

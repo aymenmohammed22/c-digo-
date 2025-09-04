@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Home, Search, Receipt, User, ShoppingCart, Moon, Sun, Menu, X, Settings, Shield, MapPin, Clock, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import CartButton from './CartButton';
+import { useToast } from '@/hooks/use-toast';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,9 +16,14 @@ export default function Layout({ children }: LayoutProps) {
   const [location, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { getItemCount } = useCart();
+  const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [showAdminButtons, setShowAdminButtons] = useState(false);
+  
+  // States for profile click counter (الميزة الجديدة)
+  const [profileClickCount, setProfileClickCount] = useState(0);
+  const [lastProfileClickTime, setLastProfileClickTime] = useState(0);
 
   const isHomePage = location === '/';
   const isAdminPage = location === '/admin';
@@ -37,6 +43,56 @@ export default function Layout({ children }: LayoutProps) {
     { icon: Settings, label: 'الإعدادات', path: '/settings', testId: 'sidebar-settings' },
     { icon: Shield, label: 'سياسة الخصوصية', path: '/privacy', testId: 'sidebar-privacy' },
   ];
+
+  // وظيفة التعامل مع النقر على أيقونة الملف الشخصي (الميزة الجديدة)
+  const handleProfileIconClick = () => {
+    const currentTime = Date.now();
+    
+    // إذا مر أكثر من ثانيتين منذ آخر نقرة، نعيد العداد
+    if (currentTime - lastProfileClickTime > 2000) {
+      setProfileClickCount(1);
+    } else {
+      setProfileClickCount(prev => prev + 1);
+    }
+    
+    setLastProfileClickTime(currentTime);
+
+    // إذا وصل إلى 5 نقرات
+    if (profileClickCount + 1 === 5) {
+      toast({
+        title: "الوصول إلى وضع المطور",
+        description: "اختر الواجهة التي تريد الانتقال إليها",
+      });
+      
+      // عرض خيارات الانتقال
+      const choice = confirm("اختر الواجهة:\nموافق → لوحة التحكم (Admin)\nإلغاء → تطبيق السائق (Driver)");
+      
+      if (choice) {
+        window.location.href = '/admin-login';
+      } else {
+        window.location.href = '/admin-login?type=driver';
+      }
+      
+      setProfileClickCount(0);
+    } else if (profileClickCount + 1 > 2) {
+      // إشعار بعد النقرات الأولى
+      toast({
+        title: `نقرة ${profileClickCount + 1} من 5`,
+        description: "استمر للنقر للوصول إلى واجهات المطور",
+      });
+    }
+  };
+
+  // إعادة تعيين عداد النقرات على الملف الشخصي بعد 2 ثانية
+  useEffect(() => {
+    if (profileClickCount > 0) {
+      const timer = setTimeout(() => {
+        setProfileClickCount(0);
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [profileClickCount, lastProfileClickTime]);
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen shadow-xl relative">
@@ -171,8 +227,24 @@ export default function Layout({ children }: LayoutProps) {
                 <Moon className="h-5 w-5" />
               )}
             </Button>
-            <Button variant="ghost" size="icon" data-testid="button-profile">
+            
+            {/* أيقونة الملف الشخصي مع خاصية النقر المتعدد (الميزة الجديدة) */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleProfileIconClick}
+              className="relative"
+              title="النقر 5 مرات للوصول إلى واجهات المطور"
+              data-testid="button-profile"
+            >
               <User className="h-5 w-5" />
+              
+              {/* مؤشر بصري للنقرات (اختياري) */}
+              {profileClickCount > 0 && (
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full text-xs text-white flex items-center justify-center">
+                  {profileClickCount}
+                </div>
+              )}
             </Button>
           </div>
         </div>

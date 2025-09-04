@@ -9,8 +9,8 @@ if (!process.env.DATABASE_URL) {
 export default defineConfig({
   schema: "./shared/schema.ts",  // ملف الـ schema
   out: "./drizzle",              // مجلد الميجريشن
-  driver: "pg",                  // PostgreSQL
+   dialect: "postgresql",          // نوع قاعدة البيانات
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL!,
   },
 });

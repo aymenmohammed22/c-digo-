@@ -4,7 +4,7 @@ import * as dotenv from "dotenv";
 import { 
   categories, restaurants, menuItems, drivers, specialOffers, uiSettings, adminUsers,
   adminSessions, orders, users, userAddresses
-} from "@shared/schema.ts";
+ } from "../../shared/schema";
 import bcrypt from "bcrypt";
 import { eq } from "drizzle-orm";
 

@@ -13,7 +13,7 @@ import Layout from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { DriverDashboard } from "./pages/DriverDashboard";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Home from "./pages/Home";
 import Restaurant from "./pages/Restaurant";
 import Cart from "./pages/Cart";
@@ -22,6 +22,7 @@ import Location from "./pages/Location";
 import OrderTracking from "./pages/OrderTracking";
 import Settings from "./pages/Settings";
 import Privacy from "./pages/Privacy";
+// Admin pages removed - now handled separately
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
@@ -29,32 +30,6 @@ function AuthenticatedApp() {
   const { location } = useLocation();
   const [showLogin, setShowLogin] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(true);
-  const [profileClickCount, setProfileClickCount] = useState(0);
-  const [lastProfileClickTime, setLastProfileClickTime] = useState(0);
-
-  useEffect(() => {
-    if (loading) return;
-
-    // التحقق من النقرات الثلاث على الملف الشخصي
-    if (profileClickCount >= 3) {
-      // الانتقال إلى لوحة التحكم
-      window.location.href = '/admin-login';
-      setProfileClickCount(0);
-    }
-  }, [profileClickCount, loading]);
-
-  const handleProfileIconClick = () => {
-    const currentTime = Date.now();
-    
-    // إذا مر أكثر من ثانيتين منذ آخر نقرة، نعيد العداد
-    if (currentTime - lastProfileClickTime > 2000) {
-      setProfileClickCount(1);
-    } else {
-      setProfileClickCount(prev => prev + 1);
-    }
-    
-    setLastProfileClickTime(currentTime);
-  };
 
   if (loading) {
     return (
@@ -114,10 +89,14 @@ function AuthenticatedApp() {
     );
   }
 
+  // Remove admin/driver routes from customer app routing
+
   // Default customer app
   return (
     <>
-    
+      <Layout>
+        <Router />
+      </Layout>
       
       {showLocationModal && !location.hasPermission && (
         <LocationPermissionModal

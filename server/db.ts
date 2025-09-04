@@ -14,7 +14,7 @@ import {
   type AdminUser, type InsertAdminUser,
   type AdminSession, type InsertAdminSession,
   type UiSettings, type InsertUiSettings
-} from "@shared/schema.ts";
+} from "@shared/schema";
 import { IStorage } from "./storage.ts";
 import { eq, and } from "drizzle-orm";
 

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { dbStorage } from "./db.js";
+import { dbStorage } from "./db";
 import { authService } from "./auth";
 import { 
   insertRestaurantSchema, 

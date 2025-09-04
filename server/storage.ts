@@ -7,7 +7,7 @@ import {
   type SpecialOffer, type InsertSpecialOffer,
   type User, type InsertUser,
   type UiSettings, type InsertUiSettings
-} from "@shared/schema.ts";
+} from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -522,4 +522,5 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
   }
 }
 
-export const storage = new MemStorage();
+import { dbStorage } from './db';
+export const storage = dbStorage;

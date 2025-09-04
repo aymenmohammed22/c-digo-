@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'; // تم التعديل هنا
 import { randomUUID } from 'crypto';
-import { dbStorage } from './db.js';
+import { dbStorage } from './db';
 import { type InsertAdminUser, type InsertAdminSession } from '@shared/schema';
 
 export class AuthService {

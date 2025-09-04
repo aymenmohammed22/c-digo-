@@ -61,24 +61,17 @@ export default function Layout({ children }: LayoutProps) {
     if (profileClickCount + 1 === 5) {
       toast({
         title: "الوصول إلى وضع المطور",
-        description: "اختر الواجهة التي تريد الانتقال إليها",
+        description: "سيتم الانتقال إلى صفحة تسجيل الدخول",
       });
       
-      // عرض خيارات الانتقال
-      const choice = confirm("اختر الواجهة:\nموافق → لوحة التحكم (Admin)\nإلغاء → تطبيق السائق (Driver)");
-      
-      if (choice) {
-        window.location.href = '/admin-login';
-      } else {
-        window.location.href = '/admin-login?type=driver';
-      }
-      
+      // الانتقال مباشرة إلى صفحة تسجيل الدخول
+      setLocation('/admin-login');
       setProfileClickCount(0);
     } else if (profileClickCount + 1 > 2) {
       // إشعار بعد النقرات الأولى
       toast({
         title: `نقرة ${profileClickCount + 1} من 5`,
-        description: "استمر للنقر للوصول إلى واجهات المطور",
+        description: "استمر للنقر للوصول إلى صفحة تسجيل الدخول",
       });
     }
   };
@@ -234,7 +227,7 @@ export default function Layout({ children }: LayoutProps) {
               size="icon"
               onClick={handleProfileIconClick}
               className="relative"
-              title="النقر 5 مرات للوصول إلى واجهات المطور"
+              title="النقر 5 مرات للوصول إلى صفحة تسجيل الدخول"
               data-testid="button-profile"
             >
               <User className="h-5 w-5" />

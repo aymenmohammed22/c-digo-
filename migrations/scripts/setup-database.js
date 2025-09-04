@@ -4,7 +4,7 @@ import * as dotenv from "dotenv";
 import { 
   categories, restaurants, menuItems, drivers, specialOffers, uiSettings, adminUsers,
   adminSessions, orders, users, userAddresses
-} from "./shared/schema.ts";
+} from "@shared/schema.ts";
 import bcrypt from "bcrypt";
 import { eq } from "drizzle-orm";
 
@@ -222,7 +222,7 @@ async function setupInitialData() {
     // Create UI settings
     console.log("⚙️ Creating UI settings...");
     const uiSettingsData = [
-      { key: "app_name", value: "السارية للتوصيل", description: "اسم التطبيق" },
+      { key: "app_name", value: "السريع ون للتوصيل", description: "اسم التطبيق" },
       { key: "app_logo", value: "/logo.png", description: "شعار التطبيق" },
       { key: "primary_color", value: "#3B82F6", description: "اللون الأساسي" },
       { key: "secondary_color", value: "#10B981", description: "اللون الثانوي" },

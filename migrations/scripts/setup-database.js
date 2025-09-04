@@ -224,7 +224,7 @@ async function setupInitialData() {
     const uiSettingsData = [
       { key: "app_name", value: "السريع ون للتوصيل", description: "اسم التطبيق" },
       { key: "app_logo", value: "/logo.png", description: "شعار التطبيق" },
-      { key: "primary_color", value: "#3B82F6", description: "اللون الأساسي" },
+      { key: "primary_color", value: "#f6863bff", description: "اللون الأساسي" },
       { key: "secondary_color", value: "#10B981", description: "اللون الثانوي" },
       { key: "delivery_fee", value: "5", description: "رسوم التوصيل الافتراضية" },
       { key: "minimum_order", value: "25", description: "الحد الأدنى للطلب" },

@@ -11,6 +11,7 @@ import {
 import { randomUUID } from "crypto";
 
 export interface IStorage {
+  
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;

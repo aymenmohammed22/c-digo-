@@ -72,14 +72,21 @@ export default function Cart() {
     const orderData: InsertOrder = {
       ...orderForm,
       items: JSON.stringify(items),
-      subtotal: getSubtotal(),
-      deliveryFee: 5,
-      total: getTotal(),
+      subtotal: getSubtotal().toString(),
+      deliveryFee: '5',
+      totalAmount: getTotal().toString(),
       restaurantId: items[0]?.restaurantId || '',
       status: 'pending',
     };
 
     placeOrderMutation.mutate(orderData);
+  };
+
+  // دالة لتحويل السعر من string إلى number للحسابات
+  const parsePrice = (price: string | number): number => {
+    if (typeof price === 'number') return price;
+    const num = parseFloat(price);
+    return isNaN(num) ? 0 : num;
   };
 
   return (
@@ -142,7 +149,7 @@ export default function Cart() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-primary" data-testid={`item-total-${item.id}`}>
-                    {item.price * item.quantity} ريال
+                    {parsePrice(item.price) * item.quantity} ريال
                   </span>
                   <Button
                     variant="ghost"

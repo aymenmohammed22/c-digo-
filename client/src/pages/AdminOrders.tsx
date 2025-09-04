@@ -202,7 +202,7 @@ export default function AdminOrders() {
                       </div>
                       <div className="flex justify-between items-center font-semibold">
                         <span className="text-foreground">المجموع:</span>
-                        <span className="text-primary">{order.total} ريال</span>
+                        <span className="text-primary">{order.totalAmount} ريال</span>
                       </div>
                     </div>
                   </div>

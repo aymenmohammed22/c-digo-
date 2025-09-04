@@ -22,7 +22,9 @@ export default function Restaurant() {
     queryKey: ['/api/restaurants', id, 'menu'],
   });
 
-  const menuCategories = menuItems ? [...new Set(menuItems.map(item => item.category))] : [];
+const menuCategories = menuItems 
+  ? Array.from(new Set(menuItems.map(item => item.category))) 
+  : [];
   const filteredMenuItems = menuItems?.filter(item => item.category === selectedMenuCategory) || [];
 
   if (restaurantLoading) {

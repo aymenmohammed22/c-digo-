@@ -24,6 +24,7 @@ export default function Layout({ children }: LayoutProps) {
   // States for profile click counter (الميزة الجديدة)
   const [profileClickCount, setProfileClickCount] = useState(0);
   const [lastProfileClickTime, setLastProfileClickTime] = useState(0);
+  const [showProfileClickIndicator, setShowProfileClickIndicator] = useState(false);
 
   const isHomePage = location === '/';
   const isAdminPage = location === '/admin';
@@ -56,6 +57,7 @@ export default function Layout({ children }: LayoutProps) {
     }
     
     setLastProfileClickTime(currentTime);
+    setShowProfileClickIndicator(true);
 
     // إذا وصل إلى 5 نقرات
     if (profileClickCount + 1 === 5) {
@@ -67,6 +69,7 @@ export default function Layout({ children }: LayoutProps) {
       // الانتقال مباشرة إلى صفحة تسجيل الدخول
       setLocation('/admin-login');
       setProfileClickCount(0);
+      setShowProfileClickIndicator(false);
     } else if (profileClickCount + 1 > 2) {
       // إشعار بعد النقرات الأولى
       toast({
@@ -81,6 +84,7 @@ export default function Layout({ children }: LayoutProps) {
     if (profileClickCount > 0) {
       const timer = setTimeout(() => {
         setProfileClickCount(0);
+        setShowProfileClickIndicator(false);
       }, 2000);
 
       return () => clearTimeout(timer);
@@ -233,7 +237,7 @@ export default function Layout({ children }: LayoutProps) {
               <User className="h-5 w-5" />
               
               {/* مؤشر بصري للنقرات (اختياري) */}
-              {profileClickCount > 0 && (
+              {showProfileClickIndicator && profileClickCount > 0 && (
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full text-xs text-white flex items-center justify-center">
                   {profileClickCount}
                 </div>

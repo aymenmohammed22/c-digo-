@@ -25,14 +25,10 @@ export default function AdminRestaurants() {
     name: '',
     description: '',
     image: '',
-    address: '',
-    phone: '',
-    rating: 4.5,
     deliveryTime: '',
-    deliveryFee: 15,
-    minimumOrder: 25,
+    deliveryFee: '0',
+    minimumOrder: '0',
     isOpen: true,
-    isActive: true,
     categoryId: '',
   });
 
@@ -96,14 +92,10 @@ export default function AdminRestaurants() {
       name: '',
       description: '',
       image: '',
-      address: '',
-      phone: '',
-      rating: 4.5,
       deliveryTime: '',
-      deliveryFee: 15,
-      minimumOrder: 25,
+      deliveryFee: '0',
+      minimumOrder: '0',
       isOpen: true,
-      isActive: true,
       categoryId: '',
     });
     setEditingRestaurant(null);
@@ -114,15 +106,11 @@ export default function AdminRestaurants() {
     setFormData({
       name: restaurant.name,
       description: restaurant.description || '',
-      image: restaurant.image || '',
-      address: restaurant.address || '',
-      phone: restaurant.phone || '',
-      rating: restaurant.rating || 4.5,
-      deliveryTime: restaurant.deliveryTime || '',
-      deliveryFee: restaurant.deliveryFee || 15,
-      minimumOrder: restaurant.minimumOrder || 25,
+      image: restaurant.image,
+      deliveryTime: restaurant.deliveryTime,
+      deliveryFee: restaurant.deliveryFee || '0',
+      minimumOrder: restaurant.minimumOrder || '0',
       isOpen: restaurant.isOpen,
-      isActive: restaurant.isActive,
       categoryId: restaurant.categoryId || '',
     });
     setIsDialogOpen(true);
@@ -147,7 +135,7 @@ export default function AdminRestaurants() {
     }
   };
 
-  const toggleRestaurantStatus = (restaurant: Restaurant, field: 'isOpen' | 'isActive') => {
+  const toggleRestaurantStatus = (restaurant: Restaurant, field: 'isOpen') => {
     updateRestaurantMutation.mutate({
       id: restaurant.id,
       data: { [field]: !restaurant[field] }
@@ -157,6 +145,13 @@ export default function AdminRestaurants() {
   const getCategoryName = (categoryId: string) => {
     const category = categories?.find(c => c.id === categoryId);
     return category?.name || 'غير محدد';
+  };
+
+  // دالة لتحويل القيم الرقمية من string إلى number للعرض
+  const parseDecimal = (value: string | null): number => {
+    if (!value) return 0;
+    const num = parseFloat(value);
+    return isNaN(num) ? 0 : num;
   };
 
   return (
@@ -207,14 +202,19 @@ export default function AdminRestaurants() {
                 </div>
 
                 <div>
-                  <Label htmlFor="phone">رقم الهاتف</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+967-771234567"
-                    data-testid="input-restaurant-phone"
-                  />
+                  <Label htmlFor="category">القسم</Label>
+                  <Select value={formData.categoryId} onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}>
+                    <SelectTrigger data-testid="select-restaurant-category">
+                      <SelectValue placeholder="اختر قسم المطعم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories?.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -231,30 +231,15 @@ export default function AdminRestaurants() {
               </div>
 
               <div>
-                <Label htmlFor="address">العنوان</Label>
+                <Label htmlFor="image">رابط الصورة</Label>
                 <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="عنوان المطعم"
-                  data-testid="input-restaurant-address"
+                  id="image"
+                  value={formData.image}
+                  onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
+                  placeholder="https://example.com/image.jpg"
+                  required
+                  data-testid="input-restaurant-image"
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="category">القسم</Label>
-                <Select value={formData.categoryId} onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}>
-                  <SelectTrigger data-testid="select-restaurant-category">
-                    <SelectValue placeholder="اختر قسم المطعم" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories?.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -265,6 +250,7 @@ export default function AdminRestaurants() {
                     value={formData.deliveryTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, deliveryTime: e.target.value }))}
                     placeholder="30-45 دقيقة"
+                    required
                     data-testid="input-restaurant-delivery-time"
                   />
                 </div>
@@ -275,8 +261,9 @@ export default function AdminRestaurants() {
                     id="deliveryFee"
                     type="number"
                     min="0"
+                    step="0.01"
                     value={formData.deliveryFee}
-                    onChange={(e) => setFormData(prev => ({ ...prev, deliveryFee: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, deliveryFee: e.target.value }))}
                     data-testid="input-restaurant-delivery-fee"
                   />
                 </div>
@@ -287,58 +274,22 @@ export default function AdminRestaurants() {
                     id="minimumOrder"
                     type="number"
                     min="0"
+                    step="0.01"
                     value={formData.minimumOrder}
-                    onChange={(e) => setFormData(prev => ({ ...prev, minimumOrder: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, minimumOrder: e.target.value }))}
                     data-testid="input-restaurant-minimum-order"
                   />
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="rating">التقييم</Label>
-                <Input
-                  id="rating"
-                  type="number"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  value={formData.rating}
-                  onChange={(e) => setFormData(prev => ({ ...prev, rating: parseFloat(e.target.value) || 0 }))}
-                  data-testid="input-restaurant-rating"
+              <div className="flex items-center justify-between">
+                <Label htmlFor="isOpen">مفتوح للطلبات</Label>
+                <Switch
+                  id="isOpen"
+                  checked={formData.isOpen}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isOpen: checked }))}
+                  data-testid="switch-restaurant-open"
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="image">رابط الصورة</Label>
-                <Input
-                  id="image"
-                  value={formData.image}
-                  onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
-                  placeholder="https://example.com/image.jpg"
-                  data-testid="input-restaurant-image"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="isOpen">مفتوح للطلبات</Label>
-                  <Switch
-                    id="isOpen"
-                    checked={formData.isOpen}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isOpen: checked }))}
-                    data-testid="switch-restaurant-open"
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="isActive">نشط</Label>
-                  <Switch
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
-                    data-testid="switch-restaurant-active"
-                  />
-                </div>
               </div>
 
               <div className="flex gap-2 pt-4">
@@ -409,63 +360,39 @@ export default function AdminRestaurants() {
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <Badge variant={restaurant.isActive ? "default" : "secondary"}>
-                      {restaurant.isActive ? 'نشط' : 'غير نشط'}
-                    </Badge>
-                    <Badge variant={restaurant.isOpen ? "default" : "outline"}>
-                      {restaurant.isOpen ? 'مفتوح' : 'مغلق'}
-                    </Badge>
-                  </div>
+                  <Badge variant={restaurant.isOpen ? "default" : "outline"}>
+                    {restaurant.isOpen ? 'مفتوح' : 'مغلق'}
+                  </Badge>
                 </div>
               </CardHeader>
               
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 text-yellow-500" />
-                    <span>{restaurant.rating || 4.5}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{restaurant.deliveryTime || '30-45 د'}</span>
+                    <span>{restaurant.deliveryTime}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    توصيل: {restaurant.deliveryFee || 15} ريال
+                    توصيل: {parseDecimal(restaurant.deliveryFee)} ريال
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    أقل طلب: {restaurant.minimumOrder || 25} ريال
+                    أقل طلب: {parseDecimal(restaurant.minimumOrder)} ريال
                   </div>
+                  {restaurant.rating && (
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span>{restaurant.rating}</span>
+                    </div>
+                  )}
                 </div>
 
-                {restaurant.address && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground line-clamp-1">
-                      {restaurant.address}
-                    </span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">مفتوح</p>
-                    <Switch
-                      checked={restaurant.isOpen}
-                      onCheckedChange={() => toggleRestaurantStatus(restaurant, 'isOpen')}
-                      size="sm"
-                      data-testid={`switch-restaurant-open-${restaurant.id}`}
-                    />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">نشط</p>
-                    <Switch
-                      checked={restaurant.isActive}
-                      onCheckedChange={() => toggleRestaurantStatus(restaurant, 'isActive')}
-                      size="sm"
-                      data-testid={`switch-restaurant-active-${restaurant.id}`}
-                    />
-                  </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">مفتوح</p>
+                  <Switch
+                    checked={restaurant.isOpen}
+                    onCheckedChange={() => toggleRestaurantStatus(restaurant, 'isOpen')}
+                    data-testid={`switch-restaurant-open-${restaurant.id}`}
+                  />
                 </div>
 
                 <div className="flex gap-2 pt-2">

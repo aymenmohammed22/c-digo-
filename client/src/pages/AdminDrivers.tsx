@@ -333,7 +333,6 @@ export default function AdminDrivers() {
                     <Switch
                       checked={driver.isAvailable}
                       onCheckedChange={() => toggleDriverStatus(driver, 'isAvailable')}
-                      size="sm"
                       data-testid={`switch-driver-available-${driver.id}`}
                     />
                   </div>
@@ -342,7 +341,6 @@ export default function AdminDrivers() {
                     <Switch
                       checked={driver.isActive}
                       onCheckedChange={() => toggleDriverStatus(driver, 'isActive')}
-                      size="sm"
                       data-testid={`switch-driver-active-${driver.id}`}
                     />
                   </div>

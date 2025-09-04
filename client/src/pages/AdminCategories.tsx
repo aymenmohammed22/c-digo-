@@ -20,7 +20,6 @@ export default function AdminCategories() {
   const [formData, setFormData] = useState({
     name: '',
     icon: '',
-    description: '',
   });
 
   const { data: categories, isLoading } = useQuery<Category[]>({
@@ -78,7 +77,6 @@ export default function AdminCategories() {
     setFormData({
       name: '',
       icon: '',
-      description: '',
     });
     setEditingCategory(null);
   };
@@ -88,7 +86,6 @@ export default function AdminCategories() {
     setFormData({
       name: category.name,
       icon: category.icon || '',
-      description: category.description || '',
     });
     setIsDialogOpen(true);
   };
@@ -189,17 +186,6 @@ export default function AdminCategories() {
                 </select>
               </div>
 
-              <div>
-                <Label htmlFor="description">الوصف (اختياري)</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="وصف القسم"
-                  data-testid="input-category-description"
-                />
-              </div>
-
               <div className="flex gap-2 pt-4">
                 <Button 
                   type="submit" 
@@ -244,24 +230,15 @@ export default function AdminCategories() {
           categories.map((category) => (
             <Card key={category.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                      {category.icon ? (
-                        <i className={`${category.icon} text-primary text-xl`} />
-                      ) : (
-                        <Tag className="h-6 w-6 text-primary" />
-                      )}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{category.name}</CardTitle>
-                      {category.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {category.description}
-                        </p>
-                      )}
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                    {category.icon ? (
+                      <i className={`${category.icon} text-primary text-xl`} />
+                    ) : (
+                      <Tag className="h-6 w-6 text-primary" />
+                    )}
                   </div>
+                  <CardTitle className="text-lg">{category.name}</CardTitle>
                 </div>
               </CardHeader>
               

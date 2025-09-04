@@ -7,11 +7,10 @@ import {
   type SpecialOffer, type InsertSpecialOffer,
   type User, type InsertUser,
   type UiSettings, type InsertUiSettings
-} from "@shared/schema";
+} from "../shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
-  
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;

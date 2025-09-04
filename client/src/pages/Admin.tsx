@@ -34,7 +34,7 @@ export default function Admin() {
     const today = new Date().toDateString();
     const orderDate = new Date(order.createdAt || '').toDateString();
     return today === orderDate;
-  }).reduce((sum, order) => sum + order.total, 0) || 0;
+  }).reduce((sum, order) => sum + parseFloat(order.totalAmount || '0'), 0) || 0;
 
   const adminMenuItems = [
     {
@@ -141,7 +141,7 @@ export default function Admin() {
             <CardContent className="p-4">
               <ChartLine className="h-8 w-8 text-purple-500 mx-auto mb-2" />
               <h3 className="text-lg font-bold text-foreground" data-testid="stat-today-revenue">
-                {todayRevenue}
+                {todayRevenue.toFixed(2)}
               </h3>
               <p className="text-sm text-muted-foreground">ريال الإيرادات</p>
             </CardContent>

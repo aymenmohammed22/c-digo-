@@ -23,7 +23,7 @@ export default function Delivery() {
     isAvailable: true,
     isActive: true,
     currentLocation: 'صنعاء، شارع الزبيري',
-    earnings: 2500,
+    earnings: '2500',
     createdAt: new Date(),
   });
 
@@ -92,6 +92,13 @@ export default function Delivery() {
     } catch {
       return [];
     }
+  };
+
+  // دالة لتحويل القيم الرقمية من string إلى number
+  const parseDecimal = (value: string | null): number => {
+    if (!value) return 0;
+    const num = parseFloat(value);
+    return isNaN(num) ? 0 : num;
   };
 
   const todayEarnings = 450; // Mock data
@@ -240,6 +247,9 @@ export default function Delivery() {
               <div className="space-y-4">
                 {availableOrders.map((order) => {
                   const items = getOrderItems(order.items);
+                  const totalAmount = parseDecimal(order.totalAmount);
+                  const commission = Math.round(totalAmount * 0.1);
+                  
                   return (
                     <div key={order.id} className="border border-border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-3">
@@ -248,8 +258,8 @@ export default function Delivery() {
                           <p className="text-sm text-muted-foreground">{order.customerName}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-primary">{order.total} ريال</p>
-                          <p className="text-sm text-muted-foreground">العمولة: {Math.round(order.total * 0.1)} ريال</p>
+                          <p className="font-bold text-primary">{totalAmount} ريال</p>
+                          <p className="text-sm text-muted-foreground">العمولة: {commission} ريال</p>
                         </div>
                       </div>
                       

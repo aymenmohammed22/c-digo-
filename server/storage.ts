@@ -7,7 +7,7 @@ import {
   type SpecialOffer, type InsertSpecialOffer,
   type User, type InsertUser,
   type UiSettings, type InsertUiSettings
-} from "./shared/schema.ts";
+} from "@shared/schema.ts";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -101,7 +101,7 @@ export class MemStorage implements IStorage {
     categories.forEach(cat => this.categories.set(cat.id, cat));
 
     // Initialize restaurants
-    const restaurants = [
+ const restaurants = [
       {
         id: "1",
         name: "مطعم الوزيكو للعربكة",
@@ -111,9 +111,14 @@ export class MemStorage implements IStorage {
         reviewCount: 4891,
         deliveryTime: "40-60 دقيقة",
         isOpen: true,
-        minimumOrder: 25,
-        deliveryFee: 5,
+        minimumOrder: "25", // تغيير إلى string
+        deliveryFee: "5", // تغيير إلى string
         categoryId: "1",
+        openingTime: "08:00",
+        closingTime: "23:00",
+        workingDays: "0,1,2,3,4,5,6",
+        isTemporarilyClosed: false,
+        temporaryCloseReason: null,
         createdAt: new Date(),
       },
       {
@@ -125,9 +130,14 @@ export class MemStorage implements IStorage {
         reviewCount: 2341,
         deliveryTime: "30-45 دقيقة",
         isOpen: true,
-        minimumOrder: 15,
-        deliveryFee: 3,
+        minimumOrder: "15", // تغيير إلى string
+        deliveryFee: "3", // تغيير إلى string
         categoryId: "3",
+        openingTime: "08:00",
+        closingTime: "23:00",
+        workingDays: "0,1,2,3,4,5,6",
+        isTemporarilyClosed: false,
+        temporaryCloseReason: null,
         createdAt: new Date(),
       },
       {
@@ -139,9 +149,14 @@ export class MemStorage implements IStorage {
         reviewCount: 1876,
         deliveryTime: "يفتح في 8:00 ص",
         isOpen: false,
-        minimumOrder: 20,
-        deliveryFee: 4,
+        minimumOrder: "20", // تغيير إلى string
+        deliveryFee: "4", // تغيير إلى string
         categoryId: "2",
+        openingTime: "08:00",
+        closingTime: "23:00",
+        workingDays: "0,1,2,3,4,5,6",
+        isTemporarilyClosed: false,
+        temporaryCloseReason: null,
         createdAt: new Date(),
       }
     ];
@@ -149,23 +164,24 @@ export class MemStorage implements IStorage {
     restaurants.forEach(restaurant => this.restaurants.set(restaurant.id, restaurant));
 
     // Initialize menu items
-    const menuItems = [
+   const menuItems = [
       {
         id: "1",
         name: "عربكة بالقشطة والعسل",
         description: "حلوى يمنية تقليدية بالقشطة الطازجة والعسل الطبيعي",
-        price: 55,
+        price: "55", // تغيير إلى string
         image: "https://images.unsplash.com/photo-1551024506-0bccd828d307?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200",
         category: "وجبات رمضان",
         isAvailable: true,
         isSpecialOffer: false,
+        originalPrice: null,
         restaurantId: "1",
       },
       {
         id: "2",
         name: "معصوب بالقشطة والعسل",
         description: "طبق يمني شعبي بالموز والقشطة والعسل",
-        price: 55,
+        price: "55", // تغيير إلى string
         image: "https://images.unsplash.com/photo-1565299507177-b0ac66763828?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200",
         category: "وجبات رمضان",
         isAvailable: true,
@@ -177,7 +193,7 @@ export class MemStorage implements IStorage {
         id: "3",
         name: "مياه معدنية 750 مل",
         description: "مياه طبيعية معدنية عالية الجودة",
-        price: 3,
+        price: "3", // تغيير إلى string
         image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200",
         category: "المشروبات",
         isAvailable: true,
@@ -189,8 +205,8 @@ export class MemStorage implements IStorage {
         id: "4",
         name: "كومبو عربكة خاص",
         description: "عربكة + مطبق عادي + مشروب غازي",
-        price: 55,
-        originalPrice: 60,
+        price: "55", // تغيير إلى string
+        originalPrice: "60", // تغيير إلى string
         image: "https://images.unsplash.com/photo-1565299507177-b0ac66763828?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200",
         category: "العروض",
         isAvailable: true,
@@ -211,7 +227,7 @@ export class MemStorage implements IStorage {
         isAvailable: true,
         isActive: true,
         currentLocation: "صنعاء",
-        earnings: 2500,
+        earnings: "2500", // تغيير إلى string
         createdAt: new Date(),
       },
       {
@@ -222,11 +238,10 @@ export class MemStorage implements IStorage {
         isAvailable: true,
         isActive: true,
         currentLocation: "تعز",
-        earnings: 3200,
+        earnings: "3200", // تغيير إلى string
         createdAt: new Date(),
       }
     ];
-
     drivers.forEach(driver => this.drivers.set(driver.id, driver));
   }
 
@@ -297,30 +312,57 @@ export class MemStorage implements IStorage {
   }
 
   async createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant> {
-    const id = randomUUID();
-    const newRestaurant: Restaurant = { 
-      ...restaurant, 
-      id, 
-      createdAt: new Date(),
-      description: restaurant.description ?? null,
-      rating: restaurant.rating ?? "0.0",
-      reviewCount: restaurant.reviewCount ?? 0,
-      isOpen: restaurant.isOpen ?? true,
-      minimumOrder: restaurant.minimumOrder ?? 0,
-      deliveryFee: restaurant.deliveryFee ?? 0,
-      categoryId: restaurant.categoryId ?? null
-    };
-    this.restaurants.set(id, newRestaurant);
-    return newRestaurant;
-  }
-
-  async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promise<Restaurant | undefined> {
-    const existing = this.restaurants.get(id);
-    if (!existing) return undefined;
-    const updated = { ...existing, ...restaurant };
-    this.restaurants.set(id, updated);
-    return updated;
-  }
+  const id = randomUUID();
+  const newRestaurant: Restaurant = { 
+    ...restaurant, 
+    id, 
+    createdAt: new Date(),
+    description: restaurant.description ?? null,
+    rating: restaurant.rating ?? "0.0",
+    reviewCount: restaurant.reviewCount ?? 0,
+    isOpen: restaurant.isOpen ?? true,
+    minimumOrder: restaurant.minimumOrder?.toString() ?? "0",
+    deliveryFee: restaurant.deliveryFee?.toString() ?? "0",
+    categoryId: restaurant.categoryId ?? null,
+    // معالجة الخصائص الجديدة لضمان عدم وجود undefined
+    openingTime: restaurant.openingTime ?? null,
+    closingTime: restaurant.closingTime ?? null,
+    workingDays: restaurant.workingDays ?? null,
+    isTemporarilyClosed: restaurant.isTemporarilyClosed ?? false,
+    temporaryCloseReason: restaurant.temporaryCloseReason ?? null
+  };
+  this.restaurants.set(id, newRestaurant);
+  return newRestaurant;
+}
+async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promise<Restaurant | undefined> {
+  const existing = this.restaurants.get(id);
+  if (!existing) return undefined;
+  
+  // معالجة الخصائص لتجنب undefined
+  const updates: Partial<Restaurant> = {};
+  
+  if (restaurant.openingTime !== undefined) updates.openingTime = restaurant.openingTime ?? null;
+  if (restaurant.closingTime !== undefined) updates.closingTime = restaurant.closingTime ?? null;
+  if (restaurant.workingDays !== undefined) updates.workingDays = restaurant.workingDays ?? null;
+  if (restaurant.isTemporarilyClosed !== undefined) updates.isTemporarilyClosed = restaurant.isTemporarilyClosed;
+  if (restaurant.temporaryCloseReason !== undefined) updates.temporaryCloseReason = restaurant.temporaryCloseReason ?? null;
+  
+  // الخصائص الأخرى
+  if (restaurant.name !== undefined) updates.name = restaurant.name;
+  if (restaurant.description !== undefined) updates.description = restaurant.description ?? null;
+  if (restaurant.image !== undefined) updates.image = restaurant.image;
+  if (restaurant.rating !== undefined) updates.rating = restaurant.rating ?? "0.0";
+  if (restaurant.reviewCount !== undefined) updates.reviewCount = restaurant.reviewCount ?? 0;
+  if (restaurant.deliveryTime !== undefined) updates.deliveryTime = restaurant.deliveryTime;
+  if (restaurant.isOpen !== undefined) updates.isOpen = restaurant.isOpen ?? true;
+  if (restaurant.minimumOrder !== undefined) updates.minimumOrder = restaurant.minimumOrder?.toString() ?? "0";
+  if (restaurant.deliveryFee !== undefined) updates.deliveryFee = restaurant.deliveryFee?.toString() ?? "0";
+  if (restaurant.categoryId !== undefined) updates.categoryId = restaurant.categoryId ?? null;
+  
+  const updated = { ...existing, ...updates };
+  this.restaurants.set(id, updated);
+  return updated;
+}
 
   async deleteRestaurant(id: string): Promise<boolean> {
     return this.restaurants.delete(id);
@@ -414,7 +456,7 @@ export class MemStorage implements IStorage {
     return Array.from(this.drivers.values()).filter(driver => driver.isAvailable && driver.isActive);
   }
 
-  async createDriver(driver: InsertDriver): Promise<Driver> {
+ async createDriver(driver: InsertDriver): Promise<Driver> {
     const id = randomUUID();
     const newDriver: Driver = { 
       ...driver, 
@@ -423,7 +465,7 @@ export class MemStorage implements IStorage {
       isActive: driver.isActive ?? true,
       isAvailable: driver.isAvailable ?? true,
       currentLocation: driver.currentLocation ?? null,
-      earnings: driver.earnings ?? 0
+      earnings: driver.earnings?.toString() ?? "0" // تحويل إلى string
     };
     this.drivers.set(id, newDriver);
     return newDriver;
@@ -450,6 +492,7 @@ export class MemStorage implements IStorage {
     return Array.from(this.specialOffers.values()).filter(offer => offer.isActive);
   }
 
+
   async createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer> {
     const id = randomUUID();
     const newOffer: SpecialOffer = { 
@@ -457,9 +500,9 @@ export class MemStorage implements IStorage {
       id, 
       createdAt: new Date(),
       isActive: offer.isActive ?? true,
-      minimumOrder: offer.minimumOrder ?? 0,
+      minimumOrder: offer.minimumOrder?.toString() ?? "0", // تحويل إلى string
       discountPercent: offer.discountPercent ?? null,
-      discountAmount: offer.discountAmount ?? null,
+      discountAmount: offer.discountAmount?.toString() ?? null, // تحويل إلى string
       validUntil: offer.validUntil ?? null
     };
     this.specialOffers.set(id, newOffer);

@@ -14,8 +14,8 @@ import {
   type AdminUser, type InsertAdminUser,
   type AdminSession, type InsertAdminSession,
   type UiSettings, type InsertUiSettings
-} from "@shared/schema";
-import { IStorage } from "./storage.js";
+} from "@shared/schema.ts";
+import { IStorage } from "./storage.ts";
 import { eq, and } from "drizzle-orm";
 
 // Database connection

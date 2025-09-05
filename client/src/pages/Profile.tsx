@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowRight, User, Phone, Mail, MapPin, Settings, Shield, Star, Clock, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,27 +7,87 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import type { User as UserType } from '@shared/schema';
 
 export default function Profile() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // For now, we'll use a demo user ID. In a real app, this would come from authentication
+  const userId = '5ea1edd8-b9e1-4c9e-84fb-25aa2741a0db';
   
   const [profile, setProfile] = useState({
-    name: 'محمد أحمد',
-    phone: '+967771234567',
-    email: 'mohammed@example.com',
-    address: 'صنعاء، شارع الزبيري، بجانب مسجد النور',
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
   });
 
   const [isEditing, setIsEditing] = useState(false);
 
+  // Fetch user data
+  const { data: user, isLoading } = useQuery({
+    queryKey: ['/api/users', userId],
+    retry: false,
+  });
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (profileData: Partial<UserType>) => {
+      const response = await apiRequest('PUT', `/api/users/${userId}`, profileData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users', userId] });
+      setIsEditing(false);
+      toast({
+        title: "تم حفظ البيانات",
+        description: "تم تحديث معلومات الملف الشخصي بنجاح",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "خطأ في الحفظ",
+        description: "حدث خطأ أثناء تحديث البيانات. يرجى المحاولة مرة أخرى.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update profile state when user data is loaded
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: (user as UserType).name || '',
+        phone: (user as UserType).phone || '',
+        email: (user as UserType).email || '',
+        address: (user as UserType).address || '',
+      });
+    }
+  }, [user]);
+
   const handleSave = () => {
-    setIsEditing(false);
-    toast({
-      title: "تم حفظ البيانات",
-      description: "تم تحديث معلومات الملف الشخصي بنجاح",
+    updateProfileMutation.mutate({
+      name: profile.name,
+      phone: profile.phone,
+      email: profile.email,
+      address: profile.address,
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">جاري تحميل البيانات...</p>
+        </div>
+      </div>
+    );
+  }
 
   const profileStats = [
     { icon: Receipt, label: 'إجمالي الطلبات', value: '42', color: 'text-primary' },
@@ -66,7 +126,7 @@ export default function Profile() {
             <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <User className="h-10 w-10 text-primary-foreground" />
             </div>
-            <CardTitle className="text-xl text-foreground">{profile.name}</CardTitle>
+            <CardTitle className="text-xl text-foreground">{profile.name || 'المستخدم'}</CardTitle>
             <Badge variant="secondary" className="mx-auto">عضو مميز</Badge>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -110,8 +170,13 @@ export default function Profile() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleSave} className="flex-1" data-testid="button-save-profile">
-                    حفظ التغييرات
+                  <Button 
+                    onClick={handleSave} 
+                    className="flex-1" 
+                    disabled={updateProfileMutation.isPending}
+                    data-testid="button-save-profile"
+                  >
+                    {updateProfileMutation.isPending ? 'جاري الحفظ...' : 'حفظ التغييرات'}
                   </Button>
                   <Button 
                     variant="outline" 

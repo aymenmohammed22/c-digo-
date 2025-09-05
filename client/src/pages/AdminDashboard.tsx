@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -16,8 +16,20 @@ import {
   Store,
   Eye,
   Edit,
-  Trash2
+  Trash2,
+  MapPin,
+  Wallet,
+  Star
 } from 'lucide-react';
+import AdminCategories from './AdminCategories';
+import AdminRestaurants from './AdminRestaurants';
+import AdminOrders from './AdminOrders';
+import AdminDrivers from './AdminDrivers';
+import AdminUserAddresses from './AdminUserAddresses';
+import AdminWalletManagement from './AdminWalletManagement';
+import AdminRatingsReviews from './AdminRatingsReviews';
+import AdminRestaurantSections from './AdminRestaurantSections';
+import Admin from './Admin';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -26,6 +38,80 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [restaurantId, setRestaurantId] = useState<string>('');
+
+  // Handle URL routing
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/admin' || path === '/admin/' || path === '/admin/dashboard') {
+      setCurrentPage('menu');
+    } else if (path.startsWith('/admin/restaurants/')) {
+      const id = path.split('/')[3];
+      if (path.includes('/sections')) {
+        setRestaurantId(id);
+        setCurrentPage('restaurant-sections');
+      }
+    } else if (path === '/admin/categories') {
+      setCurrentPage('categories');
+    } else if (path === '/admin/restaurants') {
+      setCurrentPage('restaurants');
+    } else if (path === '/admin/orders') {
+      setCurrentPage('orders');
+    } else if (path === '/admin/drivers') {
+      setCurrentPage('drivers');
+    } else if (path === '/admin/addresses') {
+      setCurrentPage('addresses');
+    } else if (path === '/admin/wallets') {
+      setCurrentPage('wallets');
+    } else if (path === '/admin/ratings') {
+      setCurrentPage('ratings');
+    } else {
+      setCurrentPage('dashboard');
+    }
+  }, []);
+
+  // Handle navigation
+  const navigateTo = (page: string, id?: string) => {
+    let url = `/admin`;
+    
+    switch (page) {
+      case 'menu':
+        url = '/admin';
+        break;
+      case 'dashboard':
+        url = '/admin/dashboard';
+        break;
+      case 'categories':
+        url = '/admin/categories';
+        break;
+      case 'restaurants':
+        url = '/admin/restaurants';
+        break;
+      case 'restaurant-sections':
+        url = `/admin/restaurants/${id}/sections`;
+        setRestaurantId(id || '');
+        break;
+      case 'orders':
+        url = '/admin/orders';
+        break;
+      case 'drivers':
+        url = '/admin/drivers';
+        break;
+      case 'addresses':
+        url = '/admin/addresses';
+        break;
+      case 'wallets':
+        url = '/admin/wallets';
+        break;
+      case 'ratings':
+        url = '/admin/ratings';
+        break;
+    }
+    
+    window.history.pushState(null, '', url);
+    setCurrentPage(page);
+  };
 
   const handleLogout = () => {
     logout();
@@ -38,6 +124,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { title: 'إجمالي المبيعات', value: '₪45,678', icon: DollarSign, color: 'text-orange-600' },
     { title: 'السائقين المتاحين', value: '23', icon: Truck, color: 'text-purple-600' },
   ];
+
+  // Render specific pages
+  if (currentPage === 'menu') {
+    return <Admin />;
+  }
+  
+  if (currentPage === 'categories') {
+    return <AdminCategories />;
+  }
+  
+  if (currentPage === 'restaurants') {
+    return <AdminRestaurants />;
+  }
+  
+  if (currentPage === 'restaurant-sections') {
+    return <AdminRestaurantSections restaurantId={restaurantId} />;
+  }
+  
+  if (currentPage === 'orders') {
+    return <AdminOrders />;
+  }
+  
+  if (currentPage === 'drivers') {
+    return <AdminDrivers />;
+  }
+  
+  if (currentPage === 'addresses') {
+    return <AdminUserAddresses />;
+  }
+  
+  if (currentPage === 'wallets') {
+    return <AdminWalletManagement />;
+  }
+  
+  if (currentPage === 'ratings') {
+    return <AdminRatingsReviews />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">

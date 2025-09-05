@@ -17,6 +17,7 @@ import {
   insertWalletTransactionSchema,
   insertSystemSettingsSchema,
   insertRestaurantEarningsSchema,
+  insertUserSchema,
   orders
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -89,6 +90,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('خطأ في التحقق:', error);
       res.status(500).json({ message: "خطأ في الخادم" });
+    }
+  });
+
+  // Users
+  app.get("/api/users/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = await dbStorage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "خطأ في جلب بيانات المستخدم" });
+    }
+  });
+
+  app.get("/api/users/username/:username", async (req, res) => {
+    try {
+      const { username } = req.params;
+      const user = await dbStorage.getUserByUsername(username);
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "خطأ في جلب بيانات المستخدم" });
+    }
+  });
+
+  app.post("/api/users", async (req, res) => {
+    try {
+      const validatedData = insertUserSchema.parse(req.body);
+      const user = await dbStorage.createUser(validatedData);
+      res.status(201).json(user);
+    } catch (error) {
+      res.status(400).json({ message: "بيانات المستخدم غير صحيحة" });
+    }
+  });
+
+  app.put("/api/users/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = insertUserSchema.partial().parse(req.body);
+      const user = await dbStorage.updateUser(id, validatedData);
+      if (!user) {
+        return res.status(404).json({ message: "المستخدم غير موجود" });
+      }
+      res.json(user);
+    } catch (error) {
+      res.status(400).json({ message: "بيانات المستخدم غير صحيحة" });
     }
   });
 

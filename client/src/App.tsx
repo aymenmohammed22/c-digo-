@@ -123,7 +123,6 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/addresses" component={Location} />
       <Route path="/orders/:orderId" component={OrderTracking} />
-      <Route path="/orders" component={() => <OrderTracking />} />
       <Route path="/settings" component={Settings} />
       <Route path="/privacy" component={Privacy} />
       <Route component={NotFound} />

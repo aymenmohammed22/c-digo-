@@ -38,9 +38,9 @@ export default function Layout({ children }: LayoutProps) {
 
   const sidebarMenuItems = [
     { icon: User, label: 'الملف الشخصي', path: '/profile', testId: 'sidebar-profile' },
-    { icon: Receipt, label: 'طلباتي', path: '/orders', testId: 'sidebar-orders' },
+    { icon: Receipt, label: 'طلباتي', path: '/profile', testId: 'sidebar-orders' },
     { icon: MapPin, label: 'العناوين المحفوظة', path: '/addresses', testId: 'sidebar-addresses' },
-    { icon: Clock, label: 'تتبع الطلبات', path: '/orders', testId: 'sidebar-tracking' },
+    { icon: Clock, label: 'تتبع الطلبات', path: '/profile', testId: 'sidebar-tracking' },
     { icon: Settings, label: 'الإعدادات', path: '/settings', testId: 'sidebar-settings' },
     { icon: Shield, label: 'سياسة الخصوصية', path: '/privacy', testId: 'sidebar-privacy' },
   ];
@@ -139,34 +139,8 @@ export default function Layout({ children }: LayoutProps) {
                     );
                   })}
                   
-                  {/* أزرار المدير والسائقين - تظهر دائمًا */}
-                  <div className="border-t border-border pt-4 mt-4">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-3 h-12"
-                      onClick={() => {
-                        window.location.href = '/admin-login';
-                        setSidebarOpen(false);
-                      }}
-                      data-testid="sidebar-admin"
-                    >
-                      <Settings className="h-5 w-5 text-blue-500" />
-                      <span className="text-foreground">لوحة التحكم</span>
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-3 h-12"
-                      onClick={() => {
-                        window.location.href = '/admin-login?type=driver';
-                        setSidebarOpen(false);
-                      }}
-                      data-testid="sidebar-delivery"
-                    >
-                      <Truck className="h-5 w-5 text-green-500" />
-                      <span className="text-foreground">تطبيق السائقين</span>
-                    </Button>
-                  </div>
+                  {/* أزرار المدير والسائقين - مخفية من القائمة الجانبية */}
+                  {/* تم إخفاء هذه الأزرار حسب المطلوب - الوصول عبر النقر 5 مرات على أيقونة الملف الشخصي */}
                 </div>
               </SheetContent>
             </Sheet>

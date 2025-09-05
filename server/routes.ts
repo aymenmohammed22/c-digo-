@@ -9,9 +9,11 @@ import {
   insertDriverSchema, 
   insertCategorySchema, 
   insertSpecialOfferSchema,
-  insertUiSettingsSchema
+  insertUiSettingsSchema,
+  orders
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { eq, and, gte, lte, desc, isNull } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -476,13 +478,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status } = req.query;
       
-      let query = db.select().from(orders).where(eq(orders.driverId, id));
+      const db = dbStorage.db;
+      let driverOrders;
       
       if (status) {
-        query = query.where(eq(orders.status, status as string));
+        driverOrders = await db.select().from(orders).where(and(eq(orders.driverId, id), eq(orders.status, status as string))).orderBy(desc(orders.createdAt));
+      } else {
+        driverOrders = await db.select().from(orders).where(eq(orders.driverId, id)).orderBy(desc(orders.createdAt));
       }
       
-      const driverOrders = await query.orderBy(desc(orders.createdAt));
       res.json(driverOrders);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch driver orders" });
@@ -496,9 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const driver = await dbStorage.updateDriver(id, {
         isAvailable: status === 'available',
-        currentLatitude: latitude,
-        currentLongitude: longitude,
-        lastLocationUpdate: new Date(),
+        currentLocation: latitude && longitude ? `${latitude},${longitude}` : undefined,
       });
       
       if (!driver) {
@@ -517,12 +519,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { orderId } = req.body;
       
       // Update order status and assign driver
+      const db = dbStorage.db;
       const [updatedOrder] = await db
         .update(orders)
         .set({ 
           driverId: driverId,
           status: 'accepted',
-          acceptedAt: new Date(),
         })
         .where(eq(orders.id, orderId))
         .returning();
@@ -546,11 +548,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { orderId } = req.body;
       
       // Update order status
+      const db = dbStorage.db;
       const [updatedOrder] = await db
         .update(orders)
         .set({ 
           status: 'delivered',
-          deliveredAt: new Date(),
         })
         .where(eq(orders.id, orderId))
         .returning();
@@ -594,6 +596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate.setHours(0, 0, 0, 0);
       }
       
+      const db = dbStorage.db;
       const driverOrders = await db
         .select()
         .from(orders)
@@ -601,13 +604,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(
             eq(orders.driverId, id),
             eq(orders.status, 'delivered'),
-            gte(orders.deliveredAt, startDate),
-            lte(orders.deliveredAt, endDate)
+            gte(orders.createdAt, startDate),
+            lte(orders.createdAt, endDate)
           )
         );
       
-      const totalEarnings = driverOrders.reduce((sum, order) => {
-        return sum + (order.deliveryFee || 0);
+      const totalEarnings = driverOrders.reduce((sum: number, order: any) => {
+        return sum + (parseFloat(order.totalAmount) || 0);
       }, 0);
       
       const stats = {
@@ -630,16 +633,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       
       // Get orders that are pending and near the driver's location
+      const db = dbStorage.db;
       const availableOrders = await db
         .select({
           id: orders.id,
-          total: orders.total,
-          deliveryFee: orders.deliveryFee,
+          totalAmount: orders.totalAmount,
           status: orders.status,
           createdAt: orders.createdAt,
-          customerAddress: orders.customerAddress,
+          deliveryAddress: orders.deliveryAddress,
           restaurantId: orders.restaurantId,
-          customerId: orders.customerId,
+          customerName: orders.customerName,
         })
         .from(orders)
         .where(

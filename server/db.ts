@@ -33,7 +33,7 @@ function getDb() {
 }
 
 export class DatabaseStorage implements IStorage {
-  private get db() {
+  get db() {
     return getDb();
   }
 

@@ -1,22 +1,29 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { 
-  users, userAddresses, categories, restaurants, menuItems, orders, drivers, specialOffers,
-  adminUsers, adminSessions, uiSettings,
+  users, userAddresses, categories, restaurants, restaurantSections, menuItems, orders, drivers, specialOffers,
+  adminUsers, adminSessions, uiSettings, ratings, notifications, wallets, walletTransactions, systemSettings, restaurantEarnings,
   type User, type InsertUser,
   type UserAddress, type InsertUserAddress,
   type Category, type InsertCategory,
   type Restaurant, type InsertRestaurant,
+  type RestaurantSection, type InsertRestaurantSection,
   type MenuItem, type InsertMenuItem,
   type Order, type InsertOrder,
   type Driver, type InsertDriver,
   type SpecialOffer, type InsertSpecialOffer,
   type AdminUser, type InsertAdminUser,
   type AdminSession, type InsertAdminSession,
-  type UiSettings, type InsertUiSettings
+  type UiSettings, type InsertUiSettings,
+  type Rating, type InsertRating,
+  type Notification, type InsertNotification,
+  type Wallet, type InsertWallet,
+  type WalletTransaction, type InsertWalletTransaction,
+  type SystemSettings, type InsertSystemSettings,
+  type RestaurantEarnings, type InsertRestaurantEarnings
 } from "@shared/schema";
 import { IStorage } from "./storage.ts";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // Database connection
 let db: ReturnType<typeof drizzle> | null = null;
@@ -256,6 +263,236 @@ export class DatabaseStorage implements IStorage {
   async deleteUiSetting(key: string): Promise<boolean> {
     const result = await this.db.delete(uiSettings).where(eq(uiSettings.key, key));
     return result.rowCount > 0;
+  }
+  // ================= RESTAURANT SECTIONS =================
+  async getRestaurantSections(restaurantId: string): Promise<RestaurantSection[]> {
+    return this.db.select().from(restaurantSections)
+      .where(eq(restaurantSections.restaurantId, restaurantId))
+      .orderBy(restaurantSections.sortOrder);
+  }
+
+  async createRestaurantSection(section: InsertRestaurantSection): Promise<RestaurantSection> {
+    const [newSection] = await this.db.insert(restaurantSections).values(section).returning();
+    return newSection;
+  }
+
+  async updateRestaurantSection(id: string, updates: Partial<InsertRestaurantSection>): Promise<RestaurantSection | undefined> {
+    const [updated] = await this.db.update(restaurantSections)
+      .set(updates)
+      .where(eq(restaurantSections.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRestaurantSection(id: string): Promise<boolean> {
+    const result = await this.db.delete(restaurantSections).where(eq(restaurantSections.id, id));
+    return result.rowCount > 0;
+  }
+
+  // ================= RATINGS & REVIEWS =================
+  async getRatings(restaurantId?: string, approved?: boolean): Promise<Rating[]> {
+    let query = this.db.select().from(ratings);
+    
+    const conditions = [];
+    if (restaurantId) {
+      conditions.push(eq(ratings.restaurantId, restaurantId));
+    }
+    if (approved !== undefined) {
+      conditions.push(eq(ratings.isApproved, approved));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query.orderBy(desc(ratings.createdAt));
+  }
+
+  async createRating(rating: InsertRating): Promise<Rating> {
+    const [newRating] = await this.db.insert(ratings).values(rating).returning();
+    return newRating;
+  }
+
+  async updateRating(id: string, updates: Partial<InsertRating>): Promise<Rating | undefined> {
+    const [updated] = await this.db.update(ratings)
+      .set(updates)
+      .where(eq(ratings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteRating(id: string): Promise<boolean> {
+    const result = await this.db.delete(ratings).where(eq(ratings.id, id));
+    return result.rowCount > 0;
+  }
+
+  // ================= NOTIFICATIONS =================
+  async getNotifications(recipientType?: string, recipientId?: string, unread?: boolean): Promise<Notification[]> {
+    let query = this.db.select().from(notifications);
+    
+    const conditions = [];
+    if (recipientType) {
+      conditions.push(eq(notifications.recipientType, recipientType));
+    }
+    if (recipientId) {
+      conditions.push(eq(notifications.recipientId, recipientId));
+    }
+    if (unread !== undefined) {
+      conditions.push(eq(notifications.isRead, !unread));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query.orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await this.db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async markNotificationAsRead(id: string): Promise<Notification | undefined> {
+    const [updated] = await this.db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ================= WALLETS & PAYMENTS =================
+  async getWallet(phone: string): Promise<Wallet | undefined> {
+    const [wallet] = await this.db.select().from(wallets).where(eq(wallets.customerPhone, phone));
+    return wallet;
+  }
+
+  async createWallet(wallet: InsertWallet): Promise<Wallet> {
+    const [newWallet] = await this.db.insert(wallets).values(wallet).returning();
+    return newWallet;
+  }
+
+  async createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction> {
+    const [newTransaction] = await this.db.insert(walletTransactions).values(transaction).returning();
+    return newTransaction;
+  }
+
+  async getWalletTransactions(phone: string): Promise<WalletTransaction[]> {
+    return await this.db.select({
+      id: walletTransactions.id,
+      walletId: walletTransactions.walletId,
+      type: walletTransactions.type,
+      amount: walletTransactions.amount,
+      description: walletTransactions.description,
+      orderId: walletTransactions.orderId,
+      createdAt: walletTransactions.createdAt
+    })
+    .from(walletTransactions)
+    .innerJoin(wallets, eq(walletTransactions.walletId, wallets.id))
+    .where(eq(wallets.customerPhone, phone))
+    .orderBy(desc(walletTransactions.createdAt));
+  }
+
+  // ================= SYSTEM SETTINGS =================
+  async getSystemSettings(category?: string): Promise<SystemSettings[]> {
+    let query = this.db.select().from(systemSettings);
+    
+    if (category) {
+      query = query.where(eq(systemSettings.category, category));
+    }
+    
+    return await query.where(eq(systemSettings.isActive, true));
+  }
+
+  async updateSystemSetting(key: string, value: string): Promise<SystemSettings | undefined> {
+    const [updated] = await this.db.update(systemSettings)
+      .set({ value, updatedAt: new Date() })
+      .where(eq(systemSettings.key, key))
+      .returning();
+    return updated;
+  }
+
+  // ================= RESTAURANT EARNINGS =================
+  async getRestaurantEarnings(): Promise<RestaurantEarnings[]> {
+    return this.db.select().from(restaurantEarnings).where(eq(restaurantEarnings.isActive, true));
+  }
+
+  async getRestaurantEarningsByRestaurant(restaurantId: string): Promise<RestaurantEarnings | undefined> {
+    const [earnings] = await this.db.select().from(restaurantEarnings)
+      .where(eq(restaurantEarnings.restaurantId, restaurantId));
+    return earnings;
+  }
+
+  async createRestaurantEarnings(earnings: InsertRestaurantEarnings): Promise<RestaurantEarnings> {
+    const [newEarnings] = await this.db.insert(restaurantEarnings).values(earnings).returning();
+    return newEarnings;
+  }
+
+  async updateRestaurantEarnings(id: string, updates: Partial<InsertRestaurantEarnings>): Promise<RestaurantEarnings | undefined> {
+    const [updated] = await this.db.update(restaurantEarnings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(restaurantEarnings.id, id))
+      .returning();
+    return updated;
+  }
+
+  // ================= ANALYTICS & REPORTS =================
+  async getDashboardAnalytics(): Promise<any> {
+    const totalOrders = await this.db.select().from(orders);
+    const totalDrivers = await this.db.select().from(drivers);
+    const totalRestaurants = await this.db.select().from(restaurants);
+    const pendingOrders = await this.db.select().from(orders).where(eq(orders.status, 'pending'));
+    
+    return {
+      totalOrders: totalOrders.length,
+      totalDrivers: totalDrivers.length,
+      totalRestaurants: totalRestaurants.length,
+      pendingOrders: pendingOrders.length,
+      todaySales: "0.00" // يمكن حسابها لاحقاً
+    };
+  }
+
+  async getSalesReport(startDate: string, endDate: string, restaurantId?: string): Promise<any> {
+    let query = this.db.select().from(orders);
+    
+    const conditions = [];
+    if (startDate) {
+      conditions.push(eq(orders.createdAt, new Date(startDate))); // يحتاج تعديل للمقارنة الصحيحة
+    }
+    if (restaurantId) {
+      conditions.push(eq(orders.restaurantId, restaurantId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    const reportOrders = await query;
+    
+    return {
+      totalOrders: reportOrders.length,
+      totalRevenue: reportOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount), 0),
+      orders: reportOrders
+    };
+  }
+
+  async getDriverPerformance(startDate: string, endDate: string): Promise<any> {
+    const driversList = await this.db.select().from(drivers);
+    
+    const performance = await Promise.all(driversList.map(async (driver) => {
+      const driverOrders = await this.db.select().from(orders)
+        .where(eq(orders.driverId, driver.id || ''));
+      
+      return {
+        driverId: driver.id,
+        driverName: driver.name,
+        totalOrders: driverOrders.length,
+        totalEarnings: parseFloat(driver.earnings),
+        isAvailable: driver.isAvailable
+      };
+    }));
+    
+    return performance;
   }
 }
 

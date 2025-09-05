@@ -203,7 +203,126 @@ export const selectAdminSessionSchema = createSelectSchema(adminSessions);
 export type AdminSession = z.infer<typeof selectAdminSessionSchema>;
 export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
 
+// Restaurant sections table
+export const restaurantSections = pgTable("restaurant_sections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Ratings table
+export const ratings = pgTable("ratings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id").references(() => orders.id),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
+  customerName: varchar("customer_name", { length: 100 }).notNull(),
+  customerPhone: varchar("customer_phone", { length: 20 }),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  isApproved: boolean("is_approved").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: varchar("type", { length: 50 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message").notNull(),
+  recipientType: varchar("recipient_type", { length: 50 }).notNull(),
+  recipientId: uuid("recipient_id"),
+  orderId: uuid("order_id").references(() => orders.id),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Wallets table
+export const wallets = pgTable("wallets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerPhone: varchar("customer_phone", { length: 20 }).unique().notNull(),
+  balance: decimal("balance", { precision: 10, scale: 2 }).default("0.00"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Wallet transactions table
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  walletId: uuid("wallet_id").references(() => wallets.id),
+  type: varchar("type", { length: 50 }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  description: text("description"),
+  orderId: uuid("order_id").references(() => orders.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// System settings table
+export const systemSettings = pgTable("system_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: varchar("key", { length: 100 }).unique().notNull(),
+  value: text("value").notNull(),
+  category: varchar("category", { length: 50 }),
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Restaurant earnings table
+export const restaurantEarnings = pgTable("restaurant_earnings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
+  ownerName: varchar("owner_name", { length: 100 }).notNull(),
+  ownerPhone: varchar("owner_phone", { length: 20 }).notNull(),
+  totalEarnings: decimal("total_earnings", { precision: 10, scale: 2 }).default("0.00"),
+  pendingAmount: decimal("pending_amount", { precision: 10, scale: 2 }).default("0.00"),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0.00"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertUiSettingsSchema = createInsertSchema(uiSettings);
 export const selectUiSettingsSchema = createSelectSchema(uiSettings);
 export type UiSettings = z.infer<typeof selectUiSettingsSchema>;
 export type InsertUiSettings = z.infer<typeof insertUiSettingsSchema>;
+
+export const insertRestaurantSectionSchema = createInsertSchema(restaurantSections);
+export const selectRestaurantSectionSchema = createSelectSchema(restaurantSections);
+export type RestaurantSection = z.infer<typeof selectRestaurantSectionSchema>;
+export type InsertRestaurantSection = z.infer<typeof insertRestaurantSectionSchema>;
+
+export const insertRatingSchema = createInsertSchema(ratings);
+export const selectRatingSchema = createSelectSchema(ratings);
+export type Rating = z.infer<typeof selectRatingSchema>;
+export type InsertRating = z.infer<typeof insertRatingSchema>;
+
+export const insertNotificationSchema = createInsertSchema(notifications);
+export const selectNotificationSchema = createSelectSchema(notifications);
+export type Notification = z.infer<typeof selectNotificationSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export const insertWalletSchema = createInsertSchema(wallets);
+export const selectWalletSchema = createSelectSchema(wallets);
+export type Wallet = z.infer<typeof selectWalletSchema>;
+export type InsertWallet = z.infer<typeof insertWalletSchema>;
+
+export const insertWalletTransactionSchema = createInsertSchema(walletTransactions);
+export const selectWalletTransactionSchema = createSelectSchema(walletTransactions);
+export type WalletTransaction = z.infer<typeof selectWalletTransactionSchema>;
+export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
+
+export const insertSystemSettingsSchema = createInsertSchema(systemSettings);
+export const selectSystemSettingsSchema = createSelectSchema(systemSettings);
+export type SystemSettings = z.infer<typeof selectSystemSettingsSchema>;
+export type InsertSystemSettings = z.infer<typeof insertSystemSettingsSchema>;
+
+export const insertRestaurantEarningsSchema = createInsertSchema(restaurantEarnings);
+export const selectRestaurantEarningsSchema = createSelectSchema(restaurantEarnings);
+export type RestaurantEarnings = z.infer<typeof selectRestaurantEarningsSchema>;
+export type InsertRestaurantEarnings = z.infer<typeof insertRestaurantEarningsSchema>;

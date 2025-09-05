@@ -25,6 +25,9 @@ export default function AdminRestaurants() {
     name: '',
     description: '',
     image: '',
+    address: '',
+    openingTime: '08:00',
+    closingTime: '23:00',
     deliveryTime: '',
     deliveryFee: '0',
     minimumOrder: '0',
@@ -92,6 +95,9 @@ export default function AdminRestaurants() {
       name: '',
       description: '',
       image: '',
+      address: '',
+      openingTime: '08:00',
+      closingTime: '23:00',
       deliveryTime: '',
       deliveryFee: '0',
       minimumOrder: '0',
@@ -107,6 +113,9 @@ export default function AdminRestaurants() {
       name: restaurant.name,
       description: restaurant.description || '',
       image: restaurant.image,
+      address: restaurant.address || '',
+      openingTime: restaurant.openingTime || '08:00',
+      closingTime: restaurant.closingTime || '23:00',
       deliveryTime: restaurant.deliveryTime,
       deliveryFee: restaurant.deliveryFee || '0',
       minimumOrder: restaurant.minimumOrder || '0',
@@ -242,7 +251,41 @@ export default function AdminRestaurants() {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="address">عنوان المطعم</Label>
+                <Textarea
+                  id="address"
+                  value={formData.address || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="العنوان الكامل للمطعم"
+                  rows={2}
+                  data-testid="input-restaurant-address"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="openingTime">وقت الفتح</Label>
+                  <Input
+                    id="openingTime"
+                    type="time"
+                    value={formData.openingTime || '08:00'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, openingTime: e.target.value }))}
+                    data-testid="input-restaurant-opening-time"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="closingTime">وقت الإغلاق</Label>
+                  <Input
+                    id="closingTime"
+                    type="time"
+                    value={formData.closingTime || '23:00'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, closingTime: e.target.value }))}
+                    data-testid="input-restaurant-closing-time"
+                  />
+                </div>
+
                 <div>
                   <Label htmlFor="deliveryTime">وقت التوصيل</Label>
                   <Input
@@ -254,7 +297,9 @@ export default function AdminRestaurants() {
                     data-testid="input-restaurant-delivery-time"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="deliveryFee">رسوم التوصيل (ريال)</Label>
                   <Input

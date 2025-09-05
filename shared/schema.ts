@@ -43,6 +43,7 @@ export const restaurants = pgTable("restaurants", {
   name: varchar("name", { length: 200 }).notNull(),
   description: text("description"),
   image: text("image").notNull(), // تم تغيير إلى notNull
+  address: text("address"), // تمت الإضافة
   rating: varchar("rating", { length: 10 }).default("0.0"),
   reviewCount: integer("review_count").default(0),
   deliveryTime: varchar("delivery_time", { length: 50 }).notNull(), // تم تغيير إلى notNull

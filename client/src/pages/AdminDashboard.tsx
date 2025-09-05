@@ -66,6 +66,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Notification System */}
+        <div className="mb-8">
+          <NotificationSystem userType="admin" />
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => {
@@ -147,60 +152,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </TabsContent>
 
           <TabsContent value="orders" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>إدارة الطلبات</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((order) => (
-                    <div key={order} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4">
-                          <div>
-                            <p className="font-medium">طلب #{1000 + order}</p>
-                            <p className="text-sm text-gray-600">محمد أحمد - 05{order}1234567</p>
-                          </div>
-                          <Badge variant={order % 2 === 0 ? "default" : "secondary"}>
-                            {order % 2 === 0 ? "مؤكد" : "قيد المراجعة"}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-2">₪{50 + order * 10} - منذ {order} ساعات</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <AdminOrders />
           </TabsContent>
 
           <TabsContent value="restaurants" className="space-y-6">
+            <AdminRestaurants />
+          </TabsContent>
+
+          <TabsContent value="drivers" className="space-y-6">
+            <AdminDrivers />
+          </TabsContent>
+
+          <TabsContent value="categories" className="space-y-6">
+            <AdminCategories />
+          </TabsContent>
+
+          <TabsContent value="menu" className="space-y-6">
+            <AdminMenuItems />
+          </TabsContent>
+
+          <TabsContent value="offers" className="space-y-6">
+            <AdminOffers />
+          </TabsContent>
+
+          <TabsContent value="menu" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>إدارة المطاعم</CardTitle>
+                <CardTitle>إدارة قوائم الطعام</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {['مطعم الوزيكو للعربكة', 'حلويات الشام', 'مقهى العروبة'].map((restaurant, index) => (
+                  {['عربكة بالقشطة والعسل', 'معصوب بالقشطة والعسل', 'مياه معدنية', 'كومبو عربكة خاص'].map((item, index) => (
                     <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
-                        <Store className="h-8 w-8 text-gray-400" />
+                        <Menu className="h-8 w-8 text-gray-400" />
                         <div>
-                          <p className="font-medium">{restaurant}</p>
-                          <p className="text-sm text-gray-600">{15 + index} عنصر في القائمة</p>
+                          <p className="font-medium">{item}</p>
+                          <p className="text-sm text-gray-600">{25 + index * 15} ريال</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="default" className="bg-green-100 text-green-800">
-                          مفتوح
+                          متوفر
                         </Badge>
                         <Button variant="outline" size="sm">
                           <Edit className="h-4 w-4" />
@@ -213,56 +206,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="drivers" className="space-y-6">
+          <TabsContent value="offers" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>إدارة السائقين</CardTitle>
+                <CardTitle>إدارة العروض الخاصة</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {['أحمد محمد', 'علي حسن', 'سارة أحمد', 'محمد علي'].map((driver, index) => (
+                  {['خصم 30% على الطلب الأول', 'توصيل مجاني فوق 50 ريال', 'عرض رمضان الخاص'].map((offer, index) => (
                     <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
-                        <Truck className="h-8 w-8 text-gray-400" />
+                        <Percent className="h-8 w-8 text-gray-400" />
                         <div>
-                          <p className="font-medium">{driver}</p>
-                          <p className="text-sm text-gray-600">05{index + 1}1234567</p>
+                          <p className="font-medium">{offer}</p>
+                          <p className="text-sm text-gray-600">صالح لمدة {7 + index * 3} أيام</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={index % 2 === 0 ? "default" : "secondary"} 
-                               className={index % 2 === 0 ? "bg-green-100 text-green-800" : ""}>
-                          {index % 2 === 0 ? "متاح" : "مشغول"}
-                        </Badge>
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="categories" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>إدارة الفئات</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {['مطاعم', 'مقاهي', 'حلويات', 'سوبرماركت', 'صيدليات'].map((category, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <Package className="h-8 w-8 text-gray-400" />
-                        <div>
-                          <p className="font-medium">{category}</p>
-                          <p className="text-sm text-gray-600">{5 + index * 2} مطعم</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="default" className="bg-blue-100 text-blue-800">
+                        <Badge variant="default" className="bg-orange-100 text-orange-800">
                           نشط
                         </Badge>
                         <Button variant="outline" size="sm">

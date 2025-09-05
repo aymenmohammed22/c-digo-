@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { DriverControlPanel } from '../components/DriverControlPanel';
+import { NotificationSystem } from '../components/NotificationSystem';
 import { useUiSettings } from '../context/UiSettingsContext';
 import { 
   Truck, 
@@ -119,6 +120,11 @@ export const DriverDashboard: React.FC<DriverDashboardProps> = ({ onLogout }) =>
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Notification System */}
+        <div className="mb-6">
+          <NotificationSystem userType="driver" />
+        </div>
+
         {/* Current Order */}
         {currentOrder && (
           <Card className="mb-6 border-green-200 bg-green-50">

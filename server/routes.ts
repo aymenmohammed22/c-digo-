@@ -9,21 +9,7 @@ import {
   insertDriverSchema, 
   insertCategorySchema, 
   insertSpecialOfferSchema,
-  insertUiSettingsSchema,
-  insertUserAddressSchema,
-  insertRestaurantSectionSchema,
-  insertUserWalletSchema,
-  insertWalletTransactionSchema,
-  insertOrderRatingSchema,
-  insertNotificationSchema,
-  insertDriverSessionSchema,
-  insertOrderTrackingSchema,
-  insertRestaurantEarningsSchema,
-  insertDriverEarningsSchema,
-  insertPaymentSettingsSchema,
-  insertDeliveryPricingSchema,
-  insertLanguageSchema,
-  insertContentManagementSchema
+  insertUiSettingsSchema
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -484,288 +470,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User Addresses Routes
-  app.get("/api/users/:userId/addresses", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const addresses = await dbStorage.getUserAddresses(userId);
-      res.json(addresses);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch user addresses" });
-    }
-  });
-
-  app.post("/api/users/:userId/addresses", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const validatedData = insertUserAddressSchema.parse({ ...req.body, userId });
-      const address = await dbStorage.createUserAddress(validatedData);
-      res.status(201).json(address);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid address data" });
-    }
-  });
-
-  app.put("/api/addresses/:id", async (req, res) => {
+  // Driver-specific endpoints
+  app.get("/api/drivers/:id/orders", async (req, res) => {
     try {
       const { id } = req.params;
-      const validatedData = insertUserAddressSchema.partial().parse(req.body);
-      const address = await dbStorage.updateUserAddress(id, validatedData);
-      if (!address) {
-        return res.status(404).json({ message: "Address not found" });
-      }
-      res.json(address);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid address data" });
-    }
-  });
-
-  app.delete("/api/addresses/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await dbStorage.deleteUserAddress(id);
-      if (!success) {
-        return res.status(404).json({ message: "Address not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete address" });
-    }
-  });
-
-  // Restaurant Sections Routes
-  app.get("/api/restaurants/:restaurantId/sections", async (req, res) => {
-    try {
-      const { restaurantId } = req.params;
-      const sections = await dbStorage.getRestaurantSections(restaurantId);
-      res.json(sections);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch restaurant sections" });
-    }
-  });
-
-  app.post("/api/restaurant-sections", async (req, res) => {
-    try {
-      const validatedData = insertRestaurantSectionSchema.parse(req.body);
-      const section = await dbStorage.createRestaurantSection(validatedData);
-      res.status(201).json(section);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid section data" });
-    }
-  });
-
-  app.put("/api/restaurant-sections/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const validatedData = insertRestaurantSectionSchema.partial().parse(req.body);
-      const section = await dbStorage.updateRestaurantSection(id, validatedData);
-      if (!section) {
-        return res.status(404).json({ message: "Section not found" });
-      }
-      res.json(section);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid section data" });
-    }
-  });
-
-  app.delete("/api/restaurant-sections/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await dbStorage.deleteRestaurantSection(id);
-      if (!success) {
-        return res.status(404).json({ message: "Section not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete section" });
-    }
-  });
-
-  // User Wallet Routes
-  app.get("/api/users/:userId/wallet", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      let wallet = await dbStorage.getUserWallet(userId);
+      const { status } = req.query;
       
-      if (!wallet) {
-        // Create wallet if it doesn't exist
-        wallet = await dbStorage.createUserWallet({
-          userId,
-          balance: "0",
-          totalEarnings: "0",
-          totalSpent: "0"
-        });
+      let query = db.select().from(orders).where(eq(orders.driverId, id));
+      
+      if (status) {
+        query = query.where(eq(orders.status, status as string));
       }
       
-      res.json(wallet);
+      const driverOrders = await query.orderBy(desc(orders.createdAt));
+      res.json(driverOrders);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch wallet" });
+      res.status(500).json({ message: "Failed to fetch driver orders" });
     }
   });
 
-  app.post("/api/users/:userId/wallet/transactions", async (req, res) => {
+  app.put("/api/drivers/:id/status", async (req, res) => {
     try {
-      const { userId } = req.params;
-      const { amount, type, description, referenceId } = req.body;
+      const { id } = req.params;
+      const { status, latitude, longitude } = req.body;
       
-      if (!amount || !type || !description) {
-        return res.status(400).json({ message: "Missing required fields" });
-      }
-
-      // Get or create wallet
-      let wallet = await dbStorage.getUserWallet(userId);
-      if (!wallet) {
-        wallet = await dbStorage.createUserWallet({
-          userId,
-          balance: "0",
-          totalEarnings: "0",
-          totalSpent: "0"
-        });
-      }
-
-      // Create transaction
-      const transaction = await dbStorage.createWalletTransaction({
-        walletId: wallet.id,
-        userId,
-        type,
-        amount,
-        description,
-        referenceId: referenceId || null,
-        status: "completed"
+      const driver = await dbStorage.updateDriver(id, {
+        isAvailable: status === 'available',
+        currentLatitude: latitude,
+        currentLongitude: longitude,
+        lastLocationUpdate: new Date(),
       });
-
-      // Update wallet balance
-      const updatedWallet = await dbStorage.updateWalletBalance(userId, amount, type);
-
-      res.status(201).json({
-        transaction,
-        wallet: updatedWallet
-      });
-    } catch (error) {
-      res.status(400).json({ message: "Failed to create transaction" });
-    }
-  });
-
-  app.get("/api/users/:userId/wallet/transactions", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const transactions = await dbStorage.getWalletTransactions(userId);
-      res.json(transactions);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch transactions" });
-    }
-  });
-
-  // Order Ratings Routes
-  app.post("/api/orders/:orderId/rating", async (req, res) => {
-    try {
-      const { orderId } = req.params;
-      const validatedData = insertOrderRatingSchema.parse({ ...req.body, orderId });
-      const rating = await dbStorage.createOrderRating(validatedData);
-      res.status(201).json(rating);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid rating data" });
-    }
-  });
-
-  app.get("/api/orders/:orderId/rating", async (req, res) => {
-    try {
-      const { orderId } = req.params;
-      const rating = await dbStorage.getOrderRating(orderId);
-      if (!rating) {
-        return res.status(404).json({ message: "Rating not found" });
+      
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
       }
-      res.json(rating);
+      
+      res.json(driver);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch rating" });
+      res.status(400).json({ message: "Failed to update driver status" });
     }
   });
 
-  app.get("/api/restaurants/:restaurantId/ratings", async (req, res) => {
+  app.post("/api/drivers/:id/accept-order", async (req, res) => {
     try {
-      const { restaurantId } = req.params;
-      const ratings = await dbStorage.getOrderRatings(restaurantId);
-      res.json(ratings);
+      const { id: driverId } = req.params;
+      const { orderId } = req.body;
+      
+      // Update order status and assign driver
+      const [updatedOrder] = await db
+        .update(orders)
+        .set({ 
+          driverId: driverId,
+          status: 'accepted',
+          acceptedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId))
+        .returning();
+      
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // Update driver availability
+      await dbStorage.updateDriver(driverId, { isAvailable: false });
+      
+      res.json(updatedOrder);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch ratings" });
+      res.status(400).json({ message: "Failed to accept order" });
     }
   });
 
-  // Notifications Routes
-  app.get("/api/users/:userId/notifications", async (req, res) => {
+  app.post("/api/drivers/:id/complete-order", async (req, res) => {
     try {
-      const { userId } = req.params;
-      const notifications = await dbStorage.getUserNotifications(userId);
-      res.json(notifications);
+      const { id: driverId } = req.params;
+      const { orderId } = req.body;
+      
+      // Update order status
+      const [updatedOrder] = await db
+        .update(orders)
+        .set({ 
+          status: 'delivered',
+          deliveredAt: new Date(),
+        })
+        .where(eq(orders.id, orderId))
+        .returning();
+      
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // Update driver availability
+      await dbStorage.updateDriver(driverId, { isAvailable: true });
+      
+      res.json(updatedOrder);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch notifications" });
+      res.status(400).json({ message: "Failed to complete order" });
     }
   });
 
-  app.get("/api/drivers/:driverId/notifications", async (req, res) => {
-    try {
-      const { driverId } = req.params;
-      const notifications = await dbStorage.getDriverNotifications(driverId);
-      res.json(notifications);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch notifications" });
-    }
-  });
-
-  app.post("/api/notifications", async (req, res) => {
-    try {
-      const validatedData = insertNotificationSchema.parse(req.body);
-      const notification = await dbStorage.createNotification(validatedData);
-      res.status(201).json(notification);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid notification data" });
-    }
-  });
-
-  app.put("/api/notifications/:id/read", async (req, res) => {
+  app.get("/api/drivers/:id/stats", async (req, res) => {
     try {
       const { id } = req.params;
-      const success = await dbStorage.markNotificationAsRead(id);
-      if (!success) {
-        return res.status(404).json({ message: "Notification not found" });
+      const { period = 'today' } = req.query;
+      
+      let startDate: Date;
+      const endDate = new Date();
+      
+      switch (period) {
+        case 'today':
+          startDate = new Date();
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'week':
+          startDate = new Date();
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date();
+          startDate.setMonth(startDate.getMonth() - 1);
+          break;
+        default:
+          startDate = new Date();
+          startDate.setHours(0, 0, 0, 0);
       }
-      res.json({ message: "Notification marked as read" });
+      
+      const driverOrders = await db
+        .select()
+        .from(orders)
+        .where(
+          and(
+            eq(orders.driverId, id),
+            eq(orders.status, 'delivered'),
+            gte(orders.deliveredAt, startDate),
+            lte(orders.deliveredAt, endDate)
+          )
+        );
+      
+      const totalEarnings = driverOrders.reduce((sum, order) => {
+        return sum + (order.deliveryFee || 0);
+      }, 0);
+      
+      const stats = {
+        totalOrders: driverOrders.length,
+        totalEarnings,
+        avgOrderValue: driverOrders.length > 0 ? totalEarnings / driverOrders.length : 0,
+        period,
+        startDate,
+        endDate
+      };
+      
+      res.json(stats);
     } catch (error) {
-      res.status(500).json({ message: "Failed to update notification" });
+      res.status(500).json({ message: "Failed to fetch driver stats" });
     }
   });
 
-  // Payment Settings Routes
-  app.get("/api/payment-settings", async (req, res) => {
-    try {
-      const settings = await dbStorage.getPaymentSettings();
-      res.json(settings);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch payment settings" });
-    }
-  });
-
-  app.post("/api/payment-settings", async (req, res) => {
-    try {
-      const validatedData = insertPaymentSettingsSchema.parse(req.body);
-      const setting = await dbStorage.createPaymentSetting(validatedData);
-      res.status(201).json(setting);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid payment setting data" });
-    }
-  });
-
-  app.put("/api/payment-settings/:id", async (req, res) => {
+  app.get("/api/drivers/:id/available-orders", async (req, res) => {
     try {
       const { id } = req.params;
-      const validatedData = insertPaymentSettingsSchema.partial().parse(req.body);
-      const setting = await dbStorage.updatePaymentSetting(id, validatedData);
-      if (!setting) {
-        return res.status(404).json({ message: "Payment setting not found" });
-      }
-      res.json(setting);
+      
+      // Get orders that are pending and near the driver's location
+      const availableOrders = await db
+        .select({
+          id: orders.id,
+          total: orders.total,
+          deliveryFee: orders.deliveryFee,
+          status: orders.status,
+          createdAt: orders.createdAt,
+          customerAddress: orders.customerAddress,
+          restaurantId: orders.restaurantId,
+          customerId: orders.customerId,
+        })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.status, 'pending'),
+            isNull(orders.driverId)
+          )
+        )
+        .orderBy(desc(orders.createdAt))
+        .limit(10);
+      
+      res.json(availableOrders);
     } catch (error) {
-      res.status(400).json({ message: "Invalid payment setting data" });
+      res.status(500).json({ message: "Failed to fetch available orders" });
     }
   });
 

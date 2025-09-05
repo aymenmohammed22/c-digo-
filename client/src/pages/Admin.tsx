@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Store, ShoppingBag, Truck, ChartLine, Tags, Percent, BarChart, MapPin, Wallet, Star, Settings } from 'lucide-react';
+import { ArrowRight, Store, ShoppingBag, Truck, ChartLine, Tags, Percent, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Restaurant, Order, Driver } from '@shared/schema';
@@ -84,38 +84,6 @@ export default function Admin() {
       color: 'text-red-500',
       testId: 'admin-reports',
       path: '/admin/reports',
-    },
-    {
-      icon: MapPin,
-      title: 'إدارة العناوين',
-      description: 'عرض وإدارة عناوين المستخدمين',
-      color: 'text-teal-500',
-      testId: 'admin-addresses',
-      path: '/admin/addresses',
-    },
-    {
-      icon: Wallet,
-      title: 'إدارة المحافظ',
-      description: 'إدارة المحافظ الإلكترونية والمعاملات',
-      color: 'text-indigo-500',
-      testId: 'admin-wallets',
-      path: '/admin/wallets',
-    },
-    {
-      icon: Star,
-      title: 'التقييمات والمراجعات',
-      description: 'عرض تقييمات ومراجعات العملاء',
-      color: 'text-yellow-500',
-      testId: 'admin-ratings',
-      path: '/admin/ratings',
-    },
-    {
-      icon: Settings,
-      title: 'إعدادات الدفع',
-      description: 'إدارة طرق الدفع والتسعير',
-      color: 'text-gray-500',
-      testId: 'admin-payment-settings',
-      path: '/admin/payment-settings',
     },
   ];
 

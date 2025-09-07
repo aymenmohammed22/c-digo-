@@ -255,17 +255,44 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Delivery Info & Search Bar */}
         {isHomePage && (
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="ابحث عن المطاعم والوجبات..."
-              className="w-full bg-muted text-foreground placeholder-muted-foreground rounded-lg pr-12 pl-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary"
-              data-testid="input-search"
-            />
-            <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          </div>
+          <>
+            {/* Delivery Location and Time Info */}
+            <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg p-3 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  <span className="text-sm font-medium">توصيل ول عدن</span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-white hover:bg-white/20 text-xs px-2 py-1 h-auto"
+                >
+                  اختيار العنوان ▼
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <Clock className="h-4 w-4" />
+                <span className="text-xs opacity-90">اوقات الدوام من الساعة 11:00 من حتي 11:09 م</span>
+              </div>
+              <div className="mt-2 bg-white/20 rounded px-2 py-1 inline-block">
+                <span className="text-xs font-medium">مغلق</span>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="ابحث عن المطاعم والوجبات..."
+                className="w-full bg-muted text-foreground placeholder-muted-foreground rounded-lg pr-12 pl-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid="input-search"
+              />
+              <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            </div>
+          </>
         )}
       </header>
 

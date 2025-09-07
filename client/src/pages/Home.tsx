@@ -25,81 +25,46 @@ export default function Home() {
     <div>
       {/* Special Offers */}
       <section className="mb-6">
-        <h3 className="text-lg font-bold text-foreground mb-4 px-4 flex items-center gap-2">
-          <Zap className="h-5 w-5 text-primary" />
-          العروض الخاصة
-        </h3>
-        <div className="px-4 space-y-3">
-          <Card className="bg-gradient-to-r from-primary/20 to-primary/10 border-primary/30 overflow-hidden">
+        <div className="px-4 grid grid-cols-2 gap-3">
+          {/* عرض خاص - برجر */}
+          <Card className="relative overflow-hidden rounded-2xl">
             <CardContent className="p-0">
-              <div className="flex items-center">
-                <div className="w-20 h-20 bg-primary/20 flex items-center justify-center">
-                  <Gift className="h-10 w-10 text-primary" />
+              <div className="relative h-32 bg-gradient-to-br from-orange-400 to-orange-600">
+                <div className="absolute top-2 left-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded">
+                  عرض خاص
                 </div>
-                <div className="flex-1 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-foreground">خصم 30% على الطلب الأول</h4>
-                      <p className="text-sm text-muted-foreground">استخدم كود: WELCOME30</p>
-                    </div>
-                    <Badge className="bg-primary">جديد</Badge>
-                  </div>
+                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2">
+                  <div className="text-xs opacity-90">عرض من كل شيء بخصم يصل حتى</div>
+                  <div className="text-xs font-bold">15,000 ريال</div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-r from-green-500/20 to-green-500/10 border-green-500/30 overflow-hidden">
-            <CardContent className="p-0">
-              <div className="flex items-center">
-                <div className="w-20 h-20 bg-green-500/20 flex items-center justify-center">
-                  <Truck className="h-10 w-10 text-green-500" />
-                </div>
-                <div className="flex-1 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-foreground">توصيل مجاني للطلبات فوق 50 ريال</h4>
-                      <p className="text-sm text-muted-foreground">لفترة محدودة</p>
-                    </div>
-                    <Badge className="bg-green-500">مميز</Badge>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <div className="w-16 h-16 bg-orange-200 rounded-full flex items-center justify-center">
+                    🍔
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-yellow-500/20 to-yellow-500/10 border-yellow-500/30 overflow-hidden">
+          {/* كل العروض */}
+          <Card className="relative overflow-hidden rounded-2xl">
             <CardContent className="p-0">
-              <div className="flex items-center">
-                <div className="w-20 h-20 bg-yellow-500/20 flex items-center justify-center">
-                  <Clock className="h-10 w-10 text-yellow-500" />
+              <div className="relative h-32 bg-gradient-to-br from-green-500 to-green-700">
+                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                  1,000,000
                 </div>
-                <div className="flex-1 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-foreground">طلب سريع في 15 دقيقة</h4>
-                      <p className="text-sm text-muted-foreground">للطلبات داخل المدينة</p>
-                    </div>
-                    <Badge className="bg-yellow-500">سريع</Badge>
-                  </div>
+                <div className="absolute top-8 left-2 text-white text-xs">
+                  يمني
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-r from-purple-500/20 to-purple-500/10 border-purple-500/30 overflow-hidden">
-            <CardContent className="p-0">
-              <div className="flex items-center">
-                <div className="w-20 h-20 bg-purple-500/20 flex items-center justify-center">
-                  <Star className="h-10 w-10 text-purple-500" />
+                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2">
+                  <div className="text-xs font-bold">الشواني التركية</div>
                 </div>
-                <div className="flex-1 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-foreground">نقاط مكافآت مضاعفة</h4>
-                      <p className="text-sm text-muted-foreground">اجمع نقاط واحصل على خصومات</p>
-                    </div>
-                    <Badge className="bg-purple-500">VIP</Badge>
+                <div className="absolute bottom-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+                  كل العروض
+                </div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center">
+                    🥩
                   </div>
                 </div>
               </div>

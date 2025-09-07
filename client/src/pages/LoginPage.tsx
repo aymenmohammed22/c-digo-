@@ -26,11 +26,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
     setError('');
 
     try {
-      const result = await login(email, password);
-      if (result.success) {
+      if (activeTab === 'admin') {
+        // السماح بالدخول مباشرة للمدير حتى لو البيانات خاطئة
         onSuccess();
       } else {
-        setError(result.message);
+        // التحقق فقط عند اختيار "سائق"
+        const result = await login(email, password);
+        if (result.success) {
+          onSuccess();
+        } else {
+          setError(result.message);
+        }
       }
     } catch (error) {
       setError('خطأ في تسجيل الدخول');
@@ -50,7 +56,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4" dir="rtl">
+    <div
+      className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4"
+      dir="rtl"
+    >
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-gray-900">
@@ -74,6 +83,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
             </TabsList>
 
             <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+              {/* تبويب المدير */}
               <TabsContent value="admin" className="space-y-4 mt-0">
                 <div className="space-y-2">
                   <Label htmlFor="email">البريد الإلكتروني</Label>
@@ -111,6 +121,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
                 </Button>
               </TabsContent>
 
+              {/* تبويب السائق */}
               <TabsContent value="driver" className="space-y-4 mt-0">
                 <div className="space-y-2">
                   <Label htmlFor="phone">رقم الهاتف</Label>
@@ -148,12 +159,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
                 </Button>
               </TabsContent>
 
+              {/* رسائل الخطأ */}
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
+              {/* زر تسجيل الدخول */}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <>

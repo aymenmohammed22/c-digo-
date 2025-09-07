@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { 
   users, userAddresses, categories, restaurants, menuItems, orders, drivers, specialOffers,
   adminUsers, adminSessions, uiSettings,
@@ -26,7 +26,7 @@ function getDb() {
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL must be defined in environment variables");
     }
-    const sql = neon(process.env.DATABASE_URL);
+    const sql = postgres(process.env.DATABASE_URL);
     db = drizzle(sql);
   }
   return db;

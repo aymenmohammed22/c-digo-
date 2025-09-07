@@ -59,7 +59,7 @@ export default function Layout({ children }: LayoutProps) {
     { icon: User, label: 'الملف الشخصي', path: '/profile', testId: 'sidebar-profile' },
     { icon: Receipt, label: 'طلباتي', path: '/orders', testId: 'sidebar-orders' },
     { icon: MapPin, label: 'العناوين المحفوظة', path: '/addresses', testId: 'sidebar-addresses' },
-    { icon: Clock, label: 'تتبع الطلبات', path: '/orders', testId: 'sidebar-tracking' },
+    { icon: Clock, label: 'تتبع الطلبات', path: '/tracking', testId: 'sidebar-tracking' },
     { icon: Settings, label: 'الإعدادات', path: '/settings', testId: 'sidebar-settings' },
     { icon: Shield, label: 'سياسة الخصوصية', path: '/privacy', testId: 'sidebar-privacy' },
   ];

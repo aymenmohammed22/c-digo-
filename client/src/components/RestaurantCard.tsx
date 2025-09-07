@@ -70,7 +70,7 @@ export default function RestaurantCard({ restaurant, onClick }: RestaurantCardPr
                       {[...Array(5)].map((_, i) => (
                         <Star 
                           key={i} 
-                          className={`h-3 w-3 ${i < Math.floor(restaurant.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                          className={`h-3 w-3 ${i < Math.floor(Number(restaurant.rating) || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
                         />
                       ))}
                     </div>

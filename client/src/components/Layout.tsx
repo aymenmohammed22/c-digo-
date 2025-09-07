@@ -259,26 +259,28 @@ export default function Layout({ children }: LayoutProps) {
         {isHomePage && (
           <>
             {/* Delivery Location and Time Info */}
-            <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg p-3 mb-4">
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg p-2 mb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  <span className="text-sm font-medium">توصيل ول عدن</span>
+                  <MapPin className="h-3 w-3" />
+                  <span className="text-xs font-medium">توصيل ول عدن</span>
                 </div>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="text-white hover:bg-white/20 text-xs px-2 py-1 h-auto"
+                  className="text-white hover:bg-white/20 text-xs px-2 py-0.5 h-auto"
                 >
                   اختيار العنوان ▼
                 </Button>
               </div>
-              <div className="flex items-center gap-2 mt-2">
-                <Clock className="h-4 w-4" />
-                <span className="text-xs opacity-90">اوقات الدوام من الساعة 11:00 من حتي 11:09 م</span>
-              </div>
-              <div className="mt-2 bg-white/20 rounded px-2 py-1 inline-block">
-                <span className="text-xs font-medium">مغلق</span>
+              <div className="flex items-center justify-between mt-1">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span className="text-xs opacity-90">اوقات الدوام من الساعة 11:00 من حتي 11:09 م</span>
+                </div>
+                <div className="bg-white/20 rounded px-2 py-0.5">
+                  <span className="text-xs font-medium">مغلق</span>
+                </div>
               </div>
             </div>
 

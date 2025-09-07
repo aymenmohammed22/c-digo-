@@ -60,7 +60,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAdminSession(token: string): Promise<boolean> {
     const result = await this.db.delete(adminSessions).where(eq(adminSessions.token, token));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Users
@@ -96,7 +96,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCategory(id: string): Promise<boolean> {
     const result = await this.db.delete(categories).where(eq(categories.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Restaurants
@@ -125,7 +125,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRestaurant(id: string): Promise<boolean> {
     const result = await this.db.delete(restaurants).where(eq(restaurants.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Menu Items
@@ -150,7 +150,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMenuItem(id: string): Promise<boolean> {
     const result = await this.db.delete(menuItems).where(eq(menuItems.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Orders
@@ -203,7 +203,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDriver(id: string): Promise<boolean> {
     const result = await this.db.delete(drivers).where(eq(drivers.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Special Offers
@@ -227,7 +227,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSpecialOffer(id: string): Promise<boolean> {
     const result = await this.db.delete(specialOffers).where(eq(specialOffers.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // UI Settings
@@ -255,7 +255,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUiSetting(key: string): Promise<boolean> {
     const result = await this.db.delete(uiSettings).where(eq(uiSettings.key, key));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 }
 

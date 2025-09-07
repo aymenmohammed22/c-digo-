@@ -159,7 +159,7 @@ export default function Layout({ children }: LayoutProps) {
                       variant="ghost"
                       className="w-full justify-start gap-3 h-12"
                       onClick={() => {
-                        setLocation('/admin');
+                        window.location.href = '/admin/dashboard';
                         setSidebarOpen(false);
                       }}
                       data-testid="sidebar-admin"
@@ -172,7 +172,7 @@ export default function Layout({ children }: LayoutProps) {
                       variant="ghost"
                       className="w-full justify-start gap-3 h-12"
                       onClick={() => {
-                        setLocation('/delivery');
+                        window.location.href = '/driver/dashboard';
                         setSidebarOpen(false);
                       }}
                       data-testid="sidebar-delivery"

@@ -43,7 +43,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyToken = async (token: string) => {
     try {
-      const response = await fetch('/api/admin/verify', {
+      const baseUrl = import.meta.env.VITE_APP_BASE_URL || '';
+      const response = await fetch(`${baseUrl}/api/admin/verify`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -81,7 +82,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch('/api/admin/login', {
+      const baseUrl = import.meta.env.VITE_APP_BASE_URL || '';
+      const response = await fetch(`${baseUrl}/api/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       if (authState.token) {
-        await fetch('/api/admin/logout', {
+        const baseUrl = import.meta.env.VITE_APP_BASE_URL || '';
+        await fetch(`${baseUrl}/api/admin/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

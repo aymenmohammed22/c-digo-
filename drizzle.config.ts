@@ -1,16 +1,19 @@
 import { defineConfig } from "drizzle-kit";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
+
 dotenv.config();
 
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, تأكد من إعداد قاعدة البيانات");
+  throw new Error("DATABASE_URL is not defined");
 }
 
 export default defineConfig({
-  schema: "./shared/schema.ts",  // ملف الـ schema
-  out: "./drizzle",              // مجلد الميجريشن
-   dialect: "postgresql",          // نوع قاعدة البيانات
+  schema: "./shared/schema.ts",
+  out: "./drizzle",
+  dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    url: process.env.DATABASE_URL,
   },
+  verbose: true,
+  strict: true,
 });

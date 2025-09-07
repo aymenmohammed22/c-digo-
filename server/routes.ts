@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { dbStorage } from "./db";
+import { dbStorage, testDatabaseConnection } from "./db";
 import { authService } from "./auth";
 import { 
   insertRestaurantSchema, 
@@ -11,12 +11,19 @@ import {
   insertSpecialOfferSchema,
   insertUiSettingsSchema
 } from "@shared/schema";
-import { randomUUID } from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // Initialize default admin user on startup
+  // Test database connection on startup
+  const dbConnected = await testDatabaseConnection();
+  if (!dbConnected) {
+    console.error("❌ Failed to connect to database");
+    process.exit(1);
+  }
+
+  // Initialize default users
   await authService.createDefaultAdmin();
+  await authService.createDefaultDriver();
   
   // Admin Authentication Routes
   app.post("/api/admin/login", async (req, res) => {
@@ -27,7 +34,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "البريد الإلكتروني وكلمة المرور مطلوبان" });
       }
 
-      // Use AuthService for login
       const loginResult = await authService.loginAdmin(email, password);
       
       if (loginResult.success) {
@@ -35,14 +41,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: true,
           token: loginResult.token,
           userType: loginResult.userType,
+          adminId: loginResult.adminId,
           message: "تم تسجيل الدخول بنجاح"
         });
       } else {
-        res.status(401).json({ message: loginResult.message });
+        res.status(401).json({ 
+          success: false,
+          message: loginResult.message 
+        });
       }
     } catch (error) {
       console.error('خطأ في تسجيل الدخول:', error);
-      res.status(500).json({ message: "خطأ في الخادم" });
+      res.status(500).json({ 
+        success: false,
+        message: "خطأ في الخادم" 
+      });
+    }
+  });
+
+  // Driver Authentication Routes
+  app.post("/api/driver/login", async (req, res) => {
+    try {
+      const { phone, password } = req.body;
+      
+      if (!phone || !password) {
+        return res.status(400).json({ message: "رقم الهاتف وكلمة المرور مطلوبان" });
+      }
+
+      const loginResult = await authService.loginDriver(phone, password);
+      
+      if (loginResult.success) {
+        res.json({
+          success: true,
+          token: loginResult.token,
+          userType: loginResult.userType,
+          driverId: loginResult.driverId,
+          message: "تم تسجيل الدخول بنجاح"
+        });
+      } else {
+        res.status(401).json({ 
+          success: false,
+          message: loginResult.message 
+        });
+      }
+    } catch (error) {
+      console.error('خطأ في تسجيل دخول السائق:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "خطأ في الخادم" 
+      });
     }
   });
 
@@ -50,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { token } = req.body;
       if (token) {
-        await dbStorage.deleteAdminSession(token);
+        await authService.logout(token);
       }
       res.json({ message: "تم تسجيل الخروج بنجاح" });
     } catch (error) {
@@ -89,6 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categories = await dbStorage.getCategories();
       res.json(categories);
     } catch (error) {
+      console.error("Error fetching categories:", error);
       res.status(500).json({ message: "Failed to fetch categories" });
     }
   });
@@ -99,6 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const category = await dbStorage.createCategory(validatedData);
       res.status(201).json(category);
     } catch (error) {
+      console.error("Error creating category:", error);
       res.status(400).json({ message: "Invalid category data" });
     }
   });
@@ -113,6 +162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(category);
     } catch (error) {
+      console.error("Error updating category:", error);
       res.status(400).json({ message: "Invalid category data" });
     }
   });
@@ -126,6 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting category:", error);
       res.status(500).json({ message: "Failed to delete category" });
     }
   });
@@ -144,6 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(restaurants);
     } catch (error) {
+      console.error("Error fetching restaurants:", error);
       res.status(500).json({ message: "Failed to fetch restaurants" });
     }
   });
@@ -157,6 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(restaurant);
     } catch (error) {
+      console.error("Error fetching restaurant:", error);
       res.status(500).json({ message: "Failed to fetch restaurant" });
     }
   });
@@ -167,6 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const restaurant = await dbStorage.createRestaurant(validatedData);
       res.status(201).json(restaurant);
     } catch (error) {
+      console.error("Error creating restaurant:", error);
       res.status(400).json({ message: "Invalid restaurant data" });
     }
   });
@@ -181,6 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(restaurant);
     } catch (error) {
+      console.error("Error updating restaurant:", error);
       res.status(400).json({ message: "Invalid restaurant data" });
     }
   });
@@ -194,6 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting restaurant:", error);
       res.status(500).json({ message: "Failed to delete restaurant" });
     }
   });
@@ -205,6 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const menuItems = await dbStorage.getMenuItems(restaurantId);
       res.json(menuItems);
     } catch (error) {
+      console.error("Error fetching menu items:", error);
       res.status(500).json({ message: "Failed to fetch menu items" });
     }
   });
@@ -215,6 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const menuItem = await dbStorage.createMenuItem(validatedData);
       res.status(201).json(menuItem);
     } catch (error) {
+      console.error("Error creating menu item:", error);
       res.status(400).json({ message: "Invalid menu item data" });
     }
   });
@@ -229,6 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(menuItem);
     } catch (error) {
+      console.error("Error updating menu item:", error);
       res.status(400).json({ message: "Invalid menu item data" });
     }
   });
@@ -242,6 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting menu item:", error);
       res.status(500).json({ message: "Failed to delete menu item" });
     }
   });
@@ -249,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Orders
   app.get("/api/orders", async (req, res) => {
     try {
-      const { restaurantId } = req.query;
+      const { restaurantId, status } = req.query;
       let orders;
       
       if (restaurantId) {
@@ -257,9 +317,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         orders = await dbStorage.getOrders();
       }
+
+      // Filter by status if provided
+      if (status && status !== 'all') {
+        orders = orders.filter(order => order.status === status);
+      }
       
       res.json(orders);
     } catch (error) {
+      console.error("Error fetching orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
     }
   });
@@ -273,6 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(order);
     } catch (error) {
+      console.error("Error fetching order:", error);
       res.status(500).json({ message: "Failed to fetch order" });
     }
   });
@@ -283,6 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const order = await dbStorage.createOrder(validatedData);
       res.status(201).json(order);
     } catch (error) {
+      console.error("Error creating order:", error);
       res.status(400).json({ message: "Invalid order data" });
     }
   });
@@ -297,6 +365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(order);
     } catch (error) {
+      console.error("Error updating order:", error);
       res.status(400).json({ message: "Invalid order data" });
     }
   });
@@ -315,6 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(drivers);
     } catch (error) {
+      console.error("Error fetching drivers:", error);
       res.status(500).json({ message: "Failed to fetch drivers" });
     }
   });
@@ -328,6 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(driver);
     } catch (error) {
+      console.error("Error fetching driver:", error);
       res.status(500).json({ message: "Failed to fetch driver" });
     }
   });
@@ -335,9 +406,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/drivers", async (req, res) => {
     try {
       const validatedData = insertDriverSchema.parse(req.body);
+      // Hash password before saving
+      if (validatedData.password) {
+        validatedData.password = await authService.hashPassword(validatedData.password);
+      }
       const driver = await dbStorage.createDriver(validatedData);
       res.status(201).json(driver);
     } catch (error) {
+      console.error("Error creating driver:", error);
       res.status(400).json({ message: "Invalid driver data" });
     }
   });
@@ -346,12 +422,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertDriverSchema.partial().parse(req.body);
+      
+      // Hash password if provided
+      if (validatedData.password) {
+        validatedData.password = await authService.hashPassword(validatedData.password);
+      }
+      
       const driver = await dbStorage.updateDriver(id, validatedData);
       if (!driver) {
         return res.status(404).json({ message: "Driver not found" });
       }
       res.json(driver);
     } catch (error) {
+      console.error("Error updating driver:", error);
       res.status(400).json({ message: "Invalid driver data" });
     }
   });
@@ -365,6 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting driver:", error);
       res.status(500).json({ message: "Failed to delete driver" });
     }
   });
@@ -383,6 +467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(offers);
     } catch (error) {
+      console.error("Error fetching special offers:", error);
       res.status(500).json({ message: "Failed to fetch special offers" });
     }
   });
@@ -393,6 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offer = await dbStorage.createSpecialOffer(validatedData);
       res.status(201).json(offer);
     } catch (error) {
+      console.error("Error creating special offer:", error);
       res.status(400).json({ message: "Invalid special offer data" });
     }
   });
@@ -407,6 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(offer);
     } catch (error) {
+      console.error("Error updating special offer:", error);
       res.status(400).json({ message: "Invalid special offer data" });
     }
   });
@@ -420,6 +507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting special offer:", error);
       res.status(500).json({ message: "Failed to delete special offer" });
     }
   });
@@ -454,19 +542,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { key } = req.params;
       const { value } = req.body;
       
-      if (!value) {
+      if (value === undefined || value === null) {
         return res.status(400).json({ message: "قيمة الإعداد مطلوبة" });
       }
 
-      const updated = await dbStorage.updateUiSetting(key, value);
+      let updated = await dbStorage.updateUiSetting(key, value.toString());
+      
+      // If setting doesn't exist, create it
       if (!updated) {
-        return res.status(404).json({ message: "الإعداد غير موجود" });
+        const newSetting = await dbStorage.createUiSetting({
+          key,
+          value: value.toString(),
+          description: `إعداد ${key}`,
+          isActive: true
+        });
+        updated = newSetting;
       }
       
       res.json(updated);
     } catch (error) {
       console.error('خطأ في تحديث إعداد الواجهة:', error);
       res.status(500).json({ message: "Failed to update UI setting" });
+    }
+  });
+
+  // Admin Dashboard Data
+  app.get("/api/admin/dashboard", async (req, res) => {
+    try {
+      const [restaurants, orders, drivers, specialOffers] = await Promise.all([
+        dbStorage.getRestaurants(),
+        dbStorage.getOrders(),
+        dbStorage.getDrivers(),
+        dbStorage.getSpecialOffers()
+      ]);
+
+      const today = new Date().toDateString();
+      const todayOrders = orders.filter(order => {
+        const orderDate = new Date(order.createdAt).toDateString();
+        return today === orderDate;
+      });
+
+      const stats = {
+        totalRestaurants: restaurants.length,
+        totalOrders: orders.length,
+        totalDrivers: drivers.length,
+        activeDrivers: drivers.filter(d => d.isAvailable && d.isActive).length,
+        todayOrders: todayOrders.length,
+        pendingOrders: orders.filter(o => o.status === 'pending').length,
+        totalRevenue: orders.reduce((sum, order) => sum + parseFloat(order.totalAmount || '0'), 0),
+        todayRevenue: todayOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount || '0'), 0)
+      };
+
+      res.json({
+        stats,
+        recentOrders: orders.slice(0, 10)
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard data" });
     }
   });
 

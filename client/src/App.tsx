@@ -61,10 +61,6 @@ function AuthenticatedApp() {
 
   // Handle admin routes (completely separate from customer app)
   if (window.location.pathname.startsWith('/admin/')) {
-    if (!isAuthenticated || userType !== 'admin') {
-      window.location.href = '/admin-login';
-      return null;
-    }
     return (
       <AdminDashboard 
         onLogout={() => {
@@ -76,10 +72,6 @@ function AuthenticatedApp() {
 
   // Handle driver routes (completely separate from customer app)
   if (window.location.pathname.startsWith('/driver/')) {
-    if (!isAuthenticated || userType !== 'driver') {
-      window.location.href = '/admin-login';
-      return null;
-    }
     return (
       <DriverDashboard 
         onLogout={() => {

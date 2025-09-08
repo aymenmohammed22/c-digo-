@@ -2,7 +2,130 @@ import { pgTable, text, integer, boolean, timestamp, decimal, uuid, jsonb, varch
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
+<<<<<<< HEAD
 // جدول المديرين والسائقين
+=======
+// Users table
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  username: varchar("username", { length: 50 }).notNull().unique(),
+  password: text("password").notNull(), // تمت الإضافة
+  name: text("name").notNull(),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 100 }),
+  address: text("address"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// User addresses table
+export const userAddresses = pgTable("user_addresses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // تمت الإضافة: home, work, other
+  title: varchar("title", { length: 100 }).notNull(),
+  address: text("address").notNull(),
+  details: text("details"), // تمت الإضافة
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Categories table
+export const categories = pgTable("categories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  icon: varchar("icon", { length: 100 }).notNull(), // تم تغيير إلى notNull
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+// Restaurants table
+export const restaurants = pgTable("restaurants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  image: text("image").notNull(), // تم تغيير إلى notNull
+  address: text("address"), // تمت الإضافة
+  rating: varchar("rating", { length: 10 }).default("0.0"),
+  reviewCount: integer("review_count").default(0),
+  deliveryTime: varchar("delivery_time", { length: 50 }).notNull(), // تم تغيير إلى notNull
+  isOpen: boolean("is_open").default(true).notNull(),
+  minimumOrder: decimal("minimum_order", { precision: 10, scale: 2 }).default("0"),
+  deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }).default("0"),
+  categoryId: uuid("category_id").references(() => categories.id),
+  openingTime: varchar("opening_time", { length: 50 }).default("08:00"), // تمت الإضافة
+  closingTime: varchar("closing_time", { length: 50 }).default("23:00"), // تمت الإضافة
+  workingDays: varchar("working_days", { length: 50 }).default("0,1,2,3,4,5,6"), // تمت الإضافة
+  isTemporarilyClosed: boolean("is_temporarily_closed").default(false), // تمت الإضافة
+  temporaryCloseReason: text("temporary_close_reason"), // تمت الإضافة
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Menu items table
+export const menuItems = pgTable("menu_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
+  image: text("image").notNull(), // تم تغيير إلى notNull
+  category: varchar("category", { length: 100 }).notNull(), // تم تغيير إلى notNull
+  isAvailable: boolean("is_available").default(true).notNull(),
+  isSpecialOffer: boolean("is_special_offer").default(false).notNull(),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
+});
+
+// Drivers table
+export const drivers = pgTable("drivers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  phone: varchar("phone", { length: 20 }).notNull().unique(),
+  password: text("password").notNull(),
+  isAvailable: boolean("is_available").default(true).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  currentLocation: varchar("current_location", { length: 200 }),
+  earnings: decimal("earnings", { precision: 10, scale: 2 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Orders table
+export const orders = pgTable("orders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerName: varchar("customer_name", { length: 100 }).notNull(),
+  customerPhone: varchar("customer_phone", { length: 20 }).notNull(),
+  customerEmail: varchar("customer_email", { length: 100 }),
+  deliveryAddress: text("delivery_address").notNull(),
+  notes: text("notes"),
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // تمت الإضافة
+  status: varchar("status", { length: 50 }).default("pending").notNull(),
+  items: text("items").notNull(), // JSON string
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(), // تمت الإضافة
+  deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  estimatedTime: varchar("estimated_time", { length: 50 }).default("30-45 دقيقة"),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id),
+  driverId: uuid("driver_id").references(() => drivers.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Special offers table
+export const specialOffers = pgTable("special_offers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(), // تم تغيير إلى notNull
+  image: text("image").notNull(), // تمت الإضافة
+  discountPercent: integer("discount_percent"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }),
+  minimumOrder: decimal("minimum_order", { precision: 10, scale: 2 }).default("0"),
+  validUntil: timestamp("valid_until"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Admin users table
+>>>>>>> 5ab984d (Initial commit: Complete food delivery system)
 export const adminUsers = pgTable("admin_users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").unique(),
@@ -65,7 +188,7 @@ export const restaurants = pgTable("restaurants", {
   categoryId: uuid("category_id").references(() => categories.id),
   phone: text("phone"),
   email: text("email"),
-  address: text("address"),
+  address: text("address").notNull(),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
@@ -75,11 +198,6 @@ export const restaurants = pgTable("restaurants", {
   deliveryTime: text("delivery_time").default("30-45 دقيقة"),
   isActive: boolean("is_active").default(true),
   isOpen: boolean("is_open").default(true),
-  openingTime: text("opening_time").default("08:00"),
-  closingTime: text("closing_time").default("23:00"),
-  workingDays: text("working_days").default("0,1,2,3,4,5,6"),
-  isTemporarilyClosed: boolean("is_temporarily_closed").default(false),
-  temporaryCloseReason: text("temporary_close_reason"),
   openingHours: jsonb("opening_hours"),
   tags: jsonb("tags"),
   features: jsonb("features"),
@@ -98,9 +216,7 @@ export const menuItems = pgTable("menu_items", {
   image: text("image"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
-  category: text("category").notNull(),
   isAvailable: boolean("is_available").default(true),
-  isSpecialOffer: boolean("is_special_offer").default(false),
   isPopular: boolean("is_popular").default(false),
   isFeatured: boolean("is_featured").default(false),
   preparationTime: integer("preparation_time").default(15),
@@ -200,8 +316,7 @@ export const specialOffers = pgTable("special_offers", {
   bannerImage: text("banner_image"),
   type: text("type").notNull(), // discount, buy_one_get_one, free_delivery, combo
   discountType: text("discount_type"), // percentage, fixed_amount
-  discountPercent: integer("discount_percent"),
-  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }),
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }),
   minimumOrder: decimal("minimum_order", { precision: 10, scale: 2 }).default("0"),
   maxDiscount: decimal("max_discount", { precision: 10, scale: 2 }),
   
@@ -211,9 +326,8 @@ export const specialOffers = pgTable("special_offers", {
   menuItemIds: jsonb("menu_item_ids"),
   
   // صلاحية العرض
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  validUntil: timestamp("valid_until"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
   startTime: text("start_time"),
   endTime: text("end_time"),
   daysOfWeek: jsonb("days_of_week"),
@@ -245,7 +359,6 @@ export const notifications = pgTable("notifications", {
   isSent: boolean("is_sent").default(false),
   sentAt: timestamp("sent_at"),
   
-  createdBy: uuid("created_by"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -364,31 +477,3 @@ export type NewNotification = typeof notifications.$inferInsert;
 
 export type Review = typeof reviews.$inferSelect;
 export type NewReview = typeof reviews.$inferInsert;
-
-export type Customer = typeof customers.$inferSelect;
-export type NewCustomer = typeof customers.$inferInsert;
-
-export type CustomerAddress = typeof customerAddresses.$inferSelect;
-export type NewCustomerAddress = typeof customerAddresses.$inferInsert;
-
-export type SystemSettings = typeof systemSettings.$inferSelect;
-export type NewSystemSettings = typeof systemSettings.$inferInsert;
-
-export type OrderTracking = typeof orderTracking.$inferSelect;
-export type NewOrderTracking = typeof orderTracking.$inferInsert;
-
-export type DriverStats = typeof driverStats.$inferSelect;
-export type NewDriverStats = typeof driverStats.$inferInsert;
-
-// Legacy types for compatibility
-export type User = AdminUser;
-export type InsertUser = NewAdminUser;
-export type Driver = AdminUser;
-export type InsertDriver = NewAdminUser;
-export type InsertCategory = NewCategory;
-export type InsertRestaurant = NewRestaurant;
-export type InsertMenuItem = NewMenuItem;
-export type InsertOrder = NewOrder;
-export type InsertSpecialOffer = NewSpecialOffer;
-export type UiSettings = SystemSettings;
-export type InsertUiSettings = NewSystemSettings;

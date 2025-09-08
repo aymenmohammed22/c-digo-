@@ -91,11 +91,71 @@ export class MemStorage implements IStorage {
   private initializeData() {
     // Initialize categories
     const categories = [
-      { id: "1", name: "مطاعم", icon: "fas fa-utensils", isActive: true },
-      { id: "2", name: "مقاهي", icon: "fas fa-coffee", isActive: true },
-      { id: "3", name: "حلويات", icon: "fas fa-candy-cane", isActive: true },
-      { id: "4", name: "سوبرماركت", icon: "fas fa-shopping-cart", isActive: true },
-      { id: "5", name: "صيدليات", icon: "fas fa-pills", isActive: true },
+      {
+        id: "1",
+        name: "مطاعم",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: null,
+        nameEn: null,
+        description: null,
+        icon: "fas fa-utensils",
+        image: null,
+        color: null,
+        sortOrder: null
+      },
+      {
+        id: "2",
+        name: "مقاهي",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: null,
+        nameEn: null,
+        description: null,
+        icon: "fas fa-coffee",
+        image: null,
+        color: null,
+        sortOrder: null
+      },
+      {
+        id: "3",
+        name: "حلويات",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: null,
+        nameEn: null,
+        description: null,
+        icon: "fas fa-candy-cane",
+        image: null,
+        color: null,
+        sortOrder: null
+      },
+      {
+        id: "4",
+        name: "سوبرماركت",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: null,
+        nameEn: null,
+        description: null,
+        icon: "fas fa-shopping-cart",
+        image: null,
+        color: null,
+        sortOrder: null
+      },
+      {
+        id: "5",
+        name: "صيدليات",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: null,
+        nameEn: null,
+        description: null,
+        icon: "fas fa-pills",
+        image: null,
+        color: null,
+        sortOrder: null
+      }
     ];
 
     categories.forEach(cat => this.categories.set(cat.id, cat));

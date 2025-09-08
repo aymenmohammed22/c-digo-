@@ -2,6 +2,7 @@ import express from "express";
 import { db } from "../db.js";
 import * as schema from "../../shared/schema.js";
 import { eq, desc, and, or, sql } from "drizzle-orm";
+import { sendNotification, broadcastToDrivers } from "../index.js";
 
 const router = express.Router();
 
@@ -16,6 +17,9 @@ const requireDriver = async (req: any, res: any, next: any) => {
     const token = authHeader.split(' ')[1];
     const session = await db.query.adminSessions.findFirst({
       where: eq(schema.adminSessions.token, token),
+      with: {
+        adminId: true
+      }
     });
 
     if (!session || session.expiresAt < new Date()) {
@@ -23,7 +27,7 @@ const requireDriver = async (req: any, res: any, next: any) => {
     }
 
     const driver = await db.query.adminUsers.findFirst({
-      where: eq(schema.adminUsers.id, session.adminId!)
+      where: eq(schema.adminUsers.id, session.adminId)
     });
 
     if (!driver || driver.userType !== 'driver') {
@@ -33,7 +37,6 @@ const requireDriver = async (req: any, res: any, next: any) => {
     req.driver = driver;
     next();
   } catch (error) {
-    console.error("خطأ في التحقق من صلاحيات السائق:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 };
@@ -122,6 +125,9 @@ router.get("/dashboard", requireDriver, async (req: any, res) => {
         eq(schema.orders.status, "confirmed"),
         sql`${schema.orders.driverId} IS NULL`
       ),
+      with: {
+        restaurantId: true
+      },
       orderBy: desc(schema.orders.createdAt),
       limit: 10
     });
@@ -135,6 +141,9 @@ router.get("/dashboard", requireDriver, async (req: any, res) => {
           eq(schema.orders.status, "ready")
         )
       ),
+      with: {
+        restaurantId: true
+      },
       orderBy: desc(schema.orders.createdAt)
     });
 
@@ -193,6 +202,23 @@ router.post("/orders/:id/accept", requireDriver, async (req: any, res) => {
       createdByType: 'driver'
     });
 
+    // إشعار العميل
+    if (order.customerId) {
+      sendNotification(order.customerId, {
+        type: 'order_update',
+        title: 'تم قبول طلبك',
+        message: `السائق ${req.driver.name} في الطريق لاستلام طلبك`,
+        orderId: id
+      });
+    }
+
+    // إشعار السائقين الآخرين بأن الطلب لم يعد متاحاً
+    broadcastToDrivers({
+      type: 'order_taken',
+      orderId: id,
+      message: 'تم قبول الطلب من سائق آخر'
+    });
+
     res.json(updatedOrder);
   } catch (error) {
     console.error("خطأ في قبول الطلب:", error);
@@ -243,6 +269,16 @@ router.put("/orders/:id/status", requireDriver, async (req: any, res) => {
       createdByType: 'driver'
     });
 
+    // إشعار العميل
+    if (order.customerId) {
+      sendNotification(order.customerId, {
+        type: 'order_update',
+        title: 'تحديث الطلب',
+        message: getStatusMessage(status),
+        orderId: id,
+        status
+      });
+    }
 
     res.json(updatedOrder);
   } catch (error) {
@@ -262,6 +298,9 @@ router.get("/orders/:id", requireDriver, async (req: any, res) => {
         eq(schema.orders.id, id),
         eq(schema.orders.driverId, driverId)
       ),
+      with: {
+        restaurantId: true
+      }
     });
 
     if (!order) {
@@ -271,7 +310,7 @@ router.get("/orders/:id", requireDriver, async (req: any, res) => {
     // جلب تتبع الطلب
     const tracking = await db.query.orderTracking.findMany({
       where: eq(schema.orderTracking.orderId, id),
-      orderBy: desc(schema.orderTracking.timestamp!)
+      orderBy: desc(schema.orderTracking.timestamp)
     });
 
     res.json({
@@ -279,7 +318,6 @@ router.get("/orders/:id", requireDriver, async (req: any, res) => {
       tracking
     });
   } catch (error) {
-    console.error("خطأ في جلب تفاصيل الطلب:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -299,6 +337,9 @@ router.get("/orders", requireDriver, async (req: any, res) => {
 
     const orders = await db.query.orders.findMany({
       where: and(...whereConditions),
+      with: {
+        restaurantId: true
+      },
       limit: Number(limit),
       offset,
       orderBy: desc(schema.orders.createdAt)
@@ -306,7 +347,6 @@ router.get("/orders", requireDriver, async (req: any, res) => {
 
     res.json(orders);
   } catch (error) {
-    console.error("خطأ في جلب تاريخ الطلبات:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });

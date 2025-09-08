@@ -1,8 +1,11 @@
 import express from "express";
 import { createServer } from "http";
+import { WebSocketServer } from "ws";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import session from "express-session";
+import ConnectPgSimple from "connect-pg-simple";
 import { db } from "./db.js";
 import { adminRoutes } from "./routes/admin.js";
 import { customerRoutes } from "./routes/customer.js";
@@ -17,6 +20,82 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = createServer(app);
+
+// إعداد WebSocket للإشعارات المباشرة
+const wss = new WebSocketServer({ server });
+
+// تخزين اتصالات WebSocket
+const connections = new Map();
+
+wss.on('connection', (ws, req) => {
+  console.log('اتصال WebSocket جديد');
+  
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      
+      if (data.type === 'auth') {
+        connections.set(data.userId, { ws, userType: data.userType });
+        console.log(`تم تسجيل المستخدم: ${data.userId} - ${data.userType}`);
+      }
+    } catch (error) {
+      console.error('خطأ في معالجة رسالة WebSocket:', error);
+    }
+  });
+  
+  ws.on('close', () => {
+    // إزالة الاتصال عند الإغلاق
+    for (const [userId, connection] of connections.entries()) {
+      if (connection.ws === ws) {
+        connections.delete(userId);
+        console.log(`تم قطع الاتصال للمستخدم: ${userId}`);
+        break;
+      }
+    }
+  });
+});
+
+// دالة إرسال الإشعارات
+export function sendNotification(userId: string, notification: any) {
+  const connection = connections.get(userId);
+  if (connection && connection.ws.readyState === 1) {
+    connection.ws.send(JSON.stringify({
+      type: 'notification',
+      data: notification
+    }));
+  }
+}
+
+// دالة إرسال إشعار لجميع السائقين
+export function broadcastToDrivers(notification: any) {
+  for (const [userId, connection] of connections.entries()) {
+    if (connection.userType === 'driver' && connection.ws.readyState === 1) {
+      connection.ws.send(JSON.stringify({
+        type: 'notification',
+        data: notification
+      }));
+    }
+  }
+}
+
+// إعداد الجلسات
+const PgSession = ConnectPgSimple(session);
+
+app.use(session({
+  store: new PgSession({
+    conString: process.env.DATABASE_URL,
+    tableName: 'session',
+    createTableIfMissing: true,
+  }),
+  secret: process.env.SESSION_SECRET || 'saree-one-secret-key-2024',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 ساعة
+  },
+}));
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
@@ -43,7 +122,7 @@ app.use('/api', publicRoutes);
 
 // إعداد Vite أو الملفات الثابتة
 if (process.env.NODE_ENV === "development") {
-  await setupVite(app, server);
+  await setupVite(app);
 } else {
   serveStatic(app);
 }

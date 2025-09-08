@@ -26,7 +26,7 @@ router.get("/restaurants", async (req, res) => {
     const { categoryId, search, page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    let whereConditions = [];
+    let whereConditions = [eq(schema.restaurants.isActive, true)];
     
     if (categoryId && categoryId !== 'all') {
       whereConditions.push(eq(schema.restaurants.categoryId, categoryId as string));
@@ -43,9 +43,12 @@ router.get("/restaurants", async (req, res) => {
 
     const restaurants = await db.query.restaurants.findMany({
       where: and(...whereConditions),
+      with: {
+        categoryId: true
+      },
       limit: Number(limit),
       offset,
-      orderBy: [schema.restaurants.name]
+      orderBy: [desc(schema.restaurants.rating), schema.restaurants.name]
     });
 
     res.json(restaurants);
@@ -61,7 +64,13 @@ router.get("/restaurants/:id", async (req, res) => {
     const { id } = req.params;
     
     const restaurant = await db.query.restaurants.findFirst({
-      where: eq(schema.restaurants.id, id)
+      where: and(
+        eq(schema.restaurants.id, id),
+        eq(schema.restaurants.isActive, true)
+      ),
+      with: {
+        categoryId: true
+      }
     });
 
     if (!restaurant) {
@@ -82,7 +91,10 @@ router.get("/restaurants/:id/menu", async (req, res) => {
     
     // التحقق من وجود المطعم
     const restaurant = await db.query.restaurants.findFirst({
-      where: eq(schema.restaurants.id, id)
+      where: and(
+        eq(schema.restaurants.id, id),
+        eq(schema.restaurants.isActive, true)
+      )
     });
 
     if (!restaurant) {
@@ -91,18 +103,25 @@ router.get("/restaurants/:id/menu", async (req, res) => {
 
     // جلب عناصر القائمة مع الأقسام
     const menuItems = await db.query.menuItems.findMany({
-      where: eq(schema.menuItems.restaurantId, id),
-      orderBy: [schema.menuItems.name]
+      where: and(
+        eq(schema.menuItems.restaurantId, id),
+        eq(schema.menuItems.isAvailable, true)
+      ),
+      with: {
+        sectionId: true
+      },
+      orderBy: [schema.menuItems.sortOrder, schema.menuItems.name]
     });
 
     // تجميع العناصر حسب القسم
     const sections = await db.query.restaurantSections.findMany({
-      orderBy: [schema.restaurantSections.name]
+      where: eq(schema.restaurantSections.isActive, true),
+      orderBy: [schema.restaurantSections.sortOrder, schema.restaurantSections.name]
     });
 
     const menuBySection = sections.map(section => ({
       ...section,
-      items: menuItems.filter(item => item.category === section.name)
+      items: menuItems.filter(item => item.sectionId === section.id)
     })).filter(section => section.items.length > 0);
 
     res.json({
@@ -121,7 +140,11 @@ router.get("/special-offers", async (req, res) => {
   try {
     const { restaurantId, categoryId } = req.query;
     
-    let whereConditions = [eq(schema.specialOffers.isActive, true)];
+    let whereConditions = [
+      eq(schema.specialOffers.isActive, true),
+      sql`${schema.specialOffers.startDate} <= NOW()`,
+      sql`${schema.specialOffers.endDate} >= NOW()`
+    ];
     
     if (restaurantId) {
       whereConditions.push(eq(schema.specialOffers.restaurantId, restaurantId as string));
@@ -133,7 +156,11 @@ router.get("/special-offers", async (req, res) => {
 
     const offers = await db.query.specialOffers.findMany({
       where: and(...whereConditions),
-      orderBy: [desc(schema.specialOffers.createdAt)]
+      with: {
+        restaurantId: true,
+        categoryId: true
+      },
+      orderBy: [desc(schema.specialOffers.priority), desc(schema.specialOffers.createdAt)]
     });
 
     res.json(offers);
@@ -186,6 +213,10 @@ router.get("/orders/:id/track", async (req, res) => {
     
     const order = await db.query.orders.findFirst({
       where: eq(schema.orders.id, id),
+      with: {
+        restaurantId: true,
+        driverId: true
+      }
     });
 
     if (!order) {
@@ -195,7 +226,7 @@ router.get("/orders/:id/track", async (req, res) => {
     // جلب تتبع الطلب
     const tracking = await db.query.orderTracking.findMany({
       where: eq(schema.orderTracking.orderId, id),
-      orderBy: desc(schema.orderTracking.timestamp!)
+      orderBy: desc(schema.orderTracking.timestamp)
     });
 
     res.json({
@@ -249,6 +280,9 @@ router.get("/search", async (req, res) => {
             like(schema.restaurants.description, searchTerm)
           )
         ),
+        with: {
+          categoryId: true
+        },
         limit: 10
       });
     }
@@ -256,11 +290,16 @@ router.get("/search", async (req, res) => {
     if (type === 'all' || type === 'menu') {
       results.menuItems = await db.query.menuItems.findMany({
         where: and(
+          eq(schema.menuItems.isAvailable, true),
           or(
             like(schema.menuItems.name, searchTerm),
             like(schema.menuItems.description, searchTerm)
           )
         ),
+        with: {
+          restaurantId: true,
+          sectionId: true
+        },
         limit: 20
       });
     }

@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { 
   BarChart3, 
   Users, 
@@ -19,15 +20,16 @@ import {
 } from 'lucide-react';
 
 interface AdminDashboardProps {
-  onLogout?: () => void;
+  onLogout: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   const handleLogout = () => {
-    // For demo purposes, just call onLogout if provided
-    if (onLogout) onLogout();
+    logout();
+    onLogout();
   };
 
   const stats = [
@@ -64,6 +66,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Notification System */}
+        <div className="mb-8">
+          <NotificationSystem userType="admin" />
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => {
@@ -133,7 +140,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           <p className="font-medium">{driver}</p>
                           <p className="text-sm text-gray-600">متاح للتوصيل</p>
                         </div>
-                        <Badge className="bg-green-100 text-green-800">
+                        <Badge variant="default" className="bg-green-100 text-green-800">
                           نشط
                         </Badge>
                       </div>
@@ -145,45 +152,90 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </TabsContent>
 
           <TabsContent value="orders" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>إدارة الطلبات</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>محتوى إدارة الطلبات</p>
-              </CardContent>
-            </Card>
+            <AdminOrders />
           </TabsContent>
 
           <TabsContent value="restaurants" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>إدارة المطاعم</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>محتوى إدارة المطاعم</p>
-              </CardContent>
-            </Card>
+            <AdminRestaurants />
           </TabsContent>
 
           <TabsContent value="drivers" className="space-y-6">
+            <AdminDrivers />
+          </TabsContent>
+
+          <TabsContent value="categories" className="space-y-6">
+            <AdminCategories />
+          </TabsContent>
+
+          <TabsContent value="menu" className="space-y-6">
+            <AdminMenuItems />
+          </TabsContent>
+
+          <TabsContent value="offers" className="space-y-6">
+            <AdminOffers />
+          </TabsContent>
+
+          <TabsContent value="menu" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>إدارة السائقين</CardTitle>
+                <CardTitle>إدارة قوائم الطعام</CardTitle>
               </CardHeader>
               <CardContent>
-                <p>محتوى إدارة السائقين</p>
+                <div className="space-y-4">
+                  {['عربكة بالقشطة والعسل', 'معصوب بالقشطة والعسل', 'مياه معدنية', 'كومبو عربكة خاص'].map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <Menu className="h-8 w-8 text-gray-400" />
+                        <div>
+                          <p className="font-medium">{item}</p>
+                          <p className="text-sm text-gray-600">{25 + index * 15} ريال</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default" className="bg-green-100 text-green-800">
+                          متوفر
+                        </Badge>
+                        <Button variant="outline" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="categories" className="space-y-6">
+          <TabsContent value="offers" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>إدارة الفئات</CardTitle>
+                <CardTitle>إدارة العروض الخاصة</CardTitle>
               </CardHeader>
               <CardContent>
-                <p>محتوى إدارة الفئات</p>
+                <div className="space-y-4">
+                  {['خصم 30% على الطلب الأول', 'توصيل مجاني فوق 50 ريال', 'عرض رمضان الخاص'].map((offer, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <Percent className="h-8 w-8 text-gray-400" />
+                        <div>
+                          <p className="font-medium">{offer}</p>
+                          <p className="text-sm text-gray-600">صالح لمدة {7 + index * 3} أيام</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default" className="bg-orange-100 text-orange-800">
+                          نشط
+                        </Badge>
+                        <Button variant="outline" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -192,5 +244,3 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 };
-
-export default AdminDashboard;

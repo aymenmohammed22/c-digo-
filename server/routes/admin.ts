@@ -2,6 +2,7 @@ import express from "express";
 import { db } from "../db.js";
 import * as schema from "../../shared/schema.js";
 import { eq, desc, and, or, like, count, sql } from "drizzle-orm";
+import { sendNotification, broadcastToDrivers } from "../index.js";
 
 const router = express.Router();
 
@@ -16,6 +17,9 @@ const requireAdmin = async (req: any, res: any, next: any) => {
     const token = authHeader.split(' ')[1];
     const session = await db.query.adminSessions.findFirst({
       where: eq(schema.adminSessions.token, token),
+      with: {
+        adminId: true
+      }
     });
 
     if (!session || session.expiresAt < new Date()) {
@@ -23,7 +27,7 @@ const requireAdmin = async (req: any, res: any, next: any) => {
     }
 
     const admin = await db.query.adminUsers.findFirst({
-      where: eq(schema.adminUsers.id, session.adminId!)
+      where: eq(schema.adminUsers.id, session.adminId)
     });
 
     if (!admin || admin.userType !== 'admin') {
@@ -33,7 +37,6 @@ const requireAdmin = async (req: any, res: any, next: any) => {
     req.admin = admin;
     next();
   } catch (error) {
-    console.error("خطأ في التحقق من صلاحيات المدير:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 };
@@ -276,6 +279,9 @@ router.get("/restaurants", requireAdmin, async (req, res) => {
 
     const restaurants = await db.query.restaurants.findMany({
       where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+      with: {
+        categoryId: true
+      },
       limit: Number(limit),
       offset,
       orderBy: desc(schema.restaurants.createdAt)
@@ -285,7 +291,15 @@ router.get("/restaurants", requireAdmin, async (req, res) => {
       .from(schema.restaurants)
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
 
-    res.json(restaurants);
+    res.json({
+      restaurants,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: totalCount.count,
+        pages: Math.ceil(totalCount.count / Number(limit))
+      }
+    });
   } catch (error) {
     console.error("خطأ في جلب المطاعم:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -348,12 +362,14 @@ router.get("/restaurants/:restaurantId/menu", requireAdmin, async (req, res) => 
     
     const menuItems = await db.query.menuItems.findMany({
       where: eq(schema.menuItems.restaurantId, restaurantId),
-      orderBy: [schema.menuItems.name]
+      with: {
+        sectionId: true
+      },
+      orderBy: [schema.menuItems.sortOrder, schema.menuItems.name]
     });
     
     res.json(menuItems);
   } catch (error) {
-    console.error("خطأ في جلب عناصر القائمة:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -486,9 +502,29 @@ router.put("/orders/:id/status", requireAdmin, async (req: any, res) => {
       createdByType: 'admin'
     });
     
+    // إرسال إشعار للعميل
+    if (updatedOrder.customerId) {
+      sendNotification(updatedOrder.customerId, {
+        type: 'order_update',
+        title: 'تحديث الطلب',
+        message: `تم تحديث حالة طلبك #${updatedOrder.orderNumber}`,
+        orderId: id,
+        status
+      });
+    }
+    
+    // إرسال إشعار للسائق إذا تم تعيينه
+    if (driverId) {
+      sendNotification(driverId, {
+        type: 'order_assigned',
+        title: 'طلب جديد',
+        message: `تم تعيين طلب جديد لك #${updatedOrder.orderNumber}`,
+        orderId: id
+      });
+    }
+    
     res.json(updatedOrder);
   } catch (error) {
-    console.error("خطأ في تحديث حالة الطلب:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -590,12 +626,15 @@ router.get("/drivers/:id/stats", requireAdmin, async (req, res) => {
 router.get("/special-offers", requireAdmin, async (req, res) => {
   try {
     const offers = await db.query.specialOffers.findMany({
+      with: {
+        restaurantId: true,
+        categoryId: true
+      },
       orderBy: desc(schema.specialOffers.createdAt)
     });
     
     res.json(offers);
   } catch (error) {
-    console.error("خطأ في جلب العروض الخاصة:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -655,9 +694,17 @@ router.post("/notifications", requireAdmin, async (req: any, res) => {
       .values(notificationData)
       .returning();
     
+    // إرسال الإشعار حسب النوع
+    if (notificationData.recipientType === 'all') {
+      // إرسال لجميع المستخدمين
+      broadcastToDrivers(newNotification);
+    } else if (notificationData.recipientId) {
+      // إرسال لمستخدم محدد
+      sendNotification(notificationData.recipientId, newNotification);
+    }
+    
     res.json(newNotification);
   } catch (error) {
-    console.error("خطأ في إنشاء الإشعار:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });

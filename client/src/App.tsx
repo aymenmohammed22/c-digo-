@@ -1,3 +1,4 @@
+import React from 'react';
 import { Router, Route, Switch } from 'wouter';
 import { CartProvider } from '@/context/CartContext';
 import { AuthProvider } from '@/context/AuthContext';
@@ -11,8 +12,8 @@ import ProfilePage from '@/pages/ProfilePage';
 
 // صفحات الإدارة
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
-import AdminDashboard from '@/pages/AdminDashboard';
-import AdminRestaurants from '@/pages/AdminRestaurants';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminRestaurants from '@/pages/admin/AdminRestaurants';
 import AdminMenuItems from '@/pages/AdminMenuItems';
 import AdminOffers from '@/pages/AdminOffers';
 
@@ -41,27 +42,35 @@ function App() {
             <Route path="/admin-login" component={AdminLoginPage} />
             
             <Route path="/admin">
-              <AdminLayout>
-                <AdminDashboard />
-              </AdminLayout>
+              <ProtectedRoute userType="admin">
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              </ProtectedRoute>
             </Route>
             
             <Route path="/admin/restaurants">
-              <AdminLayout>
-                <AdminRestaurants />
-              </AdminLayout>
+              <ProtectedRoute userType="admin">
+                <AdminLayout>
+                  <AdminRestaurants />
+                </AdminLayout>
+              </ProtectedRoute>
             </Route>
             
             <Route path="/admin/menu-items">
-              <AdminLayout>
-                <AdminMenuItems />
-              </AdminLayout>
+              <ProtectedRoute userType="admin">
+                <AdminLayout>
+                  <AdminMenuItems />
+                </AdminLayout>
+              </ProtectedRoute>
             </Route>
             
             <Route path="/admin/offers">
-              <AdminLayout>
-                <AdminOffers />
-              </AdminLayout>
+              <ProtectedRoute userType="admin">
+                <AdminLayout>
+                  <AdminOffers />
+                </AdminLayout>
+              </ProtectedRoute>
             </Route>
 
             {/* مسارات السائق */}

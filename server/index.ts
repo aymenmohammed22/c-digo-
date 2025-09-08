@@ -43,7 +43,7 @@ app.use('/api', publicRoutes);
 
 // إعداد Vite أو الملفات الثابتة
 if (process.env.NODE_ENV === "development") {
-  await setupVite(app);
+  await setupVite(app, server);
 } else {
   serveStatic(app);
 }

@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createServer as createViteServer, type ViteDevServer } from "vite";
+import { createServer as createViteServer } from "vite";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 

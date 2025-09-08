@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,11 +23,10 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
-  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   const handleLogout = () => {
-    logout();
+    // For demo purposes, just call onLogout if provided
     if (onLogout) onLogout();
   };
 

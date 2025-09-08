@@ -23,8 +23,10 @@ interface AdminLayoutProps {
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [, setLocation] = useLocation();
-  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // Default admin user for demo purposes
+  const user = { name: 'مدير النظام', userType: 'admin' };
 
   const menuItems = [
     { 
@@ -83,8 +85,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   };
 
   const handleLogout = () => {
-    logout();
-    setLocation('/admin-login');
+    // For demo purposes, just redirect to home
+    setLocation('/');
   };
 
   const currentPath = window.location.pathname;

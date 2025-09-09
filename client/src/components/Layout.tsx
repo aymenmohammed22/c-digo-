@@ -90,18 +90,20 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen shadow-xl relative">
-      {/* Header */}
-      <header className="bg-card border-b border-border p-4 sticky top-0 z-40">
+      {/* Header - Redesigned to match reference */}
+      <header className="gradient-header text-white sticky top-0 z-40 p-4">
         <div className="flex items-center justify-between mb-4">
+          {/* Right side - Menu and User icons */}
           <div className="flex items-center gap-3">
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="text-white hover:bg-white/20"
                   data-testid="button-menu"
                 >
-                  <Menu className="h-5 w-5" />
+                  <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-80">
@@ -138,100 +140,84 @@ export default function Layout({ children }: LayoutProps) {
                       </Button>
                     );
                   })}
-                  
-                  {/* أزرار المدير والسائقين - مخفية من القائمة الجانبية */}
-                  {/* تم إخفاء هذه الأزرار حسب المطلوب - الوصول عبر النقر 5 مرات على أيقونة الملف الشخصي */}
                 </div>
               </SheetContent>
             </Sheet>
-            <div 
-              className="text-center cursor-pointer"
-              onClick={() => {
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleProfileIconClick}
+              className="relative text-white hover:bg-white/20"
+              title="النقر 5 مرات للوصول إلى صفحة تسجيل الدخول"
+              data-testid="button-profile"
+            >
+              <User className="h-6 w-6" />
+              {profileClickCount > 0 && (
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full text-xs text-primary flex items-center justify-center">
+                  {profileClickCount}
+                </div>
+              )}
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20"
+              data-testid="button-search"
+            >
+              <Search className="h-6 w-6" />
+            </Button>
+          </div>
+
+          {/* Center - Title and Location */}
+          <div className="text-center flex-1" 
+               onClick={() => {
                 const newCount = logoClickCount + 1;
                 setLogoClickCount(newCount);
                 
                 if (newCount === 4) {
                   setShowAdminButtons(true);
                   setLogoClickCount(0);
-                  // الانتقال إلى صفحة تسجيل الدخول
                   window.location.href = '/admin-login';
                 } else if (newCount > 4) {
                   setLogoClickCount(0);
                 }
                 
-                // Reset counter after 3 seconds if not completed
                 setTimeout(() => {
                   setLogoClickCount(0);
                 }, 3000);
               }}
-            >
-              <h1 className="text-lg font-bold text-primary">السريع ون</h1>
-              <p className="text-xs text-muted-foreground">توصيل سريع</p>
-              {logoClickCount > 0 && logoClickCount < 4 && (
-                <div className="flex justify-center mt-1">
-                  {Array.from({ length: 4 }, (_, i) => (
-                    <div
-                      key={i}
-                      className={`w-2 h-2 rounded-full mx-1 ${
-                        i < logoClickCount ? 'bg-primary' : 'bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+          >
+            <h1 className="text-xl font-bold text-white">السريع ون</h1>
+            <div className="flex items-center justify-center gap-1 text-sm text-white/90">
+              <MapPin className="h-4 w-4" />
+              <span>اختيار العنوان</span>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              data-testid="button-theme-toggle"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
             
-            {/* أيقونة الملف الشخصي مع خاصية النقر المتعدد */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleProfileIconClick}
-              className="relative"
-              title="النقر 5 مرات للوصول إلى صفحة تسجيل الدخول"
-              data-testid="button-profile"
-            >
-              <User className="h-5 w-5" />
-              
-              {/* مؤشر بصري للنقرات */}
-              {profileClickCount > 0 && (
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full text-xs text-white flex items-center justify-center">
-                  {profileClickCount}
-                </div>
-              )}
-            </Button>
+            {logoClickCount > 0 && logoClickCount < 4 && (
+              <div className="flex gap-1 justify-center mt-1">
+                {[...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      i < logoClickCount ? 'bg-white' : 'bg-white/30'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Left side - Location pin icon */}
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <MapPin className="h-5 w-5 text-white" />
           </div>
         </div>
-
-        {/* Search Bar - only show on home page */}
-        {isHomePage && (
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="ابحث عن المطاعم والوجبات..."
-              className="w-full bg-muted text-foreground placeholder-muted-foreground rounded-lg pr-12 pl-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary"
-              data-testid="input-search"
-            />
-            <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          </div>
-        )}
       </header>
 
       {/* Main Content */}
-      <main className="pb-20">
+      <main className="pb-20 bg-gray-50 min-h-screen">
         {children}
       </main>
 

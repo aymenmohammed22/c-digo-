@@ -13,7 +13,15 @@ import {
   List,
   ChevronRight,
   Truck,
-  Settings
+  Settings,
+  User,
+  Menu,
+  Beef,
+  Cookie,
+  UtensilsCrossed,
+  Heart,
+  Award,
+  Timer
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -94,28 +102,39 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
+      {/* Header - Modern design matching reference */}
+      <header className="bg-gradient-to-r from-orange-500 to-orange-600 text-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo مع نظام الـ 4 نقرات */}
-            <div className="flex items-center gap-3 cursor-pointer" onClick={handleLogoClick}>
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                <ShoppingBag className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">السريع ون</h1>
-                <p className="text-xs text-gray-500">توصيل سريع وآمن</p>
+            {/* Right side - Menu and User */}
+            <div className="flex items-center gap-4">
+              <button className="p-2">
+                <Menu className="h-6 w-6" />
+              </button>
+              <button className="p-2">
+                <User className="h-6 w-6" />
+              </button>
+              <button className="p-2">
+                <Search className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Center - Title and Location */}
+            <div className="text-center" onClick={handleLogoClick}>
+              <h1 className="text-lg font-bold">توصيل أول بدن</h1>
+              <div className="flex items-center justify-center gap-1 text-sm opacity-90">
+                <MapPin className="h-4 w-4" />
+                <span>اختيار العنوان</span>
               </div>
               
-              {/* مؤشر النقرات */}
+              {/* Admin access indicators */}
               {clickCount > 0 && clickCount < 4 && (
-                <div className="flex gap-1 mr-2">
+                <div className="flex gap-1 justify-center mt-1">
                   {[...Array(4)].map((_, i) => (
                     <div
                       key={i}
-                      className={`w-2 h-2 rounded-full ${
-                        i < clickCount ? 'bg-orange-500' : 'bg-gray-300'
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        i < clickCount ? 'bg-white' : 'bg-white/30'
                       }`}
                     />
                   ))}
@@ -123,228 +142,294 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* أزرار الإدارة (تظهر بعد 4 نقرات) */}
+            {/* Left side - Location pin */}
+            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <MapPin className="h-5 w-5" />
+            </div>
+
+            {/* Admin buttons (hidden by default) */}
             {showAdminButtons && (
-              <div className="flex items-center gap-2">
+              <div className="absolute top-full left-4 mt-2 bg-white rounded-lg shadow-lg p-2 flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setLocation('/admin-login')}
-                  className="flex items-center gap-2"
+                  className="text-gray-700"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-4 w-4 ml-1" />
                   لوحة التحكم
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setLocation('/driver-login')}
-                  className="flex items-center gap-2"
+                  className="text-gray-700"
                 >
-                  <Truck className="h-4 w-4" />
+                  <Truck className="h-4 w-4 ml-1" />
                   تطبيق السائق
                 </Button>
               </div>
             )}
-
-            {/* العنوان والموقع */}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <MapPin className="h-4 w-4" />
-              <span>صنعاء، اليمن</span>
-            </div>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-orange-500 to-orange-600 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h2 className="text-4xl font-bold mb-4">اطلب طعامك المفضل</h2>
-            <p className="text-xl mb-8 opacity-90">توصيل سريع من أفضل المطاعم في صنعاء</p>
-            
-            {/* شريط البحث */}
-            <div className="max-w-2xl mx-auto relative">
-              <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="ابحث عن مطعم أو وجبة..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pr-12 pl-4 py-4 text-lg rounded-xl border-0 shadow-lg"
-              />
-            </div>
+      {/* Timing Banner - Similar to reference */}
+      <div className="bg-gray-200 py-2">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <div className="bg-orange-500 text-white px-4 py-2 rounded-full inline-flex items-center gap-2 text-sm">
+            <Timer className="h-4 w-4" />
+            <span>أوقات الدوام من الساعة 11:00 من صباحا حتى 11:09 م</span>
+            <span className="bg-white/20 px-2 py-1 rounded text-xs">مغلق</span>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* العروض الخاصة */}
-        {specialOffers && specialOffers.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center gap-2 mb-6">
-              <Percent className="h-6 w-6 text-orange-500" />
-              <h3 className="text-2xl font-bold text-gray-900">العروض الخاصة</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {specialOffers.slice(0, 3).map((offer) => (
-                <Card key={offer.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                  <div className="h-48 bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center">
-                    {offer.image ? (
-                      <img src={offer.image} alt={offer.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <Percent className="h-16 w-16 text-white" />
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <h4 className="font-bold text-lg mb-2">{offer.title}</h4>
-                    <p className="text-gray-600 text-sm mb-3">{offer.description}</p>
-                    <div className="flex items-center justify-between">
-                      {offer.discountPercent && (
-                        <Badge className="bg-green-100 text-green-800">
-                          خصم {offer.discountPercent}%
-                        </Badge>
-                      )}
-                      {offer.discountAmount && (
-                        <Badge className="bg-green-100 text-green-800">
-                          خصم {parseDecimal(offer.discountAmount)} ريال
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* التصنيفات والمطاعم */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">المطاعم</h3>
-            <div className="flex items-center gap-4">
-              {/* تبديل العرض */}
-              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                >
-                  <Grid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Category Grid - Matching reference design */}
+        <section className="mb-6">
+          <div className="grid grid-cols-4 gap-4">
+            {/* Category cards with icons like reference */}
+            <Card className="p-4 text-center hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedCategory('meat')}>
+              <div className="w-12 h-12 mx-auto mb-2 bg-red-100 rounded-xl flex items-center justify-center">
+                <Beef className="h-6 w-6 text-red-600" />
               </div>
+              <h4 className="text-sm font-medium text-gray-700">اللحوم</h4>
+            </Card>
+            
+            <Card className="p-4 text-center hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedCategory('sweets')}>
+              <div className="w-12 h-12 mx-auto mb-2 bg-pink-100 rounded-xl flex items-center justify-center">
+                <Cookie className="h-6 w-6 text-pink-600" />
+              </div>
+              <h4 className="text-sm font-medium text-gray-700">الحلويات</h4>
+            </Card>
+            
+            <Card className="p-4 text-center hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedCategory('restaurants')}>
+              <div className="w-12 h-12 mx-auto mb-2 bg-orange-100 rounded-xl flex items-center justify-center">
+                <UtensilsCrossed className="h-6 w-6 text-orange-600" />
+              </div>
+              <h4 className="text-sm font-medium text-gray-700">المطاعم</h4>
+            </Card>
+            
+            <Card className="p-4 text-center hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedCategory('all')}>
+              <div className="w-12 h-12 mx-auto mb-2 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Menu className="h-6 w-6 text-blue-600" />
+              </div>
+              <h4 className="text-sm font-medium text-gray-700">كل التصنيفات</h4>
+            </Card>
+          </div>
+        </section>
+
+        {/* Promotional Banners - Like reference image */}
+        <section className="mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left Banner - عرض خاص */}
+            <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="relative h-40 bg-gradient-to-br from-orange-400 to-orange-600 p-6 text-white">
+                <div className="absolute top-4 left-4 bg-white/20 px-3 py-1 rounded-full text-sm">
+                  عرض خاص
+                </div>
+                <div className="absolute bottom-4 right-4">
+                  <h3 className="text-xl font-bold mb-1">توفير يصل إلى 50%</h3>
+                  <p className="text-sm opacity-90">على جميع أطباق اليوم</p>
+                  <p className="text-xs mt-2 bg-white/20 inline-block px-2 py-1 rounded">
+                    صالح حتى 15.000 د
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Right Banner - أطباق مميزة */}
+            <Card className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow">
+              <div className="relative h-40 bg-gradient-to-br from-green-400 to-green-600 p-6 text-white">
+                <div className="absolute top-4 left-4 bg-white/20 px-3 py-1 rounded-full text-sm">
+                  1,000,000
+                </div>
+                <div className="absolute bottom-4 right-4">
+                  <h3 className="text-xl font-bold mb-1">كل العروض</h3>
+                  <p className="text-sm opacity-90">الاطباق الأميركية</p>
+                  <p className="text-xs mt-2 bg-white/20 inline-block px-2 py-1 rounded">
+                    متاح حتى 15.000 د
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        {/* Restaurant Section with Tab Navigation */}
+        <section>
+          {/* Tab Navigation - Similar to reference */}
+          <div className="mb-6">
+            <div className="flex border-b border-gray-200">
+              <button 
+                className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+                  selectedCategory === 'popular' 
+                    ? 'border-orange-500 text-orange-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setSelectedCategory('popular')}
+              >
+                المفضلة
+              </button>
+              <button 
+                className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+                  selectedCategory === 'nearest' 
+                    ? 'border-orange-500 text-orange-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setSelectedCategory('nearest')}
+              >
+                الجديدة
+              </button>
+              <button 
+                className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+                  selectedCategory === 'offers' 
+                    ? 'border-orange-500 text-orange-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setSelectedCategory('offers')}
+              >
+                الأقرب
+              </button>
+              <button 
+                className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+                  selectedCategory === 'all' 
+                    ? 'border-orange-500 text-orange-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setSelectedCategory('all')}
+              >
+                الكل
+              </button>
             </div>
           </div>
 
-          {/* فلتر التصنيفات */}
-          <div className="mb-8">
-            <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-6 h-auto">
-                <TabsTrigger value="all" className="py-3">
-                  جميع المطاعم
-                </TabsTrigger>
-                {categories?.map((category) => (
-                  <TabsTrigger key={category.id} value={category.id} className="py-3">
-                    {category.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
-
-          {/* قائمة المطاعم */}
-          {filteredRestaurants.length > 0 ? (
-            <div className={`grid gap-6 ${
-              viewMode === 'grid' 
-                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
-                : 'grid-cols-1'
-            }`}>
-              {filteredRestaurants.map((restaurant) => (
-                <Card 
-                  key={restaurant.id} 
-                  className="overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
-                  onClick={() => handleRestaurantClick(restaurant.id)}
-                >
-                  <div className="h-48 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center overflow-hidden">
-                    {restaurant.image ? (
-                      <img 
-                        src={restaurant.image} 
-                        alt={restaurant.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                    ) : (
-                      <ShoppingBag className="h-16 w-16 text-gray-400" />
-                    )}
-                  </div>
-                  
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-bold text-lg group-hover:text-orange-600 transition-colors">
-                        {restaurant.name}
-                      </h4>
-                      {restaurant.isOpen ? (
-                        <Badge className="bg-green-100 text-green-800">مفتوح</Badge>
+          {/* Restaurant Cards - Matching reference design */}
+          <div className="space-y-4">
+            {/* Sample restaurants since database is empty */}
+            {[
+              {
+                id: '1',
+                name: 'المراسيم',
+                category: 'دولة كاليكس - المنصورة',
+                rating: 5,
+                image: null,
+                deliveryTime: '30-45 دقيقة',
+                deliveryFee: 'مجاني',
+                badge: 'مغلق'
+              },
+              {
+                id: '2', 
+                name: 'مطاعم ومطابخ الطويل',
+                category: 'دولة السيئينة',
+                rating: 5,
+                image: null,
+                deliveryTime: '25-40 دقيقة',
+                deliveryFee: 'مجاني',
+                badge: 'مغلق'
+              },
+              {
+                id: '3',
+                name: 'مطعم الشرق الأوسط',
+                category: 'الحديث (عدن)',
+                rating: 5,
+                image: null,
+                deliveryTime: '20-35 دقيقة',
+                deliveryFee: 'مجاني',
+                badge: 'مغلق'
+              },
+              {
+                id: '4',
+                name: 'مطعم شواطئ عدن',
+                category: 'البساتية',
+                rating: 4,
+                image: null,
+                deliveryTime: '30-50 دقيقة',
+                deliveryFee: 'مجاني',
+                badge: 'مغلق'
+              }
+            ].map((restaurant) => (
+              <Card 
+                key={restaurant.id}
+                className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleRestaurantClick(restaurant.id)}
+              >
+                <CardContent className="p-0">
+                  <div className="flex">
+                    {/* Restaurant Image */}
+                    <div className="w-20 h-20 bg-gray-200 flex-shrink-0 flex items-center justify-center">
+                      {restaurant.image ? (
+                        <img src={restaurant.image} alt={restaurant.name} className="w-full h-full object-cover" />
                       ) : (
-                        <Badge variant="secondary">مغلق</Badge>
+                        <UtensilsCrossed className="h-8 w-8 text-gray-400" />
                       )}
                     </div>
                     
-                    {restaurant.description && (
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                        {restaurant.description}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-yellow-500" />
-                          <span>{parseDecimal(restaurant.rating)}</span>
+                    {/* Restaurant Info */}
+                    <div className="flex-1 p-4">
+                      <div className="flex items-start justify-between mb-1">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-1">{restaurant.name}</h4>
+                          <p className="text-sm text-gray-600 mb-2">{restaurant.category}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>{restaurant.deliveryTime}</span>
+                            <span>•</span>
+                            <span>خط التسعين</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{restaurant.deliveryTime}</span>
+                        
+                        {/* Rating and Badge */}
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 mb-2">
+                            <span className="text-sm font-medium">{restaurant.rating}</span>
+                            {[...Array(restaurant.rating)].map((_, i) => (
+                              <Star key={i} className="h-3 w-3 text-yellow-400 fill-current" />
+                            ))}
+                          </div>
+                          <Badge 
+                            className={`text-xs ${
+                              restaurant.badge === 'مغلق' 
+                                ? 'bg-red-600 text-white' 
+                                : 'bg-green-600 text-white'
+                            }`}
+                          >
+                            {restaurant.badge}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="text-left">
-                        <p className="text-xs">رسوم التوصيل</p>
-                        <p className="font-medium text-gray-900">
-                          {parseDecimal(restaurant.deliveryFee)} ريال
-                        </p>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-xs"
+                        >
+                          مغلق
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="p-2"
+                        >
+                          <Heart className="h-4 w-4 text-gray-400" />
+                        </Button>
                       </div>
                     </div>
-                    
-                    <div className="mt-3 pt-3 border-t flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
-                        أقل طلب: {parseDecimal(restaurant.minimumOrder)} ريال
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-orange-600 transition-colors" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <ShoppingBag className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مطاعم</h3>
-              <p className="text-gray-500">
-                {searchQuery 
-                  ? `لم نجد مطاعم تطابق "${searchQuery}"`
-                  : 'لا توجد مطاعم متاحة في الوقت الحالي'
-                }
-              </p>
-            </div>
-          )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            {/* Empty state for actual restaurants when database is populated */}
+            {filteredRestaurants.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <UtensilsCrossed className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>لا توجد مطاعم متاحة في الوقت الحالي</p>
+              </div>
+            )}
+          </div>
         </section>
       </main>
 

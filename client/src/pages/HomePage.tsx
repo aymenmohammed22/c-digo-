@@ -1,17 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { 
   Search, 
   MapPin, 
-  Clock, 
   Star, 
   ShoppingBag,
-  Percent,
-  Filter,
-  Grid,
-  List,
-  ChevronRight,
   Truck,
   Settings,
   User,
@@ -20,22 +14,16 @@ import {
   Cookie,
   UtensilsCrossed,
   Heart,
-  Award,
   Timer
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Category, Restaurant, SpecialOffer } from '@shared/schema';
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [clickCount, setClickCount] = useState(0);
   const [showAdminButtons, setShowAdminButtons] = useState(false);
 
@@ -60,44 +48,12 @@ export default function HomePage() {
   };
 
   // جلب البيانات
-  const { data: categories } = useQuery<Category[]>({
-    queryKey: ['/api/categories'],
-  });
-
   const { data: restaurants } = useQuery<Restaurant[]>({
-    queryKey: ['/api/restaurants', { categoryId: selectedCategory, search: searchQuery }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedCategory !== 'all') params.append('categoryId', selectedCategory);
-      if (searchQuery) params.append('search', searchQuery);
-      
-      const response = await fetch(`/api/restaurants?${params}`);
-      return response.json();
-    },
+    queryKey: ['/api/restaurants'],
   });
-
-  const { data: specialOffers } = useQuery<SpecialOffer[]>({
-    queryKey: ['/api/special-offers'],
-  });
-
-  const filteredRestaurants = restaurants?.filter(restaurant => {
-    const matchesSearch = !searchQuery || 
-      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      restaurant.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = selectedCategory === 'all' || restaurant.categoryId === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
-  }) || [];
 
   const handleRestaurantClick = (restaurantId: string) => {
     setLocation(`/restaurant/${restaurantId}`);
-  };
-
-  const parseDecimal = (value: string | null): number => {
-    if (!value) return 0;
-    const num = parseFloat(value);
-    return isNaN(num) ? 0 : num;
   };
 
   return (
@@ -422,8 +378,51 @@ export default function HomePage() {
               </Card>
             ))}
             
-            {/* Empty state for actual restaurants when database is populated */}
-            {filteredRestaurants.length === 0 && (
+            {/* Database restaurants when available */}
+            {restaurants && restaurants.length > 0 && restaurants.map((restaurant) => (
+              <Card 
+                key={restaurant.id}
+                className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleRestaurantClick(restaurant.id)}
+              >
+                <CardContent className="p-0">
+                  <div className="flex">
+                    <div className="w-20 h-20 bg-gray-200 flex-shrink-0 flex items-center justify-center">
+                      {restaurant.image ? (
+                        <img src={restaurant.image} alt={restaurant.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <UtensilsCrossed className="h-8 w-8 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 p-4">
+                      <div className="flex items-start justify-between mb-1">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-1">{restaurant.name}</h4>
+                          <p className="text-sm text-gray-600 mb-2">{restaurant.description}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>{restaurant.deliveryTime}</span>
+                            <span>•</span>
+                            <span>رسوم التوصيل: {restaurant.deliveryFee} ريال</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 mb-2">
+                            <span className="text-sm font-medium">{restaurant.rating}</span>
+                            <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                          </div>
+                          <Badge className={restaurant.isOpen ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}>
+                            {restaurant.isOpen ? 'مفتوح' : 'مغلق'}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            {/* Empty state */}
+            {(!restaurants || restaurants.length === 0) && (
               <div className="text-center py-8 text-gray-500">
                 <UtensilsCrossed className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p>لا توجد مطاعم متاحة في الوقت الحالي</p>

@@ -34,11 +34,13 @@ function getDb() {
     // Configure for Replit environment to handle SSL issues
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     
-    const sql = neon(process.env.DATABASE_URL);
-    db = drizzle(sql);
+    const sqlClient = neon(process.env.DATABASE_URL);
+    db = drizzle(sqlClient);
   }
   return db;
 }
+
+// ... rest of the DatabaseStorage class remains the same
 
 export class DatabaseStorage implements IStorage {
   get db() {

@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
     setIsSubmitting(true);
 
     if (!formData.email.trim() || !formData.password.trim()) {
-      setError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
+      setError('يرجى إدخال اسم المستخدم أو البريد الإلكتروني وكلمة المرور');
       setIsSubmitting(false);
       return;
     }
@@ -104,17 +104,17 @@ export default function AdminLoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-gray-700 font-medium">
-                  البريد الإلكتروني
+                  اسم المستخدم أو البريد الإلكتروني
                 </Label>
                 <div className="relative">
                   <Mail className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
                   <Input
                     id="email"
                     name="email"
-                    type="email"
+                    type="text"
                     value={formData.email}
                     onChange={handleInputChange}
-                    placeholder="admin@example.com"
+                    placeholder="اسم المستخدم أو admin@example.com"
                     className="pr-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                     disabled={isSubmitting}

@@ -124,6 +124,7 @@ export const specialOffers = pgTable("special_offers", {
 export const adminUsers = pgTable("admin_users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 100 }).notNull(),
+  username: varchar("username", { length: 50 }).unique(),
   email: varchar("email", { length: 100 }).notNull().unique(),
   password: text("password").notNull(),
   userType: varchar("user_type", { length: 50 }).default("admin").notNull(),

@@ -43,9 +43,13 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // البحث بالإيميل أو اسم المستخدم
     const admin = await db.query.adminUsers.findFirst({
       where: and(
-        eq(schema.adminUsers.email, email),
+        or(
+          eq(schema.adminUsers.email, email),
+          eq(schema.adminUsers.username, email)
+        ),
         eq(schema.adminUsers.userType, "admin")
       )
     });

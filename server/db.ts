@@ -94,7 +94,13 @@ export class DatabaseStorage implements IStorage {
 
   // Categories
   async getCategories(): Promise<Category[]> {
-    return await this.db.select().from(categories);
+    try {
+      const result = await this.db.select().from(categories);
+      return result || [];
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
@@ -114,7 +120,13 @@ export class DatabaseStorage implements IStorage {
 
   // Restaurants
   async getRestaurants(): Promise<Restaurant[]> {
-    return await this.db.select().from(restaurants);
+    try {
+      const result = await this.db.select().from(restaurants);
+      return result || [];
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+      return [];
+    }
   }
 
   async getRestaurant(id: string): Promise<Restaurant | undefined> {
@@ -250,7 +262,13 @@ export class DatabaseStorage implements IStorage {
 
   // UI Settings (using systemSettings)
   async getUiSettings(): Promise<SystemSettings[]> {
-    return await this.db.select().from(systemSettings).where(eq(systemSettings.isActive, true));
+    try {
+      const result = await this.db.select().from(systemSettings).where(eq(systemSettings.isActive, true));
+      return result || [];
+    } catch (error) {
+      console.error('Error fetching UI settings:', error);
+      return [];
+    }
   }
 
   async getUiSetting(key: string): Promise<SystemSettings | undefined> {

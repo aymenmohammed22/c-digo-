@@ -54,8 +54,18 @@ router.post("/login", async (req, res) => {
       )
     });
 
+    console.log("🔍 Password comparison:", {
+      received: password,
+      stored: admin?.password,
+      match: admin?.password === password,
+      types: {
+        received: typeof password,
+        stored: typeof admin?.password
+      }
+    });
+
     if (!admin || admin.password !== password) {
-      return res.status(401).json({ error: "بيانات دخول خاطئة" });
+      return res.status(401).json({ message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
     }
 
     if (!admin.isActive) {

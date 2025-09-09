@@ -20,7 +20,7 @@ import {
   type Driver, type InsertDriver
 } from "@shared/schema";
 import { IStorage } from "./storage";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 
 // Database connection
 let db: ReturnType<typeof drizzle> | null = null;
@@ -51,8 +51,13 @@ export class DatabaseStorage implements IStorage {
     return newAdmin;
   }
 
-  async getAdminByEmail(email: string): Promise<AdminUser | undefined> {
-    const result = await this.db.select().from(adminUsers).where(eq(adminUsers.email, email));
+  async getAdminByEmail(emailOrUsername: string): Promise<AdminUser | undefined> {
+    const result = await this.db.select().from(adminUsers).where(
+      or(
+        eq(adminUsers.email, emailOrUsername),
+        eq(adminUsers.username, emailOrUsername)
+      )
+    );
     return result[0];
   }
 

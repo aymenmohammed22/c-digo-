@@ -57,18 +57,27 @@ export class AuthService {
   }
   async createDefaultAdmin(): Promise<void> {
     try {
-      const existingAdmin = await dbStorage.getAdminByEmail('admin@alsarie-one.com');
-      if (!existingAdmin) {
-        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123456';
-        const hashedPassword = await this.hashPassword(adminPassword);
-        const defaultAdmin: InsertAdminUser = {
-          name: 'مدير النظام',
-          email: 'admin@alsarie-one.com',
-          password: hashedPassword,
-          userType: 'admin'
-        };
+      // For now, skip the check and just try to create admin if not exists
+      console.log('Setting up default admin user...');
+      const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123456';
+      const hashedPassword = await this.hashPassword(adminPassword);
+      const defaultAdmin: InsertAdminUser = {
+        name: 'مدير النظام',
+        email: 'admin@alsarie-one.com',
+        password: hashedPassword,
+        userType: 'admin'
+      };
+      
+      try {
         await dbStorage.createAdminUser(defaultAdmin);
         console.log('تم إنشاء المدير الافتراضي بنجاح');
+      } catch (createError: any) {
+        // If it fails due to duplicate email, that means admin already exists
+        if (createError.message?.includes('unique') || createError.code === '23505') {
+          console.log('المدير الافتراضي موجود بالفعل');
+        } else {
+          throw createError;
+        }
       }
     } catch (error) {
       console.error('خطأ في إنشاء المدير الافتراضي:', error);

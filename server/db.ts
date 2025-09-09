@@ -2,23 +2,22 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { 
   adminUsers, adminSessions, categories, restaurantSections, restaurants, 
-  menuItems, customers, customerAddresses, orders, specialOffers, 
-  notifications, reviews, systemSettings, driverStats, orderTracking,
+  menuItems, users, userAddresses, orders, specialOffers, 
+  notifications, ratings, systemSettings, drivers,
   type AdminUser, type InsertAdminUser,
   type AdminSession, type InsertAdminSession,
   type Category, type InsertCategory,
   type Restaurant, type InsertRestaurant,
   type RestaurantSection, type InsertRestaurantSection,
   type MenuItem, type InsertMenuItem,
-  type Customer, type InsertCustomer,
-  type CustomerAddress, type InsertCustomerAddress,
+  type User, type InsertUser,
+  type UserAddress, type InsertUserAddress,
   type Order, type InsertOrder,
   type SpecialOffer, type InsertSpecialOffer,
   type Notification, type InsertNotification,
-  type Review, type InsertReview,
+  type Rating, type InsertRating,
   type SystemSettings, type InsertSystemSettings,
-  type DriverStats, type InsertDriverStats,
-  type OrderTracking, type InsertOrderTracking
+  type Driver, type InsertDriver
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -31,8 +30,12 @@ function getDb() {
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL must be defined in environment variables");
     }
+    
+    // Configure for Replit environment to handle SSL issues
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    
     const sql = neon(process.env.DATABASE_URL);
-    db = drizzle({ client: sql });
+    db = drizzle(sql);
   }
   return db;
 }
@@ -49,8 +52,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAdminByEmail(email: string): Promise<AdminUser | undefined> {
-    const [admin] = await this.db.select().from(adminUsers).where(eq(adminUsers.email, email));
-    return admin;
+    const result = await this.db.select().from(adminUsers).where(eq(adminUsers.email, email));
+    return result[0];
   }
 
   async createAdminSession(session: InsertAdminSession): Promise<AdminSession> {
@@ -65,27 +68,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAdminSession(token: string): Promise<boolean> {
     const result = await this.db.delete(adminSessions).where(eq(adminSessions.token, token));
-    return result.length > 0;
+    return result.rowCount > 0;
   }
 
-  // Users (using customers table instead of users)
-  async getUser(id: string): Promise<Customer | undefined> {
-    const [user] = await this.db.select().from(customers).where(eq(customers.id, id));
+  // Users
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await this.db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<Customer | undefined> {
-    const [user] = await this.db.select().from(customers).where(eq(customers.phone, username));
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await this.db.select().from(users).where(eq(users.username, username));
     return user;
   }
 
-  async createUser(user: InsertCustomer): Promise<Customer> {
-    const [newUser] = await this.db.insert(customers).values(user).returning();
+  async createUser(user: InsertUser): Promise<User> {
+    const [newUser] = await this.db.insert(users).values(user).returning();
     return newUser;
   }
 
-  async updateUser(id: string, userData: Partial<InsertCustomer>): Promise<Customer | undefined> {
-    const [updated] = await this.db.update(customers).set(userData).where(eq(customers.id, id)).returning();
+  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await this.db.update(users).set(userData).where(eq(users.id, id)).returning();
     return updated;
   }
 
@@ -106,7 +109,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCategory(id: string): Promise<boolean> {
     const result = await this.db.delete(categories).where(eq(categories.id, id));
-    return result.length > 0;
+    return result.rowCount > 0;
   }
 
   // Restaurants
@@ -135,7 +138,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRestaurant(id: string): Promise<boolean> {
     const result = await this.db.delete(restaurants).where(eq(restaurants.id, id));
-    return result.length > 0;
+    return result.rowCount > 0;
   }
 
   // Menu Items
@@ -160,7 +163,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMenuItem(id: string): Promise<boolean> {
     const result = await this.db.delete(menuItems).where(eq(menuItems.id, id));
-    return result.length > 0;
+    return result.rowCount > 0;
   }
 
   // Orders
@@ -187,45 +190,38 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Drivers (using adminUsers with userType = 'driver')
-  async getDrivers(): Promise<AdminUser[]> {
-    return await this.db.select().from(adminUsers).where(eq(adminUsers.userType, 'driver'));
+  // Drivers
+  async getDrivers(): Promise<Driver[]> {
+    return await this.db.select().from(drivers);
   }
 
-  async getDriver(id: string): Promise<AdminUser | undefined> {
-    const [driver] = await this.db.select().from(adminUsers).where(
-      and(eq(adminUsers.id, id), eq(adminUsers.userType, 'driver'))
-    );
+  async getDriver(id: string): Promise<Driver | undefined> {
+    const [driver] = await this.db.select().from(drivers).where(eq(drivers.id, id));
     return driver;
   }
 
-  async getAvailableDrivers(): Promise<AdminUser[]> {
-    return await this.db.select().from(adminUsers).where(
+  async getAvailableDrivers(): Promise<Driver[]> {
+    return await this.db.select().from(drivers).where(
       and(
-        eq(adminUsers.userType, 'driver'),
-        eq(adminUsers.isActive, true)
+        eq(drivers.isAvailable, true),
+        eq(drivers.isActive, true)
       )
     );
   }
 
-  async createDriver(driver: InsertAdminUser): Promise<AdminUser> {
-    const driverWithType = { ...driver, userType: 'driver' as const };
-    const [newDriver] = await this.db.insert(adminUsers).values(driverWithType).returning();
+  async createDriver(driver: InsertDriver): Promise<Driver> {
+    const [newDriver] = await this.db.insert(drivers).values(driver).returning();
     return newDriver;
   }
 
-  async updateDriver(id: string, driver: Partial<InsertAdminUser>): Promise<AdminUser | undefined> {
-    const [updated] = await this.db.update(adminUsers).set(driver).where(
-      and(eq(adminUsers.id, id), eq(adminUsers.userType, 'driver'))
-    ).returning();
+  async updateDriver(id: string, driver: Partial<InsertDriver>): Promise<Driver | undefined> {
+    const [updated] = await this.db.update(drivers).set(driver).where(eq(drivers.id, id)).returning();
     return updated;
   }
 
   async deleteDriver(id: string): Promise<boolean> {
-    const result = await this.db.delete(adminUsers).where(
-      and(eq(adminUsers.id, id), eq(adminUsers.userType, 'driver'))
-    );
-    return result.length > 0;
+    const result = await this.db.delete(drivers).where(eq(drivers.id, id));
+    return result.rowCount > 0;
   }
 
   // Special Offers
@@ -249,17 +245,17 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSpecialOffer(id: string): Promise<boolean> {
     const result = await this.db.delete(specialOffers).where(eq(specialOffers.id, id));
-    return result.length > 0;
+    return result.rowCount > 0;
   }
 
   // UI Settings (using systemSettings)
   async getUiSettings(): Promise<SystemSettings[]> {
-    return await this.db.select().from(systemSettings).where(eq(systemSettings.isPublic, true));
+    return await this.db.select().from(systemSettings).where(eq(systemSettings.isActive, true));
   }
 
   async getUiSetting(key: string): Promise<SystemSettings | undefined> {
     const [setting] = await this.db.select().from(systemSettings).where(
-      and(eq(systemSettings.key, key), eq(systemSettings.isPublic, true))
+      and(eq(systemSettings.key, key), eq(systemSettings.isActive, true))
     );
     return setting;
   }
@@ -279,13 +275,11 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUiSetting(key: string): Promise<boolean> {
     const result = await this.db.delete(systemSettings).where(eq(systemSettings.key, key));
-    return result.length > 0;
+    return result.rowCount > 0;
   }
 
   // Notifications
   async getNotifications(recipientType?: string, recipientId?: string, unread?: boolean): Promise<Notification[]> {
-    let query = this.db.select().from(notifications);
-    
     const conditions = [];
     if (recipientType) {
       conditions.push(eq(notifications.recipientType, recipientType));
@@ -298,10 +292,13 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      return await this.db.select().from(notifications)
+        .where(and(...conditions))
+        .orderBy(desc(notifications.createdAt));
     }
     
-    return await query.orderBy(desc(notifications.createdAt));
+    return await this.db.select().from(notifications)
+      .orderBy(desc(notifications.createdAt));
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {

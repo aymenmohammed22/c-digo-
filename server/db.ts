@@ -1,29 +1,27 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { 
-  users, userAddresses, categories, restaurants, restaurantSections, menuItems, orders, drivers, specialOffers,
-  adminUsers, adminSessions, uiSettings, ratings, notifications, wallets, walletTransactions, systemSettings, restaurantEarnings,
-  type User, type InsertUser,
-  type UserAddress, type InsertUserAddress,
+  adminUsers, adminSessions, categories, restaurantSections, restaurants, 
+  menuItems, customers, customerAddresses, orders, specialOffers, 
+  notifications, reviews, systemSettings, driverStats, orderTracking,
+  type AdminUser, type InsertAdminUser,
+  type AdminSession, type InsertAdminSession,
   type Category, type InsertCategory,
   type Restaurant, type InsertRestaurant,
   type RestaurantSection, type InsertRestaurantSection,
   type MenuItem, type InsertMenuItem,
+  type Customer, type InsertCustomer,
+  type CustomerAddress, type InsertCustomerAddress,
   type Order, type InsertOrder,
-  type Driver, type InsertDriver,
   type SpecialOffer, type InsertSpecialOffer,
-  type AdminUser, type InsertAdminUser,
-  type AdminSession, type InsertAdminSession,
-  type UiSettings, type InsertUiSettings,
-  type Rating, type InsertRating,
   type Notification, type InsertNotification,
-  type Wallet, type InsertWallet,
-  type WalletTransaction, type InsertWalletTransaction,
+  type Review, type InsertReview,
   type SystemSettings, type InsertSystemSettings,
-  type RestaurantEarnings, type InsertRestaurantEarnings
+  type DriverStats, type InsertDriverStats,
+  type OrderTracking, type InsertOrderTracking
 } from "@shared/schema";
-import { IStorage } from "./storage.ts";
-import { eq, and, desc } from "drizzle-orm";
+import { IStorage } from "./storage";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 // Database connection
 let db: ReturnType<typeof drizzle> | null = null;
@@ -34,7 +32,7 @@ function getDb() {
       throw new Error("DATABASE_URL must be defined in environment variables");
     }
     const sql = neon(process.env.DATABASE_URL);
-    db = drizzle(sql);
+    db = drizzle({ client: sql });
   }
   return db;
 }
@@ -67,27 +65,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAdminSession(token: string): Promise<boolean> {
     const result = await this.db.delete(adminSessions).where(eq(adminSessions.token, token));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
-  // Users
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await this.db.select().from(users).where(eq(users.id, id));
+  // Users (using customers table instead of users)
+  async getUser(id: string): Promise<Customer | undefined> {
+    const [user] = await this.db.select().from(customers).where(eq(customers.id, id));
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await this.db.select().from(users).where(eq(users.username, username));
+  async getUserByUsername(username: string): Promise<Customer | undefined> {
+    const [user] = await this.db.select().from(customers).where(eq(customers.phone, username));
     return user;
   }
 
-  async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await this.db.insert(users).values(user).returning();
+  async createUser(user: InsertCustomer): Promise<Customer> {
+    const [newUser] = await this.db.insert(customers).values(user).returning();
     return newUser;
   }
 
-  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined> {
-    const [updated] = await this.db.update(users).set(userData).where(eq(users.id, id)).returning();
+  async updateUser(id: string, userData: Partial<InsertCustomer>): Promise<Customer | undefined> {
+    const [updated] = await this.db.update(customers).set(userData).where(eq(customers.id, id)).returning();
     return updated;
   }
 
@@ -108,7 +106,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCategory(id: string): Promise<boolean> {
     const result = await this.db.delete(categories).where(eq(categories.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Restaurants
@@ -137,7 +135,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRestaurant(id: string): Promise<boolean> {
     const result = await this.db.delete(restaurants).where(eq(restaurants.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Menu Items
@@ -162,7 +160,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMenuItem(id: string): Promise<boolean> {
     const result = await this.db.delete(menuItems).where(eq(menuItems.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
   // Orders
@@ -189,33 +187,45 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Drivers
-  async getDrivers(): Promise<Driver[]> {
-    return await this.db.select().from(drivers);
+  // Drivers (using adminUsers with userType = 'driver')
+  async getDrivers(): Promise<AdminUser[]> {
+    return await this.db.select().from(adminUsers).where(eq(adminUsers.userType, 'driver'));
   }
 
-  async getDriver(id: string): Promise<Driver | undefined> {
-    const [driver] = await this.db.select().from(drivers).where(eq(drivers.id, id));
+  async getDriver(id: string): Promise<AdminUser | undefined> {
+    const [driver] = await this.db.select().from(adminUsers).where(
+      and(eq(adminUsers.id, id), eq(adminUsers.userType, 'driver'))
+    );
     return driver;
   }
 
-  async getAvailableDrivers(): Promise<Driver[]> {
-    return await this.db.select().from(drivers).where(and(eq(drivers.isAvailable, true), eq(drivers.isActive, true)));
+  async getAvailableDrivers(): Promise<AdminUser[]> {
+    return await this.db.select().from(adminUsers).where(
+      and(
+        eq(adminUsers.userType, 'driver'),
+        eq(adminUsers.isActive, true)
+      )
+    );
   }
 
-  async createDriver(driver: InsertDriver): Promise<Driver> {
-    const [newDriver] = await this.db.insert(drivers).values(driver).returning();
+  async createDriver(driver: InsertAdminUser): Promise<AdminUser> {
+    const driverWithType = { ...driver, userType: 'driver' as const };
+    const [newDriver] = await this.db.insert(adminUsers).values(driverWithType).returning();
     return newDriver;
   }
 
-  async updateDriver(id: string, driver: Partial<InsertDriver>): Promise<Driver | undefined> {
-    const [updated] = await this.db.update(drivers).set(driver).where(eq(drivers.id, id)).returning();
+  async updateDriver(id: string, driver: Partial<InsertAdminUser>): Promise<AdminUser | undefined> {
+    const [updated] = await this.db.update(adminUsers).set(driver).where(
+      and(eq(adminUsers.id, id), eq(adminUsers.userType, 'driver'))
+    ).returning();
     return updated;
   }
 
   async deleteDriver(id: string): Promise<boolean> {
-    const result = await this.db.delete(drivers).where(eq(drivers.id, id));
-    return result.rowCount > 0;
+    const result = await this.db.delete(adminUsers).where(
+      and(eq(adminUsers.id, id), eq(adminUsers.userType, 'driver'))
+    );
+    return result.length > 0;
   }
 
   // Special Offers
@@ -239,99 +249,40 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSpecialOffer(id: string): Promise<boolean> {
     const result = await this.db.delete(specialOffers).where(eq(specialOffers.id, id));
-    return result.rowCount > 0;
+    return result.length > 0;
   }
 
-  // UI Settings
-  async getUiSettings(): Promise<UiSettings[]> {
-    return await this.db.select().from(uiSettings);
+  // UI Settings (using systemSettings)
+  async getUiSettings(): Promise<SystemSettings[]> {
+    return await this.db.select().from(systemSettings).where(eq(systemSettings.isPublic, true));
   }
 
-  async getUiSetting(key: string): Promise<UiSettings | undefined> {
-    const [setting] = await this.db.select().from(uiSettings).where(eq(uiSettings.key, key));
+  async getUiSetting(key: string): Promise<SystemSettings | undefined> {
+    const [setting] = await this.db.select().from(systemSettings).where(
+      and(eq(systemSettings.key, key), eq(systemSettings.isPublic, true))
+    );
     return setting;
   }
 
-  async updateUiSetting(key: string, value: string): Promise<UiSettings | undefined> {
-    const [updated] = await this.db.update(uiSettings)
+  async updateUiSetting(key: string, value: string): Promise<SystemSettings | undefined> {
+    const [updated] = await this.db.update(systemSettings)
       .set({ value, updatedAt: new Date() })
-      .where(eq(uiSettings.key, key))
+      .where(eq(systemSettings.key, key))
       .returning();
     return updated;
   }
 
-  async createUiSetting(setting: InsertUiSettings): Promise<UiSettings> {
-    const [newSetting] = await this.db.insert(uiSettings).values(setting).returning();
+  async createUiSetting(setting: InsertSystemSettings): Promise<SystemSettings> {
+    const [newSetting] = await this.db.insert(systemSettings).values(setting).returning();
     return newSetting;
   }
 
   async deleteUiSetting(key: string): Promise<boolean> {
-    const result = await this.db.delete(uiSettings).where(eq(uiSettings.key, key));
-    return result.rowCount > 0;
-  }
-  // ================= RESTAURANT SECTIONS =================
-  async getRestaurantSections(restaurantId: string): Promise<RestaurantSection[]> {
-    return this.db.select().from(restaurantSections)
-      .where(eq(restaurantSections.restaurantId, restaurantId))
-      .orderBy(restaurantSections.sortOrder);
+    const result = await this.db.delete(systemSettings).where(eq(systemSettings.key, key));
+    return result.length > 0;
   }
 
-  async createRestaurantSection(section: InsertRestaurantSection): Promise<RestaurantSection> {
-    const [newSection] = await this.db.insert(restaurantSections).values(section).returning();
-    return newSection;
-  }
-
-  async updateRestaurantSection(id: string, updates: Partial<InsertRestaurantSection>): Promise<RestaurantSection | undefined> {
-    const [updated] = await this.db.update(restaurantSections)
-      .set(updates)
-      .where(eq(restaurantSections.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteRestaurantSection(id: string): Promise<boolean> {
-    const result = await this.db.delete(restaurantSections).where(eq(restaurantSections.id, id));
-    return result.rowCount > 0;
-  }
-
-  // ================= RATINGS & REVIEWS =================
-  async getRatings(restaurantId?: string, approved?: boolean): Promise<Rating[]> {
-    let query = this.db.select().from(ratings);
-    
-    const conditions = [];
-    if (restaurantId) {
-      conditions.push(eq(ratings.restaurantId, restaurantId));
-    }
-    if (approved !== undefined) {
-      conditions.push(eq(ratings.isApproved, approved));
-    }
-    
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-    
-    return await query.orderBy(desc(ratings.createdAt));
-  }
-
-  async createRating(rating: InsertRating): Promise<Rating> {
-    const [newRating] = await this.db.insert(ratings).values(rating).returning();
-    return newRating;
-  }
-
-  async updateRating(id: string, updates: Partial<InsertRating>): Promise<Rating | undefined> {
-    const [updated] = await this.db.update(ratings)
-      .set(updates)
-      .where(eq(ratings.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteRating(id: string): Promise<boolean> {
-    const result = await this.db.delete(ratings).where(eq(ratings.id, id));
-    return result.rowCount > 0;
-  }
-
-  // ================= NOTIFICATIONS =================
+  // Notifications
   async getNotifications(recipientType?: string, recipientId?: string, unread?: boolean): Promise<Notification[]> {
     let query = this.db.select().from(notifications);
     
@@ -364,140 +315,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, id))
       .returning();
     return updated;
-  }
-
-  // ================= WALLETS & PAYMENTS =================
-  async getWallet(phone: string): Promise<Wallet | undefined> {
-    const [wallet] = await this.db.select().from(wallets).where(eq(wallets.customerPhone, phone));
-    return wallet;
-  }
-
-  async createWallet(wallet: InsertWallet): Promise<Wallet> {
-    const [newWallet] = await this.db.insert(wallets).values(wallet).returning();
-    return newWallet;
-  }
-
-  async createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction> {
-    const [newTransaction] = await this.db.insert(walletTransactions).values(transaction).returning();
-    return newTransaction;
-  }
-
-  async getWalletTransactions(phone: string): Promise<WalletTransaction[]> {
-    return await this.db.select({
-      id: walletTransactions.id,
-      walletId: walletTransactions.walletId,
-      type: walletTransactions.type,
-      amount: walletTransactions.amount,
-      description: walletTransactions.description,
-      orderId: walletTransactions.orderId,
-      createdAt: walletTransactions.createdAt
-    })
-    .from(walletTransactions)
-    .innerJoin(wallets, eq(walletTransactions.walletId, wallets.id))
-    .where(eq(wallets.customerPhone, phone))
-    .orderBy(desc(walletTransactions.createdAt));
-  }
-
-  // ================= SYSTEM SETTINGS =================
-  async getSystemSettings(category?: string): Promise<SystemSettings[]> {
-    let query = this.db.select().from(systemSettings);
-    
-    if (category) {
-      query = query.where(eq(systemSettings.category, category));
-    }
-    
-    return await query.where(eq(systemSettings.isActive, true));
-  }
-
-  async updateSystemSetting(key: string, value: string): Promise<SystemSettings | undefined> {
-    const [updated] = await this.db.update(systemSettings)
-      .set({ value, updatedAt: new Date() })
-      .where(eq(systemSettings.key, key))
-      .returning();
-    return updated;
-  }
-
-  // ================= RESTAURANT EARNINGS =================
-  async getRestaurantEarnings(): Promise<RestaurantEarnings[]> {
-    return this.db.select().from(restaurantEarnings).where(eq(restaurantEarnings.isActive, true));
-  }
-
-  async getRestaurantEarningsByRestaurant(restaurantId: string): Promise<RestaurantEarnings | undefined> {
-    const [earnings] = await this.db.select().from(restaurantEarnings)
-      .where(eq(restaurantEarnings.restaurantId, restaurantId));
-    return earnings;
-  }
-
-  async createRestaurantEarnings(earnings: InsertRestaurantEarnings): Promise<RestaurantEarnings> {
-    const [newEarnings] = await this.db.insert(restaurantEarnings).values(earnings).returning();
-    return newEarnings;
-  }
-
-  async updateRestaurantEarnings(id: string, updates: Partial<InsertRestaurantEarnings>): Promise<RestaurantEarnings | undefined> {
-    const [updated] = await this.db.update(restaurantEarnings)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(restaurantEarnings.id, id))
-      .returning();
-    return updated;
-  }
-
-  // ================= ANALYTICS & REPORTS =================
-  async getDashboardAnalytics(): Promise<any> {
-    const totalOrders = await this.db.select().from(orders);
-    const totalDrivers = await this.db.select().from(drivers);
-    const totalRestaurants = await this.db.select().from(restaurants);
-    const pendingOrders = await this.db.select().from(orders).where(eq(orders.status, 'pending'));
-    
-    return {
-      totalOrders: totalOrders.length,
-      totalDrivers: totalDrivers.length,
-      totalRestaurants: totalRestaurants.length,
-      pendingOrders: pendingOrders.length,
-      todaySales: "0.00" // يمكن حسابها لاحقاً
-    };
-  }
-
-  async getSalesReport(startDate: string, endDate: string, restaurantId?: string): Promise<any> {
-    let query = this.db.select().from(orders);
-    
-    const conditions = [];
-    if (startDate) {
-      conditions.push(eq(orders.createdAt, new Date(startDate))); // يحتاج تعديل للمقارنة الصحيحة
-    }
-    if (restaurantId) {
-      conditions.push(eq(orders.restaurantId, restaurantId));
-    }
-    
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-    
-    const reportOrders = await query;
-    
-    return {
-      totalOrders: reportOrders.length,
-      totalRevenue: reportOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount), 0),
-      orders: reportOrders
-    };
-  }
-
-  async getDriverPerformance(startDate: string, endDate: string): Promise<any> {
-    const driversList = await this.db.select().from(drivers);
-    
-    const performance = await Promise.all(driversList.map(async (driver) => {
-      const driverOrders = await this.db.select().from(orders)
-        .where(eq(orders.driverId, driver.id || ''));
-      
-      return {
-        driverId: driver.id,
-        driverName: driver.name,
-        totalOrders: driverOrders.length,
-        totalEarnings: parseFloat(driver.earnings),
-        isAvailable: driver.isAvailable
-      };
-    }));
-    
-    return performance;
   }
 }
 

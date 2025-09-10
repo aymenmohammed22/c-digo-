@@ -61,7 +61,15 @@ export const restaurants = pgTable("restaurants", {
   workingDays: varchar("working_days", { length: 50 }).default("0,1,2,3,4,5,6"), // تمت الإضافة
   isTemporarilyClosed: boolean("is_temporarily_closed").default(false), // تمت الإضافة
   temporaryCloseReason: text("temporary_close_reason"), // تمت الإضافة
+  // إضافة الحقول الجديدة للموقع والمطاعم الجديدة والمفضلة
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  address: text("address"), // عنوان المطعم
+  isFeatured: boolean("is_featured").default(false), // للمطاعم المفضلة
+  isNew: boolean("is_new").default(false), // للمطاعم الجديدة
+  isActive: boolean("is_active").default(true).notNull(), // حالة النشاط
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Menu items table
@@ -313,6 +321,25 @@ export const restaurantEarnings = pgTable("restaurant_earnings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Cart table - جدول السلة
+export const cart = pgTable("cart", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  menuItemId: uuid("menu_item_id").references(() => menuItems.id).notNull(),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id).notNull(),
+  quantity: integer("quantity").default(1).notNull(),
+  specialInstructions: text("special_instructions"),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+});
+
+// Favorites table - جدول المفضلة
+export const favorites = pgTable("favorites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  restaurantId: uuid("restaurant_id").references(() => restaurants.id).notNull(),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+});
+
 export const insertUiSettingsSchema = createInsertSchema(uiSettings);
 export const selectUiSettingsSchema = createSelectSchema(uiSettings);
 export type UiSettings = z.infer<typeof selectUiSettingsSchema>;
@@ -352,3 +379,15 @@ export const insertRestaurantEarningsSchema = createInsertSchema(restaurantEarni
 export const selectRestaurantEarningsSchema = createSelectSchema(restaurantEarnings);
 export type RestaurantEarnings = z.infer<typeof selectRestaurantEarningsSchema>;
 export type InsertRestaurantEarnings = z.infer<typeof insertRestaurantEarningsSchema>;
+
+// Cart schemas - مخططات السلة
+export const insertCartSchema = createInsertSchema(cart);
+export const selectCartSchema = createSelectSchema(cart);
+export type Cart = z.infer<typeof selectCartSchema>;
+export type InsertCart = z.infer<typeof insertCartSchema>;
+
+// Favorites schemas - مخططات المفضلة
+export const insertFavoritesSchema = createInsertSchema(favorites);
+export const selectFavoritesSchema = createSelectSchema(favorites);
+export type Favorites = z.infer<typeof selectFavoritesSchema>;
+export type InsertFavorites = z.infer<typeof insertFavoritesSchema>;

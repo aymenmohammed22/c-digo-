@@ -738,105 +738,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ================= RESTAURANT SECTIONS API =================
-  app.get("/api/restaurants/:restaurantId/sections", async (req, res) => {
-    try {
-      const { restaurantId } = req.params;
-      const sections = await dbStorage.getRestaurantSections(restaurantId);
-      res.json(sections);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch restaurant sections" });
-    }
-  });
+  // ================= RESTAURANT SECTIONS API - DISABLED =================
+  // Restaurant sections functionality temporarily disabled - would require additional database methods
 
-  app.post("/api/restaurants/:restaurantId/sections", async (req, res) => {
-    try {
-      const { restaurantId } = req.params;
-      const validatedData = insertRestaurantSectionSchema.parse({
-        ...req.body,
-        restaurantId
-      });
-      const section = await dbStorage.createRestaurantSection(validatedData);
-      res.status(201).json(section);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid section data" });
-    }
-  });
-
-  app.put("/api/restaurant-sections/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const validatedData = insertRestaurantSectionSchema.partial().parse(req.body);
-      const section = await dbStorage.updateRestaurantSection(id, validatedData);
-      if (!section) {
-        return res.status(404).json({ message: "Section not found" });
-      }
-      res.json(section);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid section data" });
-    }
-  });
-
-  app.delete("/api/restaurant-sections/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await dbStorage.deleteRestaurantSection(id);
-      if (!success) {
-        return res.status(404).json({ message: "Section not found" });
-      }
-      res.json({ message: "Section deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete section" });
-    }
-  });
-
-  // ================= RATINGS & REVIEWS API =================
-  app.get("/api/ratings", async (req, res) => {
-    try {
-      const { restaurantId, approved } = req.query;
-      const ratings = await dbStorage.getRatings(restaurantId as string, approved === 'true');
-      res.json(ratings);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch ratings" });
-    }
-  });
-
-  app.post("/api/ratings", async (req, res) => {
-    try {
-      const validatedData = insertRatingSchema.parse(req.body);
-      const rating = await dbStorage.createRating(validatedData);
-      res.status(201).json(rating);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid rating data" });
-    }
-  });
-
-  app.put("/api/ratings/:id/approve", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { approved } = req.body;
-      const rating = await dbStorage.updateRating(id, { isApproved: approved });
-      if (!rating) {
-        return res.status(404).json({ message: "Rating not found" });
-      }
-      res.json(rating);
-    } catch (error) {
-      res.status(400).json({ message: "Failed to update rating" });
-    }
-  });
-
-  app.delete("/api/ratings/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await dbStorage.deleteRating(id);
-      if (!success) {
-        return res.status(404).json({ message: "Rating not found" });
-      }
-      res.json({ message: "Rating deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete rating" });
-    }
-  });
+  // ================= RATINGS & REVIEWS API - DISABLED =================
+  // Ratings functionality temporarily disabled - would require additional database methods
 
   // ================= NOTIFICATIONS API =================
   app.get("/api/notifications", async (req, res) => {
@@ -863,6 +769,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark notification as read endpoint temporarily disabled - requires additional database method
+  /*
   app.put("/api/notifications/:id/read", async (req, res) => {
     try {
       const { id } = req.params;
@@ -875,153 +783,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: "Failed to update notification" });
     }
   });
+  */
 
-  // ================= WALLET & PAYMENTS API =================
-  app.get("/api/wallets/:phone", async (req, res) => {
-    try {
-      const { phone } = req.params;
-      const wallet = await dbStorage.getWallet(phone);
-      res.json(wallet);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch wallet" });
-    }
-  });
+  // ================= WALLET & PAYMENTS API - DISABLED =================
+  // Wallet functionality temporarily disabled - would require additional database methods
 
-  app.post("/api/wallets", async (req, res) => {
-    try {
-      const validatedData = insertWalletSchema.parse(req.body);
-      const wallet = await dbStorage.createWallet(validatedData);
-      res.status(201).json(wallet);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid wallet data" });
-    }
-  });
+  // ================= SYSTEM SETTINGS API - DISABLED =================
+  // System settings functionality temporarily disabled - would require additional database methods
 
-  app.post("/api/wallet-transactions", async (req, res) => {
-    try {
-      const validatedData = insertWalletTransactionSchema.parse(req.body);
-      const transaction = await dbStorage.createWalletTransaction(validatedData);
-      res.status(201).json(transaction);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid transaction data" });
-    }
-  });
+  // ================= RESTAURANT EARNINGS API - DISABLED =================
+  // Restaurant earnings functionality temporarily disabled - would require additional database methods
 
-  app.get("/api/wallets/:phone/transactions", async (req, res) => {
-    try {
-      const { phone } = req.params;
-      const transactions = await dbStorage.getWalletTransactions(phone);
-      res.json(transactions);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch transactions" });
-    }
-  });
-
-  // ================= SYSTEM SETTINGS API =================
-  app.get("/api/system-settings", async (req, res) => {
-    try {
-      const { category } = req.query;
-      const settings = await dbStorage.getSystemSettings(category as string);
-      res.json(settings);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch system settings" });
-    }
-  });
-
-  app.put("/api/system-settings/:key", async (req, res) => {
-    try {
-      const { key } = req.params;
-      const { value } = req.body;
-      const setting = await dbStorage.updateSystemSetting(key, value);
-      if (!setting) {
-        return res.status(404).json({ message: "Setting not found" });
-      }
-      res.json(setting);
-    } catch (error) {
-      res.status(400).json({ message: "Failed to update setting" });
-    }
-  });
-
-  // ================= RESTAURANT EARNINGS API =================
-  app.get("/api/restaurant-earnings", async (req, res) => {
-    try {
-      const earnings = await dbStorage.getRestaurantEarnings();
-      res.json(earnings);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch restaurant earnings" });
-    }
-  });
-
-  app.get("/api/restaurant-earnings/:restaurantId", async (req, res) => {
-    try {
-      const { restaurantId } = req.params;
-      const earnings = await dbStorage.getRestaurantEarningsByRestaurant(restaurantId);
-      res.json(earnings);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch restaurant earnings" });
-    }
-  });
-
-  app.post("/api/restaurant-earnings", async (req, res) => {
-    try {
-      const validatedData = insertRestaurantEarningsSchema.parse(req.body);
-      const earnings = await dbStorage.createRestaurantEarnings(validatedData);
-      res.status(201).json(earnings);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid earnings data" });
-    }
-  });
-
-  app.put("/api/restaurant-earnings/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const validatedData = insertRestaurantEarningsSchema.partial().parse(req.body);
-      const earnings = await dbStorage.updateRestaurantEarnings(id, validatedData);
-      if (!earnings) {
-        return res.status(404).json({ message: "Earnings not found" });
-      }
-      res.json(earnings);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid earnings data" });
-    }
-  });
-
-  // ================= ANALYTICS & REPORTS API =================
-  app.get("/api/analytics/dashboard", async (req, res) => {
-    try {
-      const analytics = await dbStorage.getDashboardAnalytics();
-      res.json(analytics);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch analytics" });
-    }
-  });
-
-  app.get("/api/analytics/sales-report", async (req, res) => {
-    try {
-      const { startDate, endDate, restaurantId } = req.query;
-      const report = await dbStorage.getSalesReport(
-        startDate as string, 
-        endDate as string, 
-        restaurantId as string
-      );
-      res.json(report);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch sales report" });
-    }
-  });
-
-  app.get("/api/analytics/driver-performance", async (req, res) => {
-    try {
-      const { startDate, endDate } = req.query;
-      const performance = await dbStorage.getDriverPerformance(
-        startDate as string, 
-        endDate as string
-      );
-      res.json(performance);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch driver performance" });
-    }
-  });
+  // ================= ANALYTICS & REPORTS API - DISABLED =================
+  // Analytics functionality temporarily disabled - would require additional database methods
 
   // ================= ADVANCED ORDER MANAGEMENT =================
   app.put("/api/orders/:id/assign-driver", async (req, res) => {

@@ -4,6 +4,7 @@ import {
   adminUsers, adminSessions, categories, restaurantSections, restaurants, 
   menuItems, users, userAddresses, orders, specialOffers, 
   notifications, ratings, systemSettingsTable as systemSettings, drivers, orderTracking,
+  cart, favorites,
   type AdminUser, type InsertAdminUser,
   type AdminSession, type InsertAdminSession,
   type Category, type InsertCategory,
@@ -17,10 +18,12 @@ import {
   type Notification, type InsertNotification,
   type Rating, type InsertRating,
   type SystemSettings, type InsertSystemSettings,
-  type Driver, type InsertDriver
+  type Driver, type InsertDriver,
+  type Cart, type InsertCart,
+  type Favorites, type InsertFavorites
 } from "@shared/schema";
 import { IStorage } from "./storage";
-import { eq, and, desc, sql, or, like } from "drizzle-orm";
+import { eq, and, desc, sql, or, like, asc, inArray } from "drizzle-orm";
 
 // Database connection
 let db: ReturnType<typeof drizzle> | null = null;
@@ -346,12 +349,14 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Search Functions
-  async searchRestaurants(searchTerm: string, categoryId?: string): Promise<Restaurant[]> {
+  // Enhanced Search Functions
+  async searchRestaurants(searchTerm: string, categoryId?: string, userLocation?: {lat: number, lon: number}): Promise<Restaurant[]> {
     const conditions = [
+      eq(restaurants.isActive, true),
       or(
-        like(restaurants.name, searchTerm),
-        like(restaurants.description, searchTerm)
+        like(restaurants.name, `%${searchTerm}%`),
+        like(restaurants.description, `%${searchTerm}%`),
+        like(restaurants.address, `%${searchTerm}%`)
       )
     ];
     
@@ -359,32 +364,71 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(restaurants.categoryId, categoryId));
     }
     
-    return await this.db.select().from(restaurants)
+    const result = await this.db.select().from(restaurants)
       .where(and(...conditions))
       .orderBy(restaurants.name);
+    
+    const restaurants_list = Array.isArray(result) ? result : [];
+    
+    // Add distance if user location is provided
+    if (userLocation) {
+      return restaurants_list.map(restaurant => ({
+        ...restaurant,
+        distance: restaurant.latitude && restaurant.longitude ? 
+          this.calculateDistance(
+            userLocation.lat,
+            userLocation.lon,
+            parseFloat(restaurant.latitude),
+            parseFloat(restaurant.longitude)
+          ) : null
+      }));
+    }
+    
+    return restaurants_list;
   }
 
   async searchCategories(searchTerm: string): Promise<Category[]> {
-    return await this.db.select().from(categories)
-      .where(like(categories.name, searchTerm))
+    const result = await this.db.select().from(categories)
+      .where(
+        and(
+          eq(categories.isActive, true),
+          like(categories.name, `%${searchTerm}%`)
+        )
+      )
       .orderBy(categories.name);
+    return Array.isArray(result) ? result : [];
   }
 
   async searchMenuItems(searchTerm: string): Promise<MenuItem[]> {
-    return await this.db.select().from(menuItems)
+    const result = await this.db.select().from(menuItems)
       .where(
-        or(
-          like(menuItems.name, searchTerm),
-          like(menuItems.description, searchTerm),
-          like(menuItems.category, searchTerm)
+        and(
+          eq(menuItems.isAvailable, true),
+          or(
+            like(menuItems.name, `%${searchTerm}%`),
+            like(menuItems.description, `%${searchTerm}%`),
+            like(menuItems.category, `%${searchTerm}%`)
+          )
         )
       )
       .orderBy(menuItems.name);
+    return Array.isArray(result) ? result : [];
   }
 
-  // Enhanced Restaurant Functions
-  async getRestaurants(filters?: { categoryId?: string; area?: string; isOpen?: boolean }): Promise<Restaurant[]> {
-    const conditions = [];
+  // Enhanced Restaurant Functions with Search and Filtering
+  async getRestaurants(filters?: { 
+    categoryId?: string; 
+    area?: string; 
+    isOpen?: boolean;
+    isFeatured?: boolean;
+    isNew?: boolean;
+    search?: string;
+    sortBy?: 'name' | 'rating' | 'deliveryTime' | 'distance' | 'newest';
+    userLatitude?: number;
+    userLongitude?: number;
+    radius?: number; // in kilometers
+  }): Promise<Restaurant[]> {
+    const conditions = [eq(restaurants.isActive, true)];
     
     if (filters?.categoryId) {
       conditions.push(eq(restaurants.categoryId, filters.categoryId));
@@ -394,13 +438,172 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(restaurants.isOpen, filters.isOpen));
     }
     
-    if (conditions.length > 0) {
-      return await this.db.select().from(restaurants)
-        .where(and(...conditions))
-        .orderBy(restaurants.name);
+    if (filters?.isFeatured) {
+      conditions.push(eq(restaurants.isFeatured, true));
     }
     
-    return await this.db.select().from(restaurants).orderBy(restaurants.name);
+    if (filters?.isNew) {
+      conditions.push(eq(restaurants.isNew, true));
+    }
+    
+    if (filters?.search) {
+      conditions.push(
+        or(
+          like(restaurants.name, `%${filters.search}%`),
+          like(restaurants.description, `%${filters.search}%`),
+          like(restaurants.address, `%${filters.search}%`)
+        )
+      );
+    }
+    
+    // Base query
+    let query = this.db.select().from(restaurants).where(and(...conditions));
+    
+    // Sort by different criteria
+    switch (filters?.sortBy) {
+      case 'rating':
+        query = query.orderBy(desc(restaurants.rating));
+        break;
+      case 'deliveryTime':
+        query = query.orderBy(asc(restaurants.deliveryTime));
+        break;
+      case 'newest':
+        query = query.orderBy(desc(restaurants.createdAt));
+        break;
+      case 'distance':
+        // Will handle distance sorting in the application layer
+        query = query.orderBy(restaurants.name);
+        break;
+      default:
+        query = query.orderBy(restaurants.name);
+    }
+    
+    const result = await query;
+    const restaurants_list = Array.isArray(result) ? result : [];
+    
+    // If user location is provided and we're sorting by distance
+    if (filters?.userLatitude && filters?.userLongitude && filters?.sortBy === 'distance') {
+      return this.sortRestaurantsByDistance(
+        restaurants_list, 
+        filters.userLatitude, 
+        filters.userLongitude,
+        filters.radius
+      );
+    }
+    
+    // Filter by radius if provided
+    if (filters?.userLatitude && filters?.userLongitude && filters?.radius) {
+      return restaurants_list.filter(restaurant => {
+        if (!restaurant.latitude || !restaurant.longitude) return false;
+        const distance = this.calculateDistance(
+          filters.userLatitude!,
+          filters.userLongitude!,
+          parseFloat(restaurant.latitude),
+          parseFloat(restaurant.longitude)
+        );
+        return distance <= filters.radius!;
+      });
+    }
+    
+    return restaurants_list;
+  }
+
+  // Distance calculation using Haversine formula
+  calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLon = this.toRadians(lon2 - lon1);
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  // Sort restaurants by distance
+  private sortRestaurantsByDistance(
+    restaurants_list: Restaurant[], 
+    userLat: number, 
+    userLon: number,
+    maxDistance?: number
+  ): Restaurant[] {
+    return restaurants_list
+      .filter(restaurant => {
+        if (!restaurant.latitude || !restaurant.longitude) return false;
+        if (!maxDistance) return true;
+        
+        const distance = this.calculateDistance(
+          userLat,
+          userLon,
+          parseFloat(restaurant.latitude),
+          parseFloat(restaurant.longitude)
+        );
+        return distance <= maxDistance;
+      })
+      .map(restaurant => ({
+        ...restaurant,
+        distance: restaurant.latitude && restaurant.longitude ? 
+          this.calculateDistance(
+            userLat,
+            userLon,
+            parseFloat(restaurant.latitude),
+            parseFloat(restaurant.longitude)
+          ) : null
+      }))
+      .sort((a, b) => (a.distance || 999) - (b.distance || 999));
+  }
+
+  // Enhanced search for menu items
+  async searchMenuItemsAdvanced(searchTerm: string, restaurantId?: string): Promise<any[]> {
+    let query = this.db.select({
+      id: menuItems.id,
+      name: menuItems.name,
+      description: menuItems.description,
+      price: menuItems.price,
+      originalPrice: menuItems.originalPrice,
+      image: menuItems.image,
+      category: menuItems.category,
+      isAvailable: menuItems.isAvailable,
+      isSpecialOffer: menuItems.isSpecialOffer,
+      restaurant: {
+        id: restaurants.id,
+        name: restaurants.name,
+        image: restaurants.image,
+        deliveryTime: restaurants.deliveryTime,
+        deliveryFee: restaurants.deliveryFee
+      }
+    })
+    .from(menuItems)
+    .leftJoin(restaurants, eq(menuItems.restaurantId, restaurants.id))
+    .where(
+      and(
+        eq(menuItems.isAvailable, true),
+        eq(restaurants.isActive, true),
+        eq(restaurants.isOpen, true),
+        or(
+          like(menuItems.name, `%${searchTerm}%`),
+          like(menuItems.description, `%${searchTerm}%`),
+          like(menuItems.category, `%${searchTerm}%`)
+        )
+      )
+    );
+    
+    if (restaurantId) {
+      query = query.where(
+        and(
+          eq(menuItems.restaurantId, restaurantId),
+          eq(menuItems.isAvailable, true)
+        )
+      );
+    }
+    
+    const result = await query.orderBy(menuItems.name);
+    return Array.isArray(result) ? result : [];
   }
 
   // Order Functions
@@ -433,6 +636,150 @@ export class DatabaseStorage implements IStorage {
     return await this.db.select().from(orderTracking)
       .where(eq(orderTracking.orderId, orderId))
       .orderBy(desc(orderTracking.createdAt));
+  }
+
+  // Cart Functions - وظائف السلة
+  async getCartItems(userId: string): Promise<any[]> {
+    const result = await this.db.select({
+      id: cart.id,
+      quantity: cart.quantity,
+      specialInstructions: cart.specialInstructions,
+      addedAt: cart.addedAt,
+      menuItem: {
+        id: menuItems.id,
+        name: menuItems.name,
+        description: menuItems.description,
+        price: menuItems.price,
+        image: menuItems.image,
+        category: menuItems.category
+      },
+      restaurant: {
+        id: restaurants.id,
+        name: restaurants.name,
+        image: restaurants.image,
+        deliveryFee: restaurants.deliveryFee
+      }
+    })
+    .from(cart)
+    .leftJoin(menuItems, eq(cart.menuItemId, menuItems.id))
+    .leftJoin(restaurants, eq(cart.restaurantId, restaurants.id))
+    .where(eq(cart.userId, userId))
+    .orderBy(desc(cart.addedAt));
+    
+    return Array.isArray(result) ? result : [];
+  }
+
+  async addToCart(cartItem: InsertCart): Promise<Cart> {
+    // Check if item already exists in cart
+    const existingItem = await this.db.select().from(cart)
+      .where(
+        and(
+          eq(cart.userId, cartItem.userId),
+          eq(cart.menuItemId, cartItem.menuItemId)
+        )
+      );
+    
+    if (existingItem.length > 0) {
+      // Update quantity
+      const [updated] = await this.db.update(cart)
+        .set({ 
+          quantity: sql`${cart.quantity} + ${cartItem.quantity || 1}`,
+          addedAt: new Date()
+        })
+        .where(eq(cart.id, existingItem[0].id))
+        .returning();
+      return updated;
+    } else {
+      // Add new item
+      const [newItem] = await this.db.insert(cart).values(cartItem).returning();
+      return newItem;
+    }
+  }
+
+  async updateCartItem(cartId: string, quantity: number): Promise<Cart | undefined> {
+    if (quantity <= 0) {
+      await this.db.delete(cart).where(eq(cart.id, cartId));
+      return undefined;
+    }
+    
+    const [updated] = await this.db.update(cart)
+      .set({ quantity, addedAt: new Date() })
+      .where(eq(cart.id, cartId))
+      .returning();
+    return updated;
+  }
+
+  async removeFromCart(cartId: string): Promise<boolean> {
+    const result = await this.db.delete(cart).where(eq(cart.id, cartId));
+    return result.rowCount > 0;
+  }
+
+  async clearCart(userId: string): Promise<boolean> {
+    const result = await this.db.delete(cart).where(eq(cart.userId, userId));
+    return result.rowCount > 0;
+  }
+
+  // Favorites Functions - وظائف المفضلة
+  async getFavoriteRestaurants(userId: string): Promise<Restaurant[]> {
+    const result = await this.db.select({
+      id: restaurants.id,
+      name: restaurants.name,
+      description: restaurants.description,
+      image: restaurants.image,
+      rating: restaurants.rating,
+      reviewCount: restaurants.reviewCount,
+      deliveryTime: restaurants.deliveryTime,
+      deliveryFee: restaurants.deliveryFee,
+      minimumOrder: restaurants.minimumOrder,
+      categoryId: restaurants.categoryId,
+      latitude: restaurants.latitude,
+      longitude: restaurants.longitude,
+      address: restaurants.address,
+      isFeatured: restaurants.isFeatured,
+      isNew: restaurants.isNew,
+      isOpen: restaurants.isOpen,
+      createdAt: restaurants.createdAt
+    })
+    .from(favorites)
+    .leftJoin(restaurants, eq(favorites.restaurantId, restaurants.id))
+    .where(
+      and(
+        eq(favorites.userId, userId),
+        eq(restaurants.isActive, true)
+      )
+    )
+    .orderBy(desc(favorites.addedAt));
+    
+    return Array.isArray(result) ? result : [];
+  }
+
+  async addToFavorites(userId: string, restaurantId: string): Promise<Favorites> {
+    const [newFavorite] = await this.db.insert(favorites)
+      .values({ userId, restaurantId })
+      .returning();
+    return newFavorite;
+  }
+
+  async removeFromFavorites(userId: string, restaurantId: string): Promise<boolean> {
+    const result = await this.db.delete(favorites)
+      .where(
+        and(
+          eq(favorites.userId, userId),
+          eq(favorites.restaurantId, restaurantId)
+        )
+      );
+    return result.rowCount > 0;
+  }
+
+  async isRestaurantFavorite(userId: string, restaurantId: string): Promise<boolean> {
+    const result = await this.db.select().from(favorites)
+      .where(
+        and(
+          eq(favorites.userId, userId),
+          eq(favorites.restaurantId, restaurantId)
+        )
+      );
+    return result.length > 0;
   }
 }
 

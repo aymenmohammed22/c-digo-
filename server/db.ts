@@ -187,7 +187,8 @@ export class DatabaseStorage implements IStorage {
 
   // Orders
   async getOrders(): Promise<Order[]> {
-    return await this.db.select().from(orders);
+    const result = await this.db.select().from(orders);
+    return Array.isArray(result) ? result : [];
   }
 
   async getOrder(id: string): Promise<Order | undefined> {
@@ -196,7 +197,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrdersByRestaurant(restaurantId: string): Promise<Order[]> {
-    return await this.db.select().from(orders).where(eq(orders.restaurantId, restaurantId));
+    const result = await this.db.select().from(orders).where(eq(orders.restaurantId, restaurantId));
+    return Array.isArray(result) ? result : [];
   }
 
   async createOrder(order: InsertOrder): Promise<Order> {
@@ -211,7 +213,8 @@ export class DatabaseStorage implements IStorage {
 
   // Drivers
   async getDrivers(): Promise<Driver[]> {
-    return await this.db.select().from(drivers);
+    const result = await this.db.select().from(drivers);
+    return Array.isArray(result) ? result : [];
   }
 
   async getDriver(id: string): Promise<Driver | undefined> {
@@ -245,11 +248,13 @@ export class DatabaseStorage implements IStorage {
 
   // Special Offers
   async getSpecialOffers(): Promise<SpecialOffer[]> {
-    return await this.db.select().from(specialOffers);
+    const result = await this.db.select().from(specialOffers);
+    return Array.isArray(result) ? result : [];
   }
 
   async getActiveSpecialOffers(): Promise<SpecialOffer[]> {
-    return await this.db.select().from(specialOffers).where(eq(specialOffers.isActive, true));
+    const result = await this.db.select().from(specialOffers).where(eq(specialOffers.isActive, true));
+    return Array.isArray(result) ? result : [];
   }
 
   async createSpecialOffer(offer: InsertSpecialOffer): Promise<SpecialOffer> {

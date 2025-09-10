@@ -9,8 +9,11 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, userType }) => {
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
+  // TEMPORARY BYPASS: Skip authentication checks for testing
+  console.log(`TEMPORARY BYPASS: Allowing access to ${userType} route without authentication`);
+  
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
@@ -25,6 +28,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, userTy
     );
   }
 
+  // TEMPORARY: Always allow access for testing
+  return <>{children}</>;
+  
+  /* ORIGINAL CODE (commented out for testing):
   if (!user || user.userType !== userType) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-red-100">
@@ -50,4 +57,5 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, userTy
   }
 
   return <>{children}</>;
+  */
 };

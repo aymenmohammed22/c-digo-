@@ -103,7 +103,7 @@ export class DatabaseStorage implements IStorage {
   async getCategories(): Promise<Category[]> {
     try {
       const result = await this.db.select().from(categories);
-      return result || [];
+      return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error('Error fetching categories:', error);
       return [];
@@ -125,7 +125,16 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  // Restaurants - removed duplicate method, keeping enhanced version below
+  // Restaurants
+  async getRestaurants(): Promise<Restaurant[]> {
+    try {
+      const result = await this.db.select().from(restaurants);
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+      return [];
+    }
+  }
 
   async getRestaurant(id: string): Promise<Restaurant | undefined> {
     const [restaurant] = await this.db.select().from(restaurants).where(eq(restaurants.id, id));
@@ -264,7 +273,7 @@ export class DatabaseStorage implements IStorage {
   async getUiSettings(): Promise<SystemSettings[]> {
     try {
       const result = await this.db.select().from(systemSettings).where(eq(systemSettings.isActive, true));
-      return result || [];
+      return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error('Error fetching UI settings:', error);
       return [];

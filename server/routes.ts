@@ -18,6 +18,8 @@ import {
   insertSystemSettingsSchema,
   insertRestaurantEarningsSchema,
   insertUserSchema,
+  insertCartSchema,
+  insertFavoritesSchema,
   orders
 } from "@shared/schema";
 import { randomUUID } from "crypto";
@@ -191,20 +193,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Restaurants
+  // Enhanced Restaurants with filtering - مطاعم محسنة مع التصفية
   app.get("/api/restaurants", async (req, res) => {
     try {
-      const { categoryId } = req.query;
-      let restaurants;
+      const { 
+        categoryId, 
+        lat, 
+        lon, 
+        sortBy, 
+        isFeatured, 
+        isNew, 
+        search, 
+        radius, 
+        isOpen 
+      } = req.query;
       
-      if (categoryId) {
-        restaurants = await dbStorage.getRestaurantsByCategory(categoryId as string);
-      } else {
-        restaurants = await dbStorage.getRestaurants();
-      }
+      const filters = {
+        categoryId: categoryId as string,
+        userLatitude: lat ? parseFloat(lat as string) : undefined,
+        userLongitude: lon ? parseFloat(lon as string) : undefined,
+        sortBy: sortBy as 'name' | 'rating' | 'deliveryTime' | 'distance' | 'newest',
+        isFeatured: isFeatured === 'true',
+        isNew: isNew === 'true',
+        search: search as string,
+        radius: radius ? parseFloat(radius as string) : undefined,
+        isOpen: isOpen !== undefined ? isOpen === 'true' : undefined
+      };
       
+      const restaurants = await dbStorage.getRestaurants(filters);
       res.json(restaurants);
     } catch (error) {
+      console.error('Error fetching restaurants:', error);
       res.status(500).json({ message: "Failed to fetch restaurants" });
     }
   });
@@ -1062,30 +1081,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Search Routes
+  // Enhanced Search Routes - مسارات البحث المحسنة
   app.get("/api/search", async (req, res) => {
     try {
-      const { q: query, category } = req.query;
+      const { 
+        q: query, 
+        category, 
+        lat, 
+        lon,
+        sortBy,
+        isFeatured,
+        isNew,
+        radius,
+        type
+      } = req.query;
       
       if (!query) {
         return res.status(400).json({ error: "Query parameter is required" });
       }
 
-      const searchTerm = `%${query}%`;
+      const userLocation = (lat && lon) ? { lat: parseFloat(lat as string), lon: parseFloat(lon as string) } : undefined;
       
-      const restaurants = await dbStorage.searchRestaurants(searchTerm, category as string);
-      const categories = await dbStorage.searchCategories(searchTerm);
-      const menuItems = await dbStorage.searchMenuItems(searchTerm);
+      const results: any = {};
+      
+      if (!type || type === 'restaurants') {
+        const filters = {
+          search: query as string,
+          categoryId: category as string,
+          sortBy: sortBy as 'name' | 'rating' | 'deliveryTime' | 'distance' | 'newest',
+          isFeatured: isFeatured === 'true',
+          isNew: isNew === 'true',
+          userLatitude: userLocation?.lat,
+          userLongitude: userLocation?.lon,
+          radius: radius ? parseFloat(radius as string) : undefined
+        };
+        results.restaurants = await dbStorage.getRestaurants(filters);
+      }
+      
+      if (!type || type === 'categories') {
+        results.categories = await dbStorage.searchCategories(query as string);
+      }
+      
+      if (!type || type === 'menu-items') {
+        results.menuItems = await dbStorage.searchMenuItemsAdvanced(query as string);
+      }
+      
+      const total = (results.restaurants?.length || 0) + 
+                   (results.categories?.length || 0) + 
+                   (results.menuItems?.length || 0);
 
-      res.json({
-        restaurants,
-        categories,
-        menuItems,
-        total: restaurants.length + categories.length + menuItems.length
-      });
+      res.json({ ...results, total });
     } catch (error) {
       console.error("Search error:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Cart endpoints - مسارات السلة
+  app.get("/api/cart/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const cartItems = await dbStorage.getCartItems(userId);
+      res.json(cartItems);
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      res.status(500).json({ message: 'Failed to fetch cart items' });
+    }
+  });
+
+  app.post("/api/cart", async (req, res) => {
+    try {
+      const validatedData = insertCartSchema.parse(req.body);
+      const newItem = await dbStorage.addToCart(validatedData);
+      res.status(201).json(newItem);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      res.status(500).json({ message: 'Failed to add item to cart' });
+    }
+  });
+
+  app.put("/api/cart/:cartId", async (req, res) => {
+    try {
+      const { cartId } = req.params;
+      const { quantity } = req.body;
+      
+      if (quantity <= 0) {
+        await dbStorage.removeFromCart(cartId);
+        res.json({ message: 'Item removed from cart' });
+      } else {
+        const updatedItem = await dbStorage.updateCartItem(cartId, quantity);
+        res.json(updatedItem);
+      }
+    } catch (error) {
+      console.error('Error updating cart item:', error);
+      res.status(500).json({ message: 'Failed to update cart item' });
+    }
+  });
+
+  app.delete("/api/cart/:cartId", async (req, res) => {
+    try {
+      const { cartId } = req.params;
+      const success = await dbStorage.removeFromCart(cartId);
+      
+      if (success) {
+        res.json({ message: 'Item removed from cart' });
+      } else {
+        res.status(404).json({ message: 'Cart item not found' });
+      }
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      res.status(500).json({ message: 'Failed to remove item from cart' });
+    }
+  });
+
+  app.delete("/api/cart/clear/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const success = await dbStorage.clearCart(userId);
+      
+      if (success) {
+        res.json({ message: 'Cart cleared successfully' });
+      } else {
+        res.status(404).json({ message: 'No cart items found for user' });
+      }
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      res.status(500).json({ message: 'Failed to clear cart' });
+    }
+  });
+
+  // Favorites endpoints - مسارات المفضلة
+  app.get("/api/favorites/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const favorites = await dbStorage.getFavoriteRestaurants(userId);
+      res.json(favorites);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+      res.status(500).json({ message: 'Failed to fetch favorite restaurants' });
+    }
+  });
+
+  app.post("/api/favorites", async (req, res) => {
+    try {
+      const validatedData = insertFavoritesSchema.parse(req.body);
+      const newFavorite = await dbStorage.addToFavorites(validatedData.userId, validatedData.restaurantId);
+      res.status(201).json(newFavorite);
+    } catch (error) {
+      console.error('Error adding to favorites:', error);
+      res.status(500).json({ message: 'Failed to add restaurant to favorites' });
+    }
+  });
+
+  app.delete("/api/favorites/:userId/:restaurantId", async (req, res) => {
+    try {
+      const { userId, restaurantId } = req.params;
+      const success = await dbStorage.removeFromFavorites(userId, restaurantId);
+      
+      if (success) {
+        res.json({ message: 'Restaurant removed from favorites' });
+      } else {
+        res.status(404).json({ message: 'Favorite not found' });
+      }
+    } catch (error) {
+      console.error('Error removing from favorites:', error);
+      res.status(500).json({ message: 'Failed to remove restaurant from favorites' });
+    }
+  });
+
+  app.get("/api/favorites/check/:userId/:restaurantId", async (req, res) => {
+    try {
+      const { userId, restaurantId } = req.params;
+      const isFavorite = await dbStorage.isRestaurantFavorite(userId, restaurantId);
+      res.json({ isFavorite });
+    } catch (error) {
+      console.error('Error checking favorite status:', error);
+      res.status(500).json({ message: 'Failed to check favorite status' });
     }
   });
 

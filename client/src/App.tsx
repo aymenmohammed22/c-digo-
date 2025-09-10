@@ -29,7 +29,6 @@ import NotFound from "@/pages/not-found";
 function AuthenticatedApp() {
   const { isAuthenticated, userType, loading } = useAuth();
   const { location } = useLocation();
-  const [showLogin, setShowLogin] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(true);
 
   if (loading) {

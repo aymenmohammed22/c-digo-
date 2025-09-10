@@ -129,15 +129,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Restaurants
-  async getRestaurants(): Promise<Restaurant[]> {
-    try {
-      const result = await this.db.select().from(restaurants);
-      return Array.isArray(result) ? result : [];
-    } catch (error) {
-      console.error('Error fetching restaurants:', error);
-      return [];
-    }
-  }
+  // getRestaurants method is now the enhanced version below with filtering capabilities
 
   async getRestaurant(id: string): Promise<Restaurant | undefined> {
     const [restaurant] = await this.db.select().from(restaurants).where(eq(restaurants.id, id));

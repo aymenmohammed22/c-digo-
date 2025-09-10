@@ -273,6 +273,7 @@ export class DatabaseStorage implements IStorage {
   async getUiSettings(): Promise<SystemSettings[]> {
     try {
       const result = await this.db.select().from(systemSettings).where(eq(systemSettings.isActive, true));
+      // Ensure we always return an array, even if result is null or undefined
       return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error('Error fetching UI settings:', error);
@@ -632,59 +633,71 @@ export class DatabaseStorage implements IStorage {
 
   // Cart Functions - وظائف السلة
   async getCartItems(userId: string): Promise<any[]> {
-    const result = await this.db.select({
-      id: cart.id,
-      quantity: cart.quantity,
-      specialInstructions: cart.specialInstructions,
-      addedAt: cart.addedAt,
-      menuItem: {
-        id: menuItems.id,
-        name: menuItems.name,
-        description: menuItems.description,
-        price: menuItems.price,
-        image: menuItems.image,
-        category: menuItems.category
-      },
-      restaurant: {
-        id: restaurants.id,
-        name: restaurants.name,
-        image: restaurants.image,
-        deliveryFee: restaurants.deliveryFee
-      }
-    })
-    .from(cart)
-    .leftJoin(menuItems, eq(cart.menuItemId, menuItems.id))
-    .leftJoin(restaurants, eq(cart.restaurantId, restaurants.id))
-    .where(eq(cart.userId, userId))
-    .orderBy(desc(cart.addedAt));
-    
-    return Array.isArray(result) ? result : [];
+    try {
+      const result = await this.db.select({
+        id: cart.id,
+        quantity: cart.quantity,
+        specialInstructions: cart.specialInstructions,
+        addedAt: cart.addedAt,
+        menuItem: {
+          id: menuItems.id,
+          name: menuItems.name,
+          description: menuItems.description,
+          price: menuItems.price,
+          image: menuItems.image,
+          category: menuItems.category
+        },
+        restaurant: {
+          id: restaurants.id,
+          name: restaurants.name,
+          image: restaurants.image,
+          deliveryFee: restaurants.deliveryFee
+        }
+      })
+      .from(cart)
+      .leftJoin(menuItems, eq(cart.menuItemId, menuItems.id))
+      .leftJoin(restaurants, eq(cart.restaurantId, restaurants.id))
+      .where(eq(cart.userId, userId))
+      .orderBy(desc(cart.addedAt));
+      
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error('Error fetching cart items:', error);
+      return [];
+    }
   }
 
   async addToCart(cartItem: InsertCart): Promise<Cart> {
-    // Check if item already exists in cart
-    const existingItem = await this.db.select().from(cart)
-      .where(
-        and(
-          eq(cart.userId, cartItem.userId),
-          eq(cart.menuItemId, cartItem.menuItemId)
-        )
-      );
-    
-    if (existingItem.length > 0) {
-      // Update quantity
-      const [updated] = await this.db.update(cart)
-        .set({ 
-          quantity: sql`${cart.quantity} + ${cartItem.quantity || 1}`,
-          addedAt: new Date()
-        })
-        .where(eq(cart.id, existingItem[0].id))
-        .returning();
-      return updated;
-    } else {
-      // Add new item
-      const [newItem] = await this.db.insert(cart).values(cartItem).returning();
-      return newItem;
+    try {
+      // Check if item already exists in cart
+      const existingItemResult = await this.db.select().from(cart)
+        .where(
+          and(
+            eq(cart.userId, cartItem.userId),
+            eq(cart.menuItemId, cartItem.menuItemId)
+          )
+        );
+      
+      const existingItem = Array.isArray(existingItemResult) ? existingItemResult : [];
+      
+      if (existingItem.length > 0) {
+        // Update quantity
+        const [updated] = await this.db.update(cart)
+          .set({ 
+            quantity: sql`${cart.quantity} + ${cartItem.quantity || 1}`,
+            addedAt: new Date()
+          })
+          .where(eq(cart.id, existingItem[0].id))
+          .returning();
+        return updated;
+      } else {
+        // Add new item
+        const [newItem] = await this.db.insert(cart).values(cartItem).returning();
+        return newItem;
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      throw error;
     }
   }
 
@@ -713,36 +726,41 @@ export class DatabaseStorage implements IStorage {
 
   // Favorites Functions - وظائف المفضلة
   async getFavoriteRestaurants(userId: string): Promise<Restaurant[]> {
-    const result = await this.db.select({
-      id: restaurants.id,
-      name: restaurants.name,
-      description: restaurants.description,
-      image: restaurants.image,
-      rating: restaurants.rating,
-      reviewCount: restaurants.reviewCount,
-      deliveryTime: restaurants.deliveryTime,
-      deliveryFee: restaurants.deliveryFee,
-      minimumOrder: restaurants.minimumOrder,
-      categoryId: restaurants.categoryId,
-      latitude: restaurants.latitude,
-      longitude: restaurants.longitude,
-      address: restaurants.address,
-      isFeatured: restaurants.isFeatured,
-      isNew: restaurants.isNew,
-      isOpen: restaurants.isOpen,
-      createdAt: restaurants.createdAt
-    })
-    .from(favorites)
-    .leftJoin(restaurants, eq(favorites.restaurantId, restaurants.id))
-    .where(
-      and(
-        eq(favorites.userId, userId),
-        eq(restaurants.isActive, true)
+    try {
+      const result = await this.db.select({
+        id: restaurants.id,
+        name: restaurants.name,
+        description: restaurants.description,
+        image: restaurants.image,
+        rating: restaurants.rating,
+        reviewCount: restaurants.reviewCount,
+        deliveryTime: restaurants.deliveryTime,
+        deliveryFee: restaurants.deliveryFee,
+        minimumOrder: restaurants.minimumOrder,
+        categoryId: restaurants.categoryId,
+        latitude: restaurants.latitude,
+        longitude: restaurants.longitude,
+        address: restaurants.address,
+        isFeatured: restaurants.isFeatured,
+        isNew: restaurants.isNew,
+        isOpen: restaurants.isOpen,
+        createdAt: restaurants.createdAt
+      })
+      .from(favorites)
+      .leftJoin(restaurants, eq(favorites.restaurantId, restaurants.id))
+      .where(
+        and(
+          eq(favorites.userId, userId),
+          eq(restaurants.isActive, true)
+        )
       )
-    )
-    .orderBy(desc(favorites.addedAt));
-    
-    return Array.isArray(result) ? result : [];
+      .orderBy(desc(favorites.addedAt));
+      
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error('Error fetching favorite restaurants:', error);
+      return [];
+    }
   }
 
   async addToFavorites(userId: string, restaurantId: string): Promise<Favorites> {

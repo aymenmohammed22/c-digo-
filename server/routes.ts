@@ -149,13 +149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
-      // TEMPORARY FIX: Return sample data instead of database call
-      console.log('TEMPORARY FIX: Returning sample categories');
-      const categories = [
-        { id: '1', name: 'مطاعم', icon: 'restaurant', sortOrder: 1, isActive: true },
-        { id: '2', name: 'وجبات سريعة', icon: 'fastfood', sortOrder: 2, isActive: true },
-        { id: '3', name: 'مشروبات', icon: 'drinks', sortOrder: 3, isActive: true }
-      ];
+      const categories = await dbStorage.getCategories();
       res.json(categories);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch categories" });
@@ -226,34 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isOpen: isOpen !== undefined ? isOpen === 'true' : undefined
       };
       
-      // TEMPORARY FIX: Return sample data instead of database call
-      console.log('TEMPORARY FIX: Returning sample restaurants');
-      const restaurants = [
-        {
-          id: '1',
-          name: 'مطعم الأصالة',
-          description: 'مطعم يقدم أشهى الأطباق العربية الأصيلة',
-          image: '/images/restaurant1.jpg',
-          rating: '4.5',
-          reviewCount: 45,
-          deliveryTime: '30-45 دقيقة',
-          isOpen: true,
-          minimumOrder: '25.00',
-          deliveryFee: '5.00'
-        },
-        {
-          id: '2',
-          name: 'برجر هاوس',
-          description: 'أشهى البرجر والوجبات السريعة',
-          image: '/images/restaurant2.jpg',
-          rating: '4.2',
-          reviewCount: 67,
-          deliveryTime: '20-30 دقيقة',
-          isOpen: true,
-          minimumOrder: '15.00',
-          deliveryFee: '3.00'
-        }
-      ];
+      const restaurants = await dbStorage.getRestaurants();
       res.json(restaurants);
     } catch (error) {
       console.error('Error fetching restaurants:', error);

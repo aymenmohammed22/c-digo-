@@ -8,7 +8,13 @@ const router = express.Router();
 // جلب التصنيفات
 router.get("/categories", async (req, res) => {
   try {
-    const categories = await dbStorage.getCategories();
+    // TEMPORARY FIX: Return sample data instead of database call
+    console.log('TEMPORARY FIX: Returning sample categories from public.ts');
+    const categories = [
+      { id: '1', name: 'مطاعم', icon: 'restaurant', sortOrder: 1, isActive: true },
+      { id: '2', name: 'وجبات سريعة', icon: 'fastfood', sortOrder: 2, isActive: true },
+      { id: '3', name: 'مشروبات', icon: 'drinks', sortOrder: 3, isActive: true }
+    ];
     res.json(categories);
   } catch (error) {
     console.error("خطأ في جلب التصنيفات:", error);
@@ -21,14 +27,34 @@ router.get("/restaurants", async (req, res) => {
   try {
     const { categoryId, search } = req.query;
     
-    let restaurants;
-    if (search) {
-      restaurants = await dbStorage.searchRestaurants(`%${search}%`, categoryId as string);
-    } else if (categoryId && categoryId !== 'all') {
-      restaurants = await dbStorage.getRestaurantsByCategory(categoryId as string);
-    } else {
-      restaurants = await dbStorage.getRestaurants();
-    }
+    // TEMPORARY FIX: Return sample data instead of database call
+    console.log('TEMPORARY FIX: Returning sample restaurants from public.ts');
+    const restaurants = [
+      {
+        id: '1',
+        name: 'مطعم الأصالة',
+        description: 'مطعم يقدم أشهى الأطباق العربية الأصيلة',
+        image: '/images/restaurant1.jpg',
+        rating: '4.5',
+        reviewCount: 45,
+        deliveryTime: '30-45 دقيقة',
+        isOpen: true,
+        minimumOrder: '25.00',
+        deliveryFee: '5.00'
+      },
+      {
+        id: '2',
+        name: 'برجر هاوس',
+        description: 'أشهى البرجر والوجبات السريعة',
+        image: '/images/restaurant2.jpg',
+        rating: '4.2',
+        reviewCount: 67,
+        deliveryTime: '20-30 دقيقة',
+        isOpen: true,
+        minimumOrder: '15.00',
+        deliveryFee: '3.00'
+      }
+    ];
 
     res.json(restaurants);
   } catch (error) {

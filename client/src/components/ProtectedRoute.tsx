@@ -9,12 +9,12 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, userType }) => {
-  const { isLoading } = useAuth();
+  const { loading } = useAuth();
 
   // TEMPORARY BYPASS: Skip authentication checks for testing
   console.log(`TEMPORARY BYPASS: Allowing access to ${userType} route without authentication`);
   
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100">
         <Card className="w-96">

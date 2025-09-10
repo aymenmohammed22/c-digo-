@@ -32,11 +32,11 @@ async function setupInitialData() {
     // Create categories
     console.log("📂 Creating categories...");
     const categoryData = [
-      { id: "1", name: "مطاعم", icon: "fas fa-utensils", isActive: true },
-      { id: "2", name: "مقاهي", icon: "fas fa-coffee", isActive: true },
-      { id: "3", name: "حلويات", icon: "fas fa-candy-cane", isActive: true },
-      { id: "4", name: "سوبرماركت", icon: "fas fa-shopping-cart", isActive: true },
-      { id: "5", name: "صيدليات", icon: "fas fa-pills", isActive: true },
+      { name: "مطاعم", icon: "fas fa-utensils", isActive: true },
+      { name: "مقاهي", icon: "fas fa-coffee", isActive: true },
+      { name: "حلويات", icon: "fas fa-candy-cane", isActive: true },
+      { name: "سوبرماركت", icon: "fas fa-shopping-cart", isActive: true },
+      { name: "صيدليات", icon: "fas fa-pills", isActive: true },
     ];
 
     const createdCategories = await db.insert(categories).values(categoryData).returning();
@@ -46,7 +46,6 @@ async function setupInitialData() {
     console.log("🏪 Creating restaurants...");
     const restaurantData = [
       {
-        id: "1",
         name: "مطعم الوزيكو للعربكة",
         description: "مطعم يمني تقليدي متخصص في الأطباق الشعبية",
         image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
@@ -64,7 +63,6 @@ async function setupInitialData() {
         temporaryCloseReason: null,
       },
       {
-        id: "2",
         name: "حلويات الشام",
         description: "أفضل الحلويات الشامية والعربية",
         image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
@@ -82,7 +80,6 @@ async function setupInitialData() {
         temporaryCloseReason: null,
       },
       {
-        id: "3",
         name: "مقهى العروبة",
         description: "مقهى شعبي بالطابع العربي الأصيل",
         image: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=400",
@@ -108,7 +105,6 @@ async function setupInitialData() {
     console.log("🍽️ Creating menu items...");
     const menuItemData = [
       {
-        id: "1",
         name: "عربكة بالقشطة والعسل",
         description: "حلوى يمنية تقليدية بالقشطة الطازجة والعسل الطبيعي",
         price: 55,
@@ -120,7 +116,6 @@ async function setupInitialData() {
         restaurantId: createdRestaurants[0].id,
       },
       {
-        id: "2",
         name: "معصوب بالقشطة والعسل",
         description: "طبق يمني شعبي بالموز والقشطة والعسل",
         price: 55,
@@ -132,7 +127,6 @@ async function setupInitialData() {
         restaurantId: createdRestaurants[0].id,
       },
       {
-        id: "3",
         name: "مياه معدنية 750 مل",
         description: "مياه طبيعية معدنية عالية الجودة",
         price: 3,
@@ -144,7 +138,6 @@ async function setupInitialData() {
         restaurantId: createdRestaurants[0].id,
       },
       {
-        id: "4",
         name: "كومبو عربكة خاص",
         description: "عربكة + مطبق عادي + مشروب غازي",
         price: 55,
@@ -165,7 +158,6 @@ async function setupInitialData() {
     const hashedPassword = await bcrypt.hash("password123", 10);
     const driverData = [
       {
-        id: "1",
         name: "أحمد محمد",
         phone: "+967771234567",
         password: hashedPassword,
@@ -175,7 +167,6 @@ async function setupInitialData() {
         earnings: 2500,
       },
       {
-        id: "2",
         name: "علي حسن",
         phone: "+967779876543",
         password: hashedPassword,
@@ -193,7 +184,6 @@ async function setupInitialData() {
     console.log("🎁 Creating special offers...");
     const offerData = [
       {
-        id: "1",
         title: "خصم 20% على الطلبات فوق 100 ريال",
         description: "احصل على خصم 20% عند طلب بقيمة 100 ريال أو أكثر",
         image: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400",
@@ -204,7 +194,6 @@ async function setupInitialData() {
         validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       },
       {
-        id: "2",
         title: "توصيل مجاني",
         description: "توصيل مجاني للطلبات فوق 50 ريال",
         image: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400",
@@ -241,7 +230,6 @@ async function setupInitialData() {
     const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
     
     const adminData = {
-      id: "1",
       name: 'مدير النظام',
       email: 'admin@alsarie-one.com',
       password: hashedAdminPassword,

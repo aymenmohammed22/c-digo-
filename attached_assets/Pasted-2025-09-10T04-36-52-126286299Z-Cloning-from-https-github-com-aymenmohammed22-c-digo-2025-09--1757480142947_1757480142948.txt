@@ -1,0 +1,44 @@
+2025-09-10T04:36:52.126286299Z ==> Cloning from https://github.com/aymenmohammed22/c-digo-
+2025-09-10T04:36:53.408161235Z ==> Checking out commit e8ed7bb0623627fbf85d2f07932a65f6ee7d302e in branch main
+2025-09-10T04:36:54.176248198Z ==> Using Node.js version 22.16.0 (default)
+2025-09-10T04:36:54.199846718Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+2025-09-10T04:36:55.997306586Z ==> Running build command 'npm install; npm run build'...
+2025-09-10T04:37:04.363265793Z 
+2025-09-10T04:37:04.363291423Z added 522 packages, and audited 523 packages in 8s
+2025-09-10T04:37:04.363304304Z 
+2025-09-10T04:37:04.363310294Z 73 packages are looking for funding
+2025-09-10T04:37:04.363366525Z   run `npm fund` for details
+2025-09-10T04:37:04.385174767Z 
+2025-09-10T04:37:04.385187217Z 5 moderate severity vulnerabilities
+2025-09-10T04:37:04.385191337Z 
+2025-09-10T04:37:04.385195507Z To address all issues (including breaking changes), run:
+2025-09-10T04:37:04.385199627Z   npm audit fix --force
+2025-09-10T04:37:04.385203027Z 
+2025-09-10T04:37:04.385207038Z Run `npm audit` for details.
+2025-09-10T04:37:04.6308999Z 
+2025-09-10T04:37:04.630918711Z > rest-express@1.0.0 build
+2025-09-10T04:37:04.630924811Z > vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+2025-09-10T04:37:04.630929601Z 
+2025-09-10T04:37:04.816094736Z vite v5.4.20 building for production...
+2025-09-10T04:37:04.865913129Z transforming...
+2025-09-10T04:37:08.495298928Z ✓ 1757 modules transformed.
+2025-09-10T04:37:08.733860564Z rendering chunks...
+2025-09-10T04:37:08.742093402Z computing gzip size...
+2025-09-10T04:37:08.75617695Z ../dist/public/index.html                   2.20 kB │ gzip:   0.86 kB
+2025-09-10T04:37:08.75619385Z ../dist/public/assets/index-Cf9jfY6H.css   80.87 kB │ gzip:  13.54 kB
+2025-09-10T04:37:08.756358155Z ../dist/public/assets/index-D_wG9nWp.js   506.13 kB │ gzip: 145.99 kB
+2025-09-10T04:37:08.756480268Z 
+2025-09-10T04:37:08.756491658Z (!) Some chunks are larger than 500 kB after minification. Consider:
+2025-09-10T04:37:08.756497608Z - Using dynamic import() to code-split the application
+2025-09-10T04:37:08.756502629Z - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2025-09-10T04:37:08.756506969Z - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+2025-09-10T04:37:08.756719335Z ✓ built in 3.92s
+2025-09-10T04:37:08.817632914Z ✘ [ERROR] No matching export in "server/vite.ts" for import "createServer"
+2025-09-10T04:37:08.817651424Z 
+2025-09-10T04:37:08.817658205Z     server/vite.ts:1:9:
+2025-09-10T04:37:08.817663735Z       1 │ import { createServer as createViteServer } from "vite";
+2025-09-10T04:37:08.817670365Z         ╵          ~~~~~~~~~~~~
+2025-09-10T04:37:08.817675295Z 
+2025-09-10T04:37:08.81787157Z 1 error
+2025-09-10T04:37:08.835509407Z ==> Build failed 😞
+2025-09-10T04:37:08.835521727Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

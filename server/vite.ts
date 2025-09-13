@@ -19,6 +19,7 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+export { createViteServer as createServer };
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -36,7 +37,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(viteServer.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use("*", async (req: any, res: any, next: any) => {
     const url = req.originalUrl;
     try {
       const clientTemplate = path.resolve(
@@ -58,7 +59,6 @@ export async function setupVite(app: Express, server: Server) {
     }
   });
 }
-
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {

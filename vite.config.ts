@@ -31,6 +31,16 @@ export default defineConfig(async () => {
     build: {
       outDir: path.resolve(__dirname, "dist/public"),
       emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              return id.toString().split('node_modules/')[1].split('/')[0].toString();
+            }
+          }
+        },
+      },
+      chunkSizeWarningLimit: 1000,  // Increase limit to reduce unnecessary warnings
     },
     server: {
       host: "0.0.0.0",

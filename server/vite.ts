@@ -1,4 +1,5 @@
-import { createServer as createViteServer } from "vite";
+// server/vite.ts
+import { createServer } from "vite"; // تم التعديل هنا
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
@@ -18,6 +19,7 @@ export function log(message: string, source = "express") {
   });
   console.log(`${formattedTime} [${source}] ${message}`);
 }
+
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -26,7 +28,7 @@ export async function setupVite(app: Express, server: Server) {
   };
 
   // إنشاء Vite server
-  const viteServer = await createViteServer({
+  const viteServer = await createServer({ // تم التعديل هنا
     ...viteConfig,
     configFile: path.resolve(__dirname, "..", "client", "vite.config.ts"),
     server: serverOptions,
@@ -57,6 +59,7 @@ export async function setupVite(app: Express, server: Server) {
     }
   });
 }
+
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {

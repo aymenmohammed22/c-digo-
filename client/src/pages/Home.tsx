@@ -1,27 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
-  MapPin, 
-  Search, 
-  Bell, 
-  User, 
-  Clock, 
   Beef, 
   Cookie, 
   UtensilsCrossed, 
   Star, 
   Heart,
-  Plus,
   Menu,
-  ShoppingBag,
-  Building2,
-  Stethoscope,
+  User,
   Settings
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import type { Restaurant } from '@shared/schema';
 import TimingBanner from '@/components/TimingBanner';
 
@@ -33,9 +23,6 @@ export default function Home() {
     queryKey: ['/api/restaurants'],
   });
 
-  const { data: categories } = useQuery({
-    queryKey: ['/api/categories'],
-  });
 
   // فلترة المطاعم حسب التصنيف المحدد
   const filteredRestaurants = restaurants?.filter(restaurant => {

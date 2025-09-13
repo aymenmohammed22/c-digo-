@@ -440,36 +440,38 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (filters?.search) {
-      conditions.push(
-        or(
-          like(restaurants.name, `%${filters.search}%`),
-          like(restaurants.description, `%${filters.search}%`),
-          like(restaurants.address, `%${filters.search}%`)
-        )
-      );
+      const searchConditions = [
+        like(restaurants.name, `%${filters.search}%`),
+        like(restaurants.description, `%${filters.search}%`),
+        like(restaurants.address, `%${filters.search}%`)
+      ];
+      
+      if (searchConditions.length > 0) {
+        conditions.push(or(...searchConditions));
+      }
     }
     
-    // Base query
-    let query = this.db.select().from(restaurants).where(and(...conditions));
-    
-    // Sort by different criteria
+    // Base query with sorting
+    let orderByClause;
     switch (filters?.sortBy) {
       case 'rating':
-        query = query.orderBy(desc(restaurants.rating));
+        orderByClause = desc(restaurants.rating);
         break;
       case 'deliveryTime':
-        query = query.orderBy(asc(restaurants.deliveryTime));
+        orderByClause = asc(restaurants.deliveryTime);
         break;
       case 'newest':
-        query = query.orderBy(desc(restaurants.createdAt));
+        orderByClause = desc(restaurants.createdAt);
         break;
       case 'distance':
         // Will handle distance sorting in the application layer
-        query = query.orderBy(restaurants.name);
+        orderByClause = restaurants.name;
         break;
       default:
-        query = query.orderBy(restaurants.name);
+        orderByClause = restaurants.name;
     }
+    
+    const query = this.db.select().from(restaurants).where(and(...conditions)).orderBy(orderByClause);
     
     const result = await query;
     const restaurants_list = Array.isArray(result) ? result : [];
@@ -553,7 +555,22 @@ export class DatabaseStorage implements IStorage {
 
   // Enhanced search for menu items
   async searchMenuItemsAdvanced(searchTerm: string, restaurantId?: string): Promise<any[]> {
-    let query = this.db.select({
+    const conditions = [
+      eq(menuItems.isAvailable, true),
+      eq(restaurants.isActive, true),
+      eq(restaurants.isOpen, true),
+      or(
+        like(menuItems.name, `%${searchTerm}%`),
+        like(menuItems.description, `%${searchTerm}%`),
+        like(menuItems.category, `%${searchTerm}%`)
+      )
+    ];
+    
+    if (restaurantId) {
+      conditions.push(eq(menuItems.restaurantId, restaurantId));
+    }
+    
+    const query = this.db.select({
       id: menuItems.id,
       name: menuItems.name,
       description: menuItems.description,
@@ -573,29 +590,10 @@ export class DatabaseStorage implements IStorage {
     })
     .from(menuItems)
     .leftJoin(restaurants, eq(menuItems.restaurantId, restaurants.id))
-    .where(
-      and(
-        eq(menuItems.isAvailable, true),
-        eq(restaurants.isActive, true),
-        eq(restaurants.isOpen, true),
-        or(
-          like(menuItems.name, `%${searchTerm}%`),
-          like(menuItems.description, `%${searchTerm}%`),
-          like(menuItems.category, `%${searchTerm}%`)
-        )
-      )
-    );
+    .where(and(...conditions))
+    .orderBy(menuItems.name);
     
-    if (restaurantId) {
-      query = query.where(
-        and(
-          eq(menuItems.restaurantId, restaurantId),
-          eq(menuItems.isAvailable, true)
-        )
-      );
-    }
-    
-    const result = await query.orderBy(menuItems.name);
+    const result = await query;
     return Array.isArray(result) ? result : [];
   }
 
@@ -727,27 +725,9 @@ export class DatabaseStorage implements IStorage {
   // Favorites Functions - وظائف المفضلة
   async getFavoriteRestaurants(userId: string): Promise<Restaurant[]> {
     try {
-      const result = await this.db.select({
-        id: restaurants.id,
-        name: restaurants.name,
-        description: restaurants.description,
-        image: restaurants.image,
-        rating: restaurants.rating,
-        reviewCount: restaurants.reviewCount,
-        deliveryTime: restaurants.deliveryTime,
-        deliveryFee: restaurants.deliveryFee,
-        minimumOrder: restaurants.minimumOrder,
-        categoryId: restaurants.categoryId,
-        latitude: restaurants.latitude,
-        longitude: restaurants.longitude,
-        address: restaurants.address,
-        isFeatured: restaurants.isFeatured,
-        isNew: restaurants.isNew,
-        isOpen: restaurants.isOpen,
-        createdAt: restaurants.createdAt
-      })
-      .from(favorites)
-      .leftJoin(restaurants, eq(favorites.restaurantId, restaurants.id))
+      const result = await this.db.select()
+      .from(restaurants)
+      .innerJoin(favorites, eq(favorites.restaurantId, restaurants.id))
       .where(
         and(
           eq(favorites.userId, userId),
@@ -756,7 +736,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(favorites.addedAt));
       
-      return Array.isArray(result) ? result : [];
+      return Array.isArray(result) ? result.map(row => row.restaurants) : [];
     } catch (error) {
       console.error('Error fetching favorite restaurants:', error);
       return [];

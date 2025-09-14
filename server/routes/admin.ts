@@ -4,6 +4,9 @@ import * as schema from "../../shared/schema.js";
 import { eq, desc, and, or, like, count, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
+// Get database instance for direct queries
+const db = dbStorage.db;
+
 const router = express.Router();
 
 // Middleware للتحقق من صلاحيات المدير
@@ -142,15 +145,10 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
     ]);
 
     // الطلبات الأخيرة
-    const recentOrders = await db.query.orders.findMany({
-      limit: 10,
-      orderBy: desc(schema.orders.createdAt),
-      with: {
-        restaurantId: true,
-        customerId: true,
-        driverId: true
-      }
-    });
+    const recentOrders = await db.select()
+      .from(schema.orders)
+      .limit(10)
+      .orderBy(desc(schema.orders.createdAt));
 
     res.json({
       stats: {
@@ -175,9 +173,9 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
 // إدارة التصنيفات
 router.get("/categories", requireAdmin, async (req, res) => {
   try {
-    const categories = await db.query.categories.findMany({
-      orderBy: [schema.categories.sortOrder, schema.categories.name]
-    });
+    const categories = await db.select()
+      .from(schema.categories)
+      .orderBy(schema.categories.sortOrder, schema.categories.name);
     res.json(categories);
   } catch (error) {
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -229,9 +227,9 @@ router.delete("/categories/:id", requireAdmin, async (req, res) => {
 // إدارة أقسام المطاعم
 router.get("/restaurant-sections", requireAdmin, async (req, res) => {
   try {
-    const sections = await db.query.restaurantSections.findMany({
-      orderBy: [schema.restaurantSections.sortOrder, schema.restaurantSections.name]
-    });
+    const sections = await db.select()
+      .from(schema.restaurantSections)
+      .orderBy(schema.restaurantSections.sortOrder, schema.restaurantSections.name);
     res.json(sections);
   } catch (error) {
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -272,12 +270,12 @@ router.get("/restaurants", requireAdmin, async (req, res) => {
       whereConditions.push(eq(schema.restaurants.categoryId, categoryId as string));
     }
 
-    const restaurants = await db.query.restaurants.findMany({
-      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-      limit: Number(limit),
-      offset,
-      orderBy: desc(schema.restaurants.createdAt)
-    });
+    const restaurants = await db.select()
+      .from(schema.restaurants)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .limit(Number(limit))
+      .offset(offset)
+      .orderBy(desc(schema.restaurants.createdAt));
 
     const [totalCount] = await db.select({ count: count() })
       .from(schema.restaurants)
@@ -344,10 +342,10 @@ router.get("/restaurants/:restaurantId/menu", requireAdmin, async (req, res) => 
   try {
     const { restaurantId } = req.params;
     
-    const menuItems = await db.query.menuItems.findMany({
-      where: eq(schema.menuItems.restaurantId, restaurantId),
-      orderBy: [schema.menuItems.name]
-    });
+    const menuItems = await db.select()
+      .from(schema.menuItems)
+      .where(eq(schema.menuItems.restaurantId, restaurantId))
+      .orderBy(schema.menuItems.name);
     
     res.json(menuItems);
   } catch (error) {
@@ -426,17 +424,12 @@ router.get("/orders", requireAdmin, async (req, res) => {
       );
     }
 
-    const orders = await db.query.orders.findMany({
-      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-      with: {
-        restaurantId: true,
-        customerId: true,
-        driverId: true
-      },
-      limit: Number(limit),
-      offset,
-      orderBy: desc(schema.orders.createdAt)
-    });
+    const orders = await db.select()
+      .from(schema.orders)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .limit(Number(limit))
+      .offset(offset)
+      .orderBy(desc(schema.orders.createdAt));
 
     const [totalCount] = await db.select({ count: count() })
       .from(schema.orders)
@@ -494,10 +487,10 @@ router.put("/orders/:id/status", requireAdmin, async (req: any, res) => {
 // إدارة السائقين
 router.get("/drivers", requireAdmin, async (req, res) => {
   try {
-    const drivers = await db.query.adminUsers.findMany({
-      where: eq(schema.adminUsers.userType, "driver"),
-      orderBy: desc(schema.adminUsers.createdAt)
-    });
+    const drivers = await db.select()
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.userType, "driver"))
+      .orderBy(desc(schema.adminUsers.createdAt));
     
     res.json(drivers);
   } catch (error) {
@@ -587,9 +580,9 @@ router.get("/drivers/:id/stats", requireAdmin, async (req, res) => {
 // إدارة العروض الخاصة
 router.get("/special-offers", requireAdmin, async (req, res) => {
   try {
-    const offers = await db.query.specialOffers.findMany({
-      orderBy: desc(schema.specialOffers.createdAt)
-    });
+    const offers = await db.select()
+      .from(schema.specialOffers)
+      .orderBy(desc(schema.specialOffers.createdAt));
     
     res.json(offers);
   } catch (error) {
@@ -663,9 +656,9 @@ router.post("/notifications", requireAdmin, async (req: any, res) => {
 // إعدادات النظام
 router.get("/settings", requireAdmin, async (req, res) => {
   try {
-    const settings = await db.query.systemSettings.findMany({
-      orderBy: [schema.systemSettings.category, schema.systemSettings.key]
-    });
+    const settings = await db.select()
+      .from(schema.systemSettings)
+      .orderBy(schema.systemSettings.category, schema.systemSettings.key);
     
     res.json(settings);
   } catch (error) {

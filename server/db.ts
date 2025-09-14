@@ -38,7 +38,29 @@ function getDb() {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     
     const sqlClient = neon(process.env.DATABASE_URL);
-    db = drizzle(sqlClient);
+    
+    // Pass schema to enable db.query functionality
+    const schema = {
+      adminUsers,
+      adminSessions,
+      categories,
+      restaurantSections,
+      restaurants,
+      menuItems,
+      users,
+      userAddresses,
+      orders,
+      specialOffers,
+      notifications,
+      ratings,
+      systemSettings,
+      drivers,
+      orderTracking,
+      cart,
+      favorites
+    };
+    
+    db = drizzle(sqlClient, { schema });
   }
   return db;
 }
@@ -471,7 +493,13 @@ export class DatabaseStorage implements IStorage {
         orderByClause = restaurants.name;
     }
     
-    const query = this.db.select().from(restaurants).where(and(...conditions)).orderBy(orderByClause);
+    let query = this.db.select().from(restaurants);
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    query = query.orderBy(orderByClause);
     
     const result = await query;
     const restaurants_list = Array.isArray(result) ? result : [];

@@ -220,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isOpen: isOpen !== undefined ? isOpen === 'true' : undefined
       };
       
-      const restaurants = await dbStorage.getRestaurants();
+      const restaurants = await dbStorage.getRestaurants(filters);
       res.json(restaurants);
     } catch (error) {
       console.error('Error fetching restaurants:', error);

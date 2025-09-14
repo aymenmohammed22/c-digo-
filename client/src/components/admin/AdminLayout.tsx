@@ -65,9 +65,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     },
     { 
       icon: Users, 
-      label: 'العملاء', 
-      path: '/admin/customers',
-      description: 'إدارة العملاء'
+      label: 'المستخدمين', 
+      path: '/admin/users',
+      description: 'إدارة المستخدمين والصلاحيات'
     },
     { 
       icon: Settings, 

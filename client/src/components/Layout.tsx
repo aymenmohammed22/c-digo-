@@ -97,7 +97,7 @@ export default function Layout({ children }: LayoutProps) {
     adminDeliveryItems.push({ 
       icon: UserCog, 
       label: 'لوحة التحكم', 
-      path: '/admin', 
+      path: '/admin/dashboard', 
       testId: 'sidebar-admin',
       className: 'text-blue-600 border-l-4 border-blue-600 bg-blue-50 dark:bg-blue-900/20' 
     });

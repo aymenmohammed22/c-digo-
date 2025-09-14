@@ -1,5 +1,6 @@
 // server/vite.ts
-import { createServer } from "vite";
+import * as vite from "vite"; // استيراد Vite كاملاً
+const { createServer } = vite; // استخراج createServer
 
 import express, { type Express } from "express";
 import fs from "fs";

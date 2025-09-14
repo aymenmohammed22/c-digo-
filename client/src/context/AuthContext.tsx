@@ -5,6 +5,7 @@ interface AuthState {
   userType: 'admin' | 'driver' | null;
   token: string | null;
   adminId: string | null;
+  user: { name: string; email?: string; phone?: string } | null;
 }
 
 interface AuthContextType extends AuthState {
@@ -29,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userType: null,
     token: null,
     adminId: null,
+    user: null,
   });
   const [loading, setLoading] = useState(true);
 
@@ -47,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userType: 'admin',
           token: 'dev-admin-token',
           adminId: 'dev-admin-id',
+          user: { name: 'مدير النظام', email: 'admin@example.com' },
         });
         setLoading(false);
         return;
@@ -57,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userType: 'driver',
           token: 'dev-driver-token',
           adminId: 'dev-driver-id',
+          user: { name: 'سائق النظام', phone: '+967-771234567' },
         });
         setLoading(false);
         return;
@@ -73,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userType: null,
         token: null,
         adminId: null,
+        user: null,
       });
       setLoading(false);
     }
@@ -95,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userType: data.userType || 'admin',
           token: token,
           adminId: data.adminId || 'admin-main',
+          user: { name: data.name || 'مدير النظام', email: data.email },
         });
       } else {
         localStorage.removeItem('admin_token');
@@ -113,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userType: null,
         token: null,
         adminId: null,
+        user: null,
       });
     } finally {
       setLoading(false);
@@ -143,6 +150,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userType: userType,
           token: data.token,
           adminId: data.admin?.id || data.driver?.id || 'admin-main',
+          user: {
+            name: data.admin?.name || data.driver?.name || 'مستخدم النظام',
+            email: data.admin?.email,
+            phone: data.driver?.phone
+          },
         });
         return { success: true, message: data.message || 'تم تسجيل الدخول بنجاح' };
       } else {
@@ -174,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userType: null,
       token: null,
       adminId: null,
+      user: null,
     });
   };
 

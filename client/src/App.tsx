@@ -11,7 +11,7 @@ import { UiSettingsProvider } from "./context/UiSettingsContext";
 import { LocationPermissionModal } from "./components/LocationPermissionModal";
 import Layout from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
-import { AdminDashboard } from "./pages/AdminDashboard";
+import AdminApp from "./pages/AdminApp";
 import { DriverDashboard } from "./pages/DriverDashboard";
 import { useState } from "react";
 import Home from "./pages/Home";
@@ -29,7 +29,7 @@ import SearchPage from "./pages/SearchPage";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedApp() {
-  const { isAuthenticated, userType, loading } = useAuth();
+  const { userType, loading } = useAuth();
   const { location } = useLocation();
   const [showLocationModal, setShowLocationModal] = useState(true);
 
@@ -62,11 +62,11 @@ function AuthenticatedApp() {
   }
 
   // Handle admin routes (completely separate from customer app)
-  if (window.location.pathname.startsWith('/admin/')) {
+  if (window.location.pathname.startsWith('/admin')) {
     // TEMPORARY BYPASS: Skip authentication check for testing
     console.log('TEMPORARY BYPASS: Accessing admin dashboard without auth check');
     return (
-      <AdminDashboard 
+      <AdminApp 
         onLogout={() => {
           window.location.href = '/admin-login';
         }} 

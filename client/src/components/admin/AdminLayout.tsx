@@ -14,7 +14,8 @@ import {
   LogOut,
   Package,
   Users,
-  Bell
+  Bell,
+  User
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -68,6 +69,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: 'المستخدمين', 
       path: '/admin/users',
       description: 'إدارة المستخدمين والصلاحيات'
+    },
+    { 
+      icon: User, 
+      label: 'الملف الشخصي', 
+      path: '/admin/profile',
+      description: 'إدارة معلومات الحساب'
     },
     { 
       icon: Settings, 

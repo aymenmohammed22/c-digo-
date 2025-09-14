@@ -1,5 +1,6 @@
 // server/vite.ts
-import { createServer as viteCreateServer } from "vite";
+import * as vite from "vite"; // استيراد Vite كاملاً
+const { createServer } = vite; // استخراج createServer
 
 import express, { type Express } from "express";
 import fs from "fs";
@@ -29,7 +30,7 @@ export async function setupVite(app: Express, server: Server) {
   };
 
   // إنشاء Vite server
-  const viteServer = await viteCreateServer({
+  const viteServer = await createServer({
     ...viteConfig,
     configFile: path.resolve(__dirname, "..", "client", "vite.config.ts"),
     server: serverOptions,

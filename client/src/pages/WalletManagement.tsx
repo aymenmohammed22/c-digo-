@@ -162,7 +162,7 @@ export default function WalletManagement() {
             <DollarSign className="text-green-600" size={24} />
             <div>
               <h3 className="text-lg font-semibold text-gray-800">إجمالي الأرصدة</h3>
-              <p className="text-2xl font-bold text-green-600">{totalBalance.toFixed(2)} شيكل</p>
+              <p className="text-2xl font-bold text-green-600">{totalBalance.toFixed(2)} ر.ي</p>
             </div>
           </div>
         </div>
@@ -238,7 +238,7 @@ export default function WalletManagement() {
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-green-600">
-                          {parseFloat(wallet.balance).toFixed(2)} شيكل
+                          {parseFloat(wallet.balance).toFixed(2)} ر.ي
                         </p>
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                           wallet.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -290,7 +290,7 @@ export default function WalletManagement() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">المبلغ (شيكل)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">المبلغ (ريال يمني)</label>
                   <input
                     type="number"
                     min="0"

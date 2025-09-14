@@ -7,6 +7,7 @@ import AdminMenuItems from "./AdminMenuItems";
 import AdminOffers from "./AdminOffers";
 import AdminCategories from "./AdminCategories";
 import AdminUsers from "./AdminUsers";
+import AdminProfile from "./AdminProfile";
 import NotFound from "./not-found";
 
 // Admin Overview Page Component
@@ -14,7 +15,7 @@ const AdminOverview = () => {
   const stats = [
     { title: 'إجمالي الطلبات', value: '2,345', icon: 'ShoppingBag', color: 'text-blue-600' },
     { title: 'العملاء النشطين', value: '1,234', icon: 'Users', color: 'text-green-600' },
-    { title: 'إجمالي المبيعات', value: '₪45,678', icon: 'DollarSign', color: 'text-orange-600' },
+    { title: 'إجمالي المبيعات', value: '45,678 ر.ي', icon: 'DollarSign', color: 'text-orange-600' },
     { title: 'السائقين المتاحين', value: '23', icon: 'Truck', color: 'text-purple-600' },
   ];
 
@@ -109,15 +110,15 @@ const AdminSettings = () => {
           <div className="p-6 space-y-4">
             <div className="flex justify-between items-center p-3 border rounded-lg">
               <span>رسوم التوصيل الأساسية</span>
-              <span className="font-semibold">5.00 شيكل</span>
+              <span className="font-semibold">5.00 ر.ي</span>
             </div>
             <div className="flex justify-between items-center p-3 border rounded-lg">
               <span>رسوم التوصيل لكل كيلومتر</span>
-              <span className="font-semibold">1.50 شيكل</span>
+              <span className="font-semibold">1.50 ر.ي</span>
             </div>
             <div className="flex justify-between items-center p-3 border rounded-lg">
               <span>الحد الأدنى للطلبات</span>
-              <span className="font-semibold">15.00 شيكل</span>
+              <span className="font-semibold">15.00 ر.ي</span>
             </div>
           </div>
         </div>
@@ -169,6 +170,7 @@ export const AdminApp: React.FC<AdminAppProps> = () => {
         <Route path="/admin/offers" component={AdminOffers} />
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/admin/categories" component={AdminCategories} />
+        <Route path="/admin/profile" component={AdminProfile} />
         <Route path="/admin/settings" component={AdminSettings} />
         <Route component={NotFound} />
       </Switch>

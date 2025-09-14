@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { 
   BarChart3, 
   Users, 
@@ -19,12 +20,14 @@ import {
   Trash2,
   Star,
   Grid,
-  Cog
+  Cog,
+  Menu
 } from 'lucide-react';
 import RestaurantSections from './RestaurantSections';
 import RatingsManagement from './RatingsManagement';
 import SpecialOffers from './SpecialOffers';
 import WalletManagement from './WalletManagement';
+import RestaurantManagement from '../components/RestaurantManagement';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -33,6 +36,7 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -46,30 +50,117 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     { title: 'السائقين المتاحين', value: '23', icon: Truck, color: 'text-purple-600' },
   ];
 
-  return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <Settings className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">لوحة التحكم</h1>
-                <p className="text-sm text-gray-500">إدارة نظام التوصيل</p>
-              </div>
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="flex items-center gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              تسجيل الخروج
-            </Button>
+  const navigationItems = [
+    { id: 'overview', label: 'نظرة عامة', icon: BarChart3 },
+    { id: 'orders', label: 'الطلبات', icon: ShoppingBag },
+    { id: 'restaurants', label: 'المطاعم', icon: Store },
+    { id: 'sections', label: 'أقسام المطاعم', icon: Grid },
+    { id: 'drivers', label: 'السائقين', icon: Truck },
+    { id: 'categories', label: 'الفئات', icon: Package },
+    { id: 'offers', label: 'العروض', icon: Star },
+    { id: 'wallets', label: 'المحافظ', icon: DollarSign },
+    { id: 'ratings', label: 'التقييمات', icon: Star },
+    { id: 'settings', label: 'الإعدادات', icon: Cog },
+  ];
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setIsMobileSidebarOpen(false); // Close mobile sidebar when tab changes
+  };
+
+  // Sidebar Component for Desktop
+  const SidebarContent = () => (
+    <div className="w-64 bg-white border-l border-gray-200 h-full overflow-y-auto">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <Settings className="h-8 w-8 text-blue-600" />
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">لوحة التحكم</h1>
+            <p className="text-xs text-gray-500">إدارة نظام التوصيل</p>
           </div>
         </div>
-      </header>
+      </div>
+      
+      <nav className="p-4">
+        <div className="space-y-2">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Button
+                key={item.id}
+                variant={activeTab === item.id ? "default" : "ghost"}
+                className={`w-full justify-start gap-3 h-12 ${
+                  activeTab === item.id 
+                    ? "bg-blue-50 text-blue-700 border-blue-200" 
+                    : "hover:bg-gray-50"
+                }`}
+                onClick={() => handleTabChange(item.id)}
+                data-testid={`nav-${item.id}`}
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </Button>
+            );
+          })}
+        </div>
+      </nav>
+      
+      <div className="absolute bottom-4 right-4 left-4">
+        <Button 
+          variant="outline" 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2"
+          data-testid="button-logout"
+        >
+          <LogOut className="h-4 w-4" />
+          تسجيل الخروج
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50" dir="rtl">
+      <div className="flex h-screen">
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:block">
+          <SidebarContent />
+        </div>
+
+        {/* Mobile Sidebar Sheet */}
+        <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+          <SheetContent side="right" className="w-80 p-0">
+            <SidebarContent />
+          </SheetContent>
+        </Sheet>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Mobile Header */}
+          <header className="lg:hidden bg-white shadow-sm border-b">
+            <div className="px-4 py-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Settings className="h-6 w-6 text-blue-600" />
+                  <div>
+                    <h1 className="text-lg font-bold text-gray-900">لوحة التحكم</h1>
+                    <p className="text-xs text-gray-500">إدارة نظام التوصيل</p>
+                  </div>
+                </div>
+                <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+                  <SheetTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      data-testid="button-mobile-menu"
+                    >
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                </Sheet>
+              </div>
+            </div>
+          </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -195,34 +286,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </TabsContent>
 
           <TabsContent value="restaurants" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>إدارة المطاعم</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {['مطعم الوزيكو للعربكة', 'حلويات الشام', 'مقهى العروبة'].map((restaurant, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <Store className="h-8 w-8 text-gray-400" />
-                        <div>
-                          <p className="font-medium">{restaurant}</p>
-                          <p className="text-sm text-gray-600">{15 + index} عنصر في القائمة</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          مفتوح
-                        </Badge>
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <RestaurantManagement />
           </TabsContent>
 
           <TabsContent value="drivers" className="space-y-6">
@@ -357,7 +421,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
+        </main>
+        </div>
+      </div>
     </div>
   );
 };

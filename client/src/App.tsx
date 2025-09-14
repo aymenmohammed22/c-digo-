@@ -20,6 +20,8 @@ import Cart from "./pages/Cart";
 import Profile from "./pages/Profile";
 import Location from "./pages/Location";
 import OrderTracking from "./pages/OrderTracking";
+import OrdersPage from "./pages/OrdersPage";
+import TrackOrdersPage from "./pages/TrackOrdersPage";
 import Settings from "./pages/Settings";
 import Privacy from "./pages/Privacy";
 import SearchPage from "./pages/SearchPage";
@@ -111,6 +113,10 @@ function AuthenticatedApp() {
 }
 
 function Router() {
+  // Check localStorage settings for page visibility
+  const showOrdersPage = localStorage.getItem('show_orders_page') !== 'false';
+  const showTrackOrdersPage = localStorage.getItem('show_track_orders_page') !== 'false';
+
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -119,7 +125,9 @@ function Router() {
       <Route path="/cart" component={Cart} />
       <Route path="/profile" component={Profile} />
       <Route path="/addresses" component={Location} />
+      {showOrdersPage && <Route path="/orders" component={OrdersPage} />}
       <Route path="/orders/:orderId" component={OrderTracking} />
+      {showTrackOrdersPage && <Route path="/track-orders" component={TrackOrdersPage} />}
       <Route path="/settings" component={Settings} />
       <Route path="/privacy" component={Privacy} />
       <Route component={NotFound} />

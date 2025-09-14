@@ -507,9 +507,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // UI Settings Routes
   app.get("/api/ui-settings", async (req, res) => {
     try {
-      // TEMPORARY FIX: Return empty array to prevent map() error
-      console.log('TEMPORARY FIX: Returning empty array for UI settings');
-      res.json([]);
+      const settings = await dbStorage.getUiSettings();
+      res.json(settings);
     } catch (error) {
       console.error('خطأ في جلب إعدادات الواجهة:', error);
       res.status(500).json({ message: "Failed to fetch UI settings" });

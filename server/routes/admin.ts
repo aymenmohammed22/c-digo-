@@ -739,4 +739,227 @@ router.put("/business-hours", requireAdmin, async (req, res) => {
   }
 });
 
+// إدارة المستخدمين الموحدة (عملاء، سائقين، مديرين)
+router.get("/users", requireAdmin, async (req, res) => {
+  try {
+    // جلب العملاء
+    const customers = await db.select({
+      id: schema.customers.id,
+      name: schema.customers.name,
+      email: schema.customers.email,
+      phone: schema.customers.phone,
+      role: sql<string>`'customer'`,
+      isActive: schema.customers.isActive,
+      createdAt: schema.customers.createdAt,
+      address: sql<string>`NULL`
+    }).from(schema.customers);
+
+    // جلب السائقين والمديرين من adminUsers
+    const adminUsers = await db.select({
+      id: schema.adminUsers.id,
+      name: schema.adminUsers.name,
+      email: schema.adminUsers.email,
+      phone: schema.adminUsers.phone,
+      role: schema.adminUsers.userType,
+      isActive: schema.adminUsers.isActive,
+      createdAt: schema.adminUsers.createdAt,
+      address: sql<string>`NULL`
+    }).from(schema.adminUsers);
+
+    // دمج جميع المستخدمين وترتيبهم حسب تاريخ الإنشاء
+    const allUsers = [...customers, ...adminUsers]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json(allUsers);
+  } catch (error) {
+    console.error("خطأ في جلب المستخدمين:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.patch("/users/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, password, role, isActive } = req.body;
+    
+    // تحديد الجدول بناءً على الدور الجديد أو الحالي
+    let targetTable = 'customers';
+    let currentUser = null;
+    
+    // البحث عن المستخدم في جدول العملاء أولاً
+    const customerResult = await db.select()
+      .from(schema.customers)
+      .where(eq(schema.customers.id, id))
+      .limit(1);
+    
+    if (customerResult.length > 0) {
+      currentUser = customerResult[0];
+      targetTable = 'customers';
+    } else {
+      // البحث في جدول المديرين والسائقين
+      const adminResult = await db.select()
+        .from(schema.adminUsers)
+        .where(eq(schema.adminUsers.id, id))
+        .limit(1);
+      
+      if (adminResult.length > 0) {
+        currentUser = adminResult[0];
+        targetTable = 'adminUsers';
+      }
+    }
+
+    if (!currentUser) {
+      return res.status(404).json({ error: "المستخدم غير موجود" });
+    }
+
+    // إعداد البيانات للتحديث
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+    
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (phone) updateData.phone = phone;
+    if (isActive !== undefined) updateData.isActive = isActive;
+    
+    // تحديث كلمة المرور إذا تم توفيرها
+    if (password && password.trim()) {
+      const bcrypt = await import('bcrypt');
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    let updatedUser;
+    
+    // التعامل مع تغيير الدور (من عميل إلى سائق/مدير أو العكس)
+    if (role && role !== (currentUser as any).userType && role !== 'customer') {
+      // إذا كان المستخدم عميل ونريد جعله سائق/مدير
+      if (targetTable === 'customers' && (role === 'driver' || role === 'admin')) {
+        // إنشاء مستخدم جديد في جدول adminUsers
+        const bcrypt = await import('bcrypt');
+        const hashedPassword = password ? await bcrypt.hash(password, 10) : await bcrypt.hash('123456', 10);
+        
+        const [newAdminUser] = await db.insert(schema.adminUsers).values({
+          name: name || currentUser.name,
+          email: email || currentUser.email,
+          phone: phone || currentUser.phone,
+          password: hashedPassword,
+          userType: role,
+          isActive: isActive !== undefined ? isActive : currentUser.isActive
+        }).returning();
+        
+        // حذف المستخدم من جدول العملاء
+        await db.delete(schema.customers).where(eq(schema.customers.id, id));
+        
+        updatedUser = { ...newAdminUser, role: newAdminUser.userType };
+      }
+      // إذا كان سائق/مدير ونريد جعله عميل
+      else if (targetTable === 'adminUsers' && role === 'customer') {
+        // إنشاء عميل جديد
+        const bcrypt = await import('bcrypt');
+        const hashedPassword = password ? await bcrypt.hash(password, 10) : await bcrypt.hash('123456', 10);
+        
+        const [newCustomer] = await db.insert(schema.customers).values({
+          name: name || currentUser.name,
+          username: (email || currentUser.email).split('@')[0], // استخدام الجزء الأول من البريد كـ username
+          email: email || currentUser.email,
+          phone: phone || currentUser.phone,
+          password: hashedPassword,
+          isActive: isActive !== undefined ? isActive : currentUser.isActive
+        }).returning();
+        
+        // حذف من جدول adminUsers
+        await db.delete(schema.adminUsers).where(eq(schema.adminUsers.id, id));
+        
+        updatedUser = { ...newCustomer, role: 'customer' };
+      }
+      // تغيير من سائق إلى مدير أو العكس
+      else if (targetTable === 'adminUsers') {
+        updateData.userType = role;
+        
+        const [result] = await db.update(schema.adminUsers)
+          .set(updateData)
+          .where(eq(schema.adminUsers.id, id))
+          .returning();
+          
+        updatedUser = { ...result, role: result.userType };
+      }
+    } else {
+      // تحديث عادي بدون تغيير الدور
+      if (targetTable === 'customers') {
+        // إزالة userType من updateData للعملاء
+        delete updateData.userType;
+        
+        const [result] = await db.update(schema.customers)
+          .set(updateData)
+          .where(eq(schema.customers.id, id))
+          .returning();
+          
+        updatedUser = { ...result, role: 'customer' };
+      } else {
+        // تحديث السائق/المدير
+        if (role && (role === 'driver' || role === 'admin')) {
+          updateData.userType = role;
+        }
+        
+        const [result] = await db.update(schema.adminUsers)
+          .set(updateData)
+          .where(eq(schema.adminUsers.id, id))
+          .returning();
+          
+        updatedUser = { ...result, role: result.userType };
+      }
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error("خطأ في تحديث المستخدم:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+router.delete("/users/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // البحث عن المستخدم في جدول العملاء
+    const customerResult = await db.select()
+      .from(schema.customers)
+      .where(eq(schema.customers.id, id))
+      .limit(1);
+    
+    if (customerResult.length > 0) {
+      // حذف العميل
+      await db.delete(schema.customers).where(eq(schema.customers.id, id));
+      res.json({ success: true, message: "تم حذف العميل بنجاح" });
+      return;
+    }
+    
+    // البحث في جدول المديرين والسائقين
+    const adminResult = await db.select()
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.id, id))
+      .limit(1);
+    
+    if (adminResult.length > 0) {
+      const user = adminResult[0];
+      
+      // منع حذف المدير الرئيسي
+      if (user.userType === 'admin' && user.email === 'admin@alsarie-one.com') {
+        return res.status(403).json({ error: "لا يمكن حذف المدير الرئيسي" });
+      }
+      
+      // حذف السائق أو المدير
+      await db.delete(schema.adminUsers).where(eq(schema.adminUsers.id, id));
+      res.json({ success: true, message: `تم حذف ${user.userType === 'driver' ? 'السائق' : 'المدير'} بنجاح` });
+      return;
+    }
+    
+    // المستخدم غير موجود
+    res.status(404).json({ error: "المستخدم غير موجود" });
+  } catch (error) {
+    console.error("خطأ في حذف المستخدم:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
 export { router as adminRoutes };

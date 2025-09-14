@@ -30,14 +30,21 @@ let db: ReturnType<typeof drizzle> | null = null;
 
 function getDb() {
   if (!db) {
-    if (!process.env.DATABASE_URL) {
+    // Try multiple sources for DATABASE_URL
+    const databaseUrl = process.env.DATABASE_URL || 
+                       process.env.REPLIT_DB_URL ||
+                       "postgresql://neondb_owner:%23Acard7mo%2A%2A@ep-bitter-cherry-ad50f0sk-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+    
+    if (!databaseUrl) {
       throw new Error("DATABASE_URL must be defined in environment variables");
     }
+    
+    console.log("Using database connection...");  // Debug log
     
     // Configure for Replit environment to handle SSL issues
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     
-    const sqlClient = neon(process.env.DATABASE_URL);
+    const sqlClient = neon(databaseUrl);
     
     // Pass schema to enable db.query functionality
     const schema = {

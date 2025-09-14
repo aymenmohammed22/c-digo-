@@ -92,11 +92,11 @@ export class MemStorage implements IStorage {
   private initializeData() {
     // Initialize categories
     const categories = [
-      { id: "1", name: "مطاعم", icon: "fas fa-utensils", isActive: true },
-      { id: "2", name: "مقاهي", icon: "fas fa-coffee", isActive: true },
-      { id: "3", name: "حلويات", icon: "fas fa-candy-cane", isActive: true },
-      { id: "4", name: "سوبرماركت", icon: "fas fa-shopping-cart", isActive: true },
-      { id: "5", name: "صيدليات", icon: "fas fa-pills", isActive: true },
+      { id: "1", name: "مطاعم", icon: "fas fa-utensils", isActive: true, sortOrder: 0, createdAt: new Date(), updatedAt: new Date() },
+      { id: "2", name: "مقاهي", icon: "fas fa-coffee", isActive: true, sortOrder: 1, createdAt: new Date(), updatedAt: new Date() },
+      { id: "3", name: "حلويات", icon: "fas fa-candy-cane", isActive: true, sortOrder: 2, createdAt: new Date(), updatedAt: new Date() },
+      { id: "4", name: "سوبرماركت", icon: "fas fa-shopping-cart", isActive: true, sortOrder: 3, createdAt: new Date(), updatedAt: new Date() },
+      { id: "5", name: "صيدليات", icon: "fas fa-pills", isActive: true, sortOrder: 4, createdAt: new Date(), updatedAt: new Date() },
     ];
 
     categories.forEach(cat => this.categories.set(cat.id, cat));
@@ -112,15 +112,22 @@ export class MemStorage implements IStorage {
         reviewCount: 4891,
         deliveryTime: "40-60 دقيقة",
         isOpen: true,
-        minimumOrder: "25", // تغيير إلى string
-        deliveryFee: "5", // تغيير إلى string
+        minimumOrder: "25",
+        deliveryFee: "5",
         categoryId: "1",
         openingTime: "08:00",
         closingTime: "23:00",
         workingDays: "0,1,2,3,4,5,6",
         isTemporarilyClosed: false,
         temporaryCloseReason: null,
+        latitude: null,
+        longitude: null,
+        address: "صنعاء، اليمن",
+        isFeatured: true,
+        isNew: false,
+        isActive: true,
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: "2",
@@ -131,15 +138,22 @@ export class MemStorage implements IStorage {
         reviewCount: 2341,
         deliveryTime: "30-45 دقيقة",
         isOpen: true,
-        minimumOrder: "15", // تغيير إلى string
-        deliveryFee: "3", // تغيير إلى string
+        minimumOrder: "15",
+        deliveryFee: "3",
         categoryId: "3",
         openingTime: "08:00",
         closingTime: "23:00",
         workingDays: "0,1,2,3,4,5,6",
         isTemporarilyClosed: false,
         temporaryCloseReason: null,
+        latitude: null,
+        longitude: null,
+        address: "صنعاء، اليمن",
+        isFeatured: false,
+        isNew: true,
+        isActive: true,
         createdAt: new Date(),
+        updatedAt: new Date(),
       },
       {
         id: "3",
@@ -150,15 +164,22 @@ export class MemStorage implements IStorage {
         reviewCount: 1876,
         deliveryTime: "يفتح في 8:00 ص",
         isOpen: false,
-        minimumOrder: "20", // تغيير إلى string
-        deliveryFee: "4", // تغيير إلى string
+        minimumOrder: "20",
+        deliveryFee: "4",
         categoryId: "2",
         openingTime: "08:00",
         closingTime: "23:00",
         workingDays: "0,1,2,3,4,5,6",
         isTemporarilyClosed: false,
         temporaryCloseReason: null,
+        latitude: null,
+        longitude: null,
+        address: "صنعاء، اليمن",
+        isFeatured: false,
+        isNew: false,
+        isActive: true,
         createdAt: new Date(),
+        updatedAt: new Date(),
       }
     ];
 

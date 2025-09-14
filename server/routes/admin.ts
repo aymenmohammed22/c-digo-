@@ -962,4 +962,127 @@ router.delete("/users/:id", requireAdmin, async (req, res) => {
   }
 });
 
+// إدارة الملف الشخصي للمدير
+router.get("/profile", requireAdmin, async (req: any, res) => {
+  try {
+    const admin = req.admin;
+    // إرجاع بيانات المدير (بدون كلمة المرور)
+    const adminProfile = {
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      username: admin.username,
+      phone: admin.phone,
+      userType: admin.userType,
+      isActive: admin.isActive,
+      createdAt: admin.createdAt
+    };
+    
+    res.json(adminProfile);
+  } catch (error) {
+    console.error("خطأ في جلب الملف الشخصي:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+// تحديث الملف الشخصي للمدير
+router.put("/profile", requireAdmin, async (req: any, res) => {
+  try {
+    const { name, email, username, phone } = req.body;
+    const adminId = req.admin.id;
+
+    if (!name || !email) {
+      return res.status(400).json({ error: "الاسم والبريد الإلكتروني مطلوبان" });
+    }
+
+    // التحقق من عدم تكرار البريد الإلكتروني
+    const existingAdmin = await db.select().from(schema.adminUsers).where(
+      and(
+        eq(schema.adminUsers.email, email),
+        sql`${schema.adminUsers.id} != ${adminId}`
+      )
+    );
+
+    if (existingAdmin.length > 0) {
+      return res.status(400).json({ error: "البريد الإلكتروني مستخدم بالفعل" });
+    }
+
+    // تحديث البيانات
+    const [updatedAdmin] = await db.update(schema.adminUsers)
+      .set({
+        name,
+        email,
+        username: username || null,
+        phone: phone || null,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.adminUsers.id, adminId))
+      .returning();
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ error: "المدير غير موجود" });
+    }
+
+    // إرجاع البيانات المحدثة (بدون كلمة المرور)
+    const adminProfile = {
+      id: updatedAdmin.id,
+      name: updatedAdmin.name,
+      email: updatedAdmin.email,
+      username: updatedAdmin.username,
+      phone: updatedAdmin.phone,
+      userType: updatedAdmin.userType,
+      isActive: updatedAdmin.isActive,
+      createdAt: updatedAdmin.createdAt
+    };
+
+    res.json(adminProfile);
+  } catch (error) {
+    console.error("خطأ في تحديث الملف الشخصي:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
+// تغيير كلمة المرور للمدير
+router.put("/change-password", requireAdmin, async (req: any, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const adminId = req.admin.id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "كلمة المرور الحالية والجديدة مطلوبتان" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+    }
+
+    // التحقق من كلمة المرور الحالية
+    const admin = await dbStorage.getAdminByEmail(req.admin.email);
+    if (!admin) {
+      return res.status(404).json({ error: "المدير غير موجود" });
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, admin.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
+    }
+
+    // تشفير كلمة المرور الجديدة
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // تحديث كلمة المرور
+    await db.update(schema.adminUsers)
+      .set({
+        password: hashedNewPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(schema.adminUsers.id, adminId));
+
+    res.json({ message: "تم تغيير كلمة المرور بنجاح" });
+  } catch (error) {
+    console.error("خطأ في تغيير كلمة المرور:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
 export { router as adminRoutes };

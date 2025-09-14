@@ -95,6 +95,13 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getAdminById(id: string): Promise<AdminUser | undefined> {
+    const result = await this.db.select().from(adminUsers).where(
+      eq(adminUsers.id, id)
+    );
+    return result[0];
+  }
+
   async createAdminSession(session: InsertAdminSession): Promise<AdminSession> {
     const [newSession] = await this.db.insert(adminSessions).values(session).returning();
     return newSession;

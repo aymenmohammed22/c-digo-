@@ -14,7 +14,6 @@ export class AuthService {
     try {
       console.log('🔍 Attempting login for email:', email);
       const admin = await dbStorage.getAdminByEmail(email);
-      console.log('📊 Retrieved admin data:', admin);
       if (!admin) return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
       console.log('✅ Admin found, checking isActive:', admin.isActive, 'Type:', typeof admin.isActive);
       if (!admin.isActive) return { success: false, message: 'الحساب غير مفعل' };

@@ -1,5 +1,6 @@
 // server/vite.ts
-import { createServer } from "vite";
+import vite from "vite";
+const { createServer } = vite;
 
 import express, { type Express } from "express";
 import fs from "fs";

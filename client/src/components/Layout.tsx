@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { Home, Search, Receipt, User, ShoppingCart, Moon, Sun, Menu, X, Settings, Shield, MapPin, Clock, Truck } from 'lucide-react';
+import { Home, Search, Receipt, User, Menu, Settings, Shield, MapPin, Clock, Truck, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import CartButton from './CartButton';
 import { useToast } from '@/hooks/use-toast';
@@ -12,38 +11,109 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+interface MenuItem {
+  icon: React.ComponentType<any>;
+  label: string;
+  path: string;
+  testId: string;
+  className?: string;
+}
+
 export default function Layout({ children }: LayoutProps) {
   const [location, setLocation] = useLocation();
-  const { theme, toggleTheme } = useTheme();
   const { getItemCount } = useCart();
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
-  const [showAdminButtons, setShowAdminButtons] = useState(false);
   
   // States for profile click counter
   const [profileClickCount, setProfileClickCount] = useState(0);
   const [lastProfileClickTime, setLastProfileClickTime] = useState(0);
+  
+  // States for admin panel and delivery app visibility
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showDeliveryApp, setShowDeliveryApp] = useState(false);
+  const [showOrdersPage, setShowOrdersPage] = useState(true);
+  const [showTrackOrdersPage, setShowTrackOrdersPage] = useState(true);
+  
+  // Load visibility settings from localStorage
+  useEffect(() => {
+    const adminPanelVisible = localStorage.getItem('show_admin_panel') === 'true';
+    const deliveryAppVisible = localStorage.getItem('show_delivery_app') === 'true';
+    const ordersPageVisible = localStorage.getItem('show_orders_page') !== 'false';
+    const trackOrdersPageVisible = localStorage.getItem('show_track_orders_page') !== 'false';
+    setShowAdminPanel(adminPanelVisible);
+    setShowDeliveryApp(deliveryAppVisible);
+    setShowOrdersPage(ordersPageVisible);
+    setShowTrackOrdersPage(trackOrdersPageVisible);
+  }, []);
+
+  // Listen for navigation settings changes from admin panel
+  useEffect(() => {
+    const handleNavigationChange = (event: CustomEvent) => {
+      const { key, enabled } = event.detail;
+      if (key === 'show_admin_panel') {
+        setShowAdminPanel(enabled);
+      } else if (key === 'show_delivery_app') {
+        setShowDeliveryApp(enabled);
+      } else if (key === 'show_orders_page') {
+        setShowOrdersPage(enabled);
+      } else if (key === 'show_track_orders_page') {
+        setShowTrackOrdersPage(enabled);
+      }
+    };
+
+    window.addEventListener('navigationSettingsChanged', handleNavigationChange as EventListener);
+    return () => {
+      window.removeEventListener('navigationSettingsChanged', handleNavigationChange as EventListener);
+    };
+  }, []);
 
   const isHomePage = location === '/';
   const isAdminPage = location.startsWith('/admin');
   const isDeliveryPage = location.startsWith('/delivery');
 
+  // Dynamic navigation items based on visibility settings
   const navigationItems = [
     { icon: Home, label: 'الرئيسية', path: '/', testId: 'nav-home' },
     { icon: Search, label: 'البحث', path: '/search', testId: 'nav-search' },
-    { icon: Receipt, label: 'طلباتي', path: '/orders', testId: 'nav-orders' },
+    ...(showOrdersPage ? [{ icon: Receipt, label: 'طلباتي', path: '/orders', testId: 'nav-orders' }] : []),
     { icon: User, label: 'الملف الشخصي', path: '/profile', testId: 'nav-profile' },
   ];
 
-  const sidebarMenuItems = [
+  // Dynamic sidebar menu items based on visibility settings
+  const baseSidebarMenuItems = [
     { icon: User, label: 'الملف الشخصي', path: '/profile', testId: 'sidebar-profile' },
-    { icon: Receipt, label: 'طلباتي', path: '/orders', testId: 'sidebar-orders' },
+    ...(showOrdersPage ? [{ icon: Receipt, label: 'طلباتي', path: '/orders', testId: 'sidebar-orders' }] : []),
     { icon: MapPin, label: 'العناوين المحفوظة', path: '/addresses', testId: 'sidebar-addresses' },
-    { icon: Clock, label: 'تتبع الطلبات', path: '/track-orders', testId: 'sidebar-tracking' },
+    ...(showTrackOrdersPage ? [{ icon: Clock, label: 'تتبع الطلبات', path: '/track-orders', testId: 'sidebar-tracking' }] : []),
     { icon: Settings, label: 'الإعدادات', path: '/settings', testId: 'sidebar-settings' },
     { icon: Shield, label: 'سياسة الخصوصية', path: '/privacy', testId: 'sidebar-privacy' },
   ];
+  
+  // Admin and delivery buttons (conditionally added)
+  const adminDeliveryItems = [];
+  if (showAdminPanel) {
+    adminDeliveryItems.push({ 
+      icon: UserCog, 
+      label: 'لوحة التحكم', 
+      path: '/admin', 
+      testId: 'sidebar-admin',
+      className: 'text-blue-600 border-l-4 border-blue-600 bg-blue-50 dark:bg-blue-900/20' 
+    });
+  }
+  if (showDeliveryApp) {
+    adminDeliveryItems.push({ 
+      icon: Truck, 
+      label: 'تطبيق التوصيل', 
+      path: '/delivery', 
+      testId: 'sidebar-delivery',
+      className: 'text-green-600 border-l-4 border-green-600 bg-green-50 dark:bg-green-900/20' 
+    });
+  }
+  
+  // Complete sidebar menu items
+  const sidebarMenuItems = [...baseSidebarMenuItems, ...adminDeliveryItems];
 
   // وظيفة التعامل مع النقر على أيقونة الملف الشخصي
   const handleProfileIconClick = () => {
@@ -124,19 +194,20 @@ export default function Layout({ children }: LayoutProps) {
                 <div className="mt-8 space-y-2">
                   {sidebarMenuItems.map((item) => {
                     const Icon = item.icon;
+                    const isSpecialButton = item.className;
                     return (
                       <Button
                         key={item.path}
                         variant="ghost"
-                        className="w-full justify-start gap-3 h-12"
+                        className={`w-full justify-start gap-3 h-12 ${item.className || ''}`}
                         onClick={() => {
                           setLocation(item.path);
                           setSidebarOpen(false);
                         }}
                         data-testid={item.testId}
                       >
-                        <Icon className="h-5 w-5 text-primary" />
-                        <span className="text-foreground">{item.label}</span>
+                        <Icon className={`h-5 w-5 ${isSpecialButton ? '' : 'text-primary'}`} />
+                        <span className={isSpecialButton ? '' : 'text-foreground'}>{item.label}</span>
                       </Button>
                     );
                   })}
@@ -177,7 +248,6 @@ export default function Layout({ children }: LayoutProps) {
                 setLogoClickCount(newCount);
                 
                 if (newCount === 4) {
-                  setShowAdminButtons(true);
                   setLogoClickCount(0);
                   window.location.href = '/admin-login';
                 } else if (newCount > 4) {

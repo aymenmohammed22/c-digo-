@@ -1,10 +1,8 @@
-import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { useUiSettings } from '@/context/UiSettingsContext';
-import { Settings, Eye, EyeOff, Palette, Smartphone } from 'lucide-react';
+import { Settings, Eye, Palette, Smartphone, UserCog } from 'lucide-react';
 
 export function UiControlPanel() {
   const { settings, loading, updateSetting, isFeatureEnabled } = useUiSettings();
@@ -19,6 +17,18 @@ export function UiControlPanel() {
 
   const handleToggle = (key: string, enabled: boolean) => {
     updateSetting(key, enabled.toString());
+  };
+
+  const handleNavigationToggle = (key: string, enabled: boolean) => {
+    // Save to localStorage for immediate effect on customer app navigation
+    localStorage.setItem(key, enabled.toString());
+    // Also save to settings for persistence
+    updateSetting(key, enabled.toString());
+    
+    // Trigger a custom event to notify Layout component
+    window.dispatchEvent(new CustomEvent('navigationSettingsChanged', {
+      detail: { key, enabled }
+    }));
   };
 
   return (
@@ -164,6 +174,80 @@ export function UiControlPanel() {
               id="enable_location_services"
               checked={isFeatureEnabled('enable_location_services')}
               onCheckedChange={(checked) => handleToggle('enable_location_services', checked)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* إعدادات التنقل */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCog className="h-5 w-5" />
+            إعدادات التنقل المتقدم
+          </CardTitle>
+          <CardDescription>
+            تحكم في ظهور أزرار التنقل المتقدمة في القائمة الجانبية للعملاء
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="show_admin_panel" className="flex-1">
+              عرض زر لوحة التحكم
+            </Label>
+            <Switch
+              id="show_admin_panel"
+              checked={isFeatureEnabled('show_admin_panel') || localStorage.getItem('show_admin_panel') === 'true'}
+              onCheckedChange={(checked) => handleNavigationToggle('show_admin_panel', checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="show_delivery_app" className="flex-1">
+              عرض زر تطبيق التوصيل
+            </Label>
+            <Switch
+              id="show_delivery_app"
+              checked={isFeatureEnabled('show_delivery_app') || localStorage.getItem('show_delivery_app') === 'true'}
+              onCheckedChange={(checked) => handleNavigationToggle('show_delivery_app', checked)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* إعدادات الصفحات */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCog className="h-5 w-5" />
+            إعدادات الوصول للصفحات
+          </CardTitle>
+          <CardDescription>
+            تحكم في إظهار وإخفاء الصفحات الجديدة في تطبيق العملاء
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="show_orders_page" className="flex-1">
+              عرض صفحة قائمة الطلبات
+            </Label>
+            <Switch
+              id="show_orders_page"
+              checked={isFeatureEnabled('show_orders_page') || localStorage.getItem('show_orders_page') === 'true'}
+              onCheckedChange={(checked) => handleNavigationToggle('show_orders_page', checked)}
+              data-testid="switch-orders-page"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="show_track_orders_page" className="flex-1">
+              عرض صفحة تتبع الطلبات
+            </Label>
+            <Switch
+              id="show_track_orders_page"
+              checked={isFeatureEnabled('show_track_orders_page') || localStorage.getItem('show_track_orders_page') === 'true'}
+              onCheckedChange={(checked) => handleNavigationToggle('show_track_orders_page', checked)}
+              data-testid="switch-track-orders-page"
             />
           </div>
         </CardContent>

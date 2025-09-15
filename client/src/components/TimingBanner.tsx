@@ -3,7 +3,7 @@ import { Clock } from 'lucide-react';
 
 export default function TimingBanner() {
   const { data: uiSettings } = useQuery({
-    queryKey: ['/api/admin/ui-settings'],
+    queryKey: ['/api/ui-settings'],
   });
 
   // البحث عن إعدادات أوقات العمل
@@ -13,7 +13,7 @@ export default function TimingBanner() {
 
   return (
     <div className="bg-gray-100 py-3">
-      <div className="px-4 text-center">
+      <div className="max-w-md mx-auto px-4 text-center">
         <div className="orange-gradient text-white px-4 py-2 rounded-full inline-flex items-center gap-2 text-sm">
           <Clock className="h-4 w-4" />
           <span>أوقات الدوام من الساعة {openingTime} حتى {closingTime}</span>

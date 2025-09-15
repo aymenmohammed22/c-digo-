@@ -8,7 +8,11 @@ import {
   type User, type InsertUser,
   type UserAddress, type InsertUserAddress,
   type UiSettings, type InsertUiSettings,
-  type Rating, type InsertRating
+  type Rating, type InsertRating,
+  type Cart, type InsertCart,
+  type Favorites, type InsertFavorites,
+  type AdminSession, type InsertAdminSession,
+  type Notification, type InsertNotification
 } from "../shared/schema";
 import { randomUUID } from "crypto";
 
@@ -63,11 +67,11 @@ export interface IStorage {
   deleteSpecialOffer(id: string): Promise<boolean>;
 
   // UI Settings
-  getUiSettings?(): Promise<UiSettings[]>;
-  getUiSetting?(key: string): Promise<UiSettings | undefined>;
-  updateUiSetting?(key: string, value: string): Promise<UiSettings | undefined>;
-  createUiSetting?(setting: InsertUiSettings): Promise<UiSettings>;
-  deleteUiSetting?(key: string): Promise<boolean>;
+  getUiSettings(): Promise<UiSettings[]>;
+  getUiSetting(key: string): Promise<UiSettings | undefined>;
+  updateUiSetting(key: string, value: string): Promise<UiSettings | undefined>;
+  createUiSetting(setting: InsertUiSettings): Promise<UiSettings>;
+  deleteUiSetting(key: string): Promise<boolean>;
 
   // User Addresses
   getUserAddresses(userId: string): Promise<UserAddress[]>;
@@ -79,6 +83,30 @@ export interface IStorage {
   getRatings(orderId?: string, restaurantId?: string): Promise<Rating[]>;
   createRating(rating: InsertRating): Promise<Rating>;
   updateRating(id: string, rating: Partial<InsertRating>): Promise<Rating | undefined>;
+
+  // Cart methods
+  getCartItems(userId: string): Promise<Cart[]>;
+  addToCart(cart: InsertCart): Promise<Cart>;
+  updateCartItem(id: string, updates: Partial<InsertCart>): Promise<Cart | undefined>;
+  removeFromCart(id: string): Promise<boolean>;
+  clearCart(userId: string): Promise<boolean>;
+
+  // Favorites methods
+  getFavoriteRestaurants(userId: string): Promise<Favorites[]>;
+  addToFavorites(favorite: InsertFavorites): Promise<Favorites>;
+  removeFromFavorites(userId: string, restaurantId: string): Promise<boolean>;
+  isRestaurantFavorite(userId: string, restaurantId: string): Promise<boolean>;
+
+  // Admin session methods
+  deleteAdminSession(token: string): Promise<boolean>;
+
+  // Notification methods
+  getNotifications(recipientId?: string, type?: string): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+
+  // Search methods
+  searchCategories(query: string): Promise<Category[]>;
+  searchMenuItemsAdvanced(query: string, filters?: any): Promise<MenuItem[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -92,6 +120,15 @@ export class MemStorage implements IStorage {
   private uiSettings: Map<string, UiSettings>;
   private userAddresses: Map<string, UserAddress>;
   private ratings: Map<string, Rating>;
+  private cartItems: Map<string, Cart>;
+  private favorites: Map<string, Favorites>;
+  private adminSessions: Map<string, AdminSession>;
+  private notifications: Map<string, Notification>;
+
+  // Add db property for compatibility with routes that access it directly
+  get db() {
+    throw new Error('Direct database access not available in MemStorage. Use storage interface methods instead.');
+  }
 
   constructor() {
     this.users = new Map();
@@ -104,6 +141,10 @@ export class MemStorage implements IStorage {
     this.uiSettings = new Map();
     this.userAddresses = new Map();
     this.ratings = new Map();
+    this.cartItems = new Map();
+    this.favorites = new Map();
+    this.adminSessions = new Map();
+    this.notifications = new Map();
     
     this.initializeData();
   }
@@ -359,6 +400,7 @@ export class MemStorage implements IStorage {
     const newCategory: Category = { 
       ...category, 
       id,
+      sortOrder: category.sortOrder ?? null,
       isActive: category.isActive ?? true,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -422,6 +464,7 @@ export class MemStorage implements IStorage {
     ...restaurant, 
     id, 
     createdAt: new Date(),
+    updatedAt: new Date(),
     description: restaurant.description ?? null,
     rating: restaurant.rating ?? "0.0",
     reviewCount: restaurant.reviewCount ?? 0,
@@ -430,11 +473,17 @@ export class MemStorage implements IStorage {
     deliveryFee: restaurant.deliveryFee?.toString() ?? "0",
     categoryId: restaurant.categoryId ?? null,
     // معالجة الخصائص الجديدة لضمان عدم وجود undefined
-    openingTime: restaurant.openingTime ?? null,
-    closingTime: restaurant.closingTime ?? null,
-    workingDays: restaurant.workingDays ?? null,
+    openingTime: restaurant.openingTime ?? "08:00",
+    closingTime: restaurant.closingTime ?? "23:00",
+    workingDays: restaurant.workingDays ?? "0,1,2,3,4,5,6",
     isTemporarilyClosed: restaurant.isTemporarilyClosed ?? false,
-    temporaryCloseReason: restaurant.temporaryCloseReason ?? null
+    temporaryCloseReason: restaurant.temporaryCloseReason ?? null,
+    latitude: restaurant.latitude ?? null,
+    longitude: restaurant.longitude ?? null,
+    address: restaurant.address ?? null,
+    isFeatured: restaurant.isFeatured ?? false,
+    isNew: restaurant.isNew ?? false,
+    isActive: restaurant.isActive ?? true
   };
   this.restaurants.set(id, newRestaurant);
   return newRestaurant;
@@ -528,13 +577,15 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
       ...order, 
       id, 
       createdAt: new Date(),
+      updatedAt: new Date(),
       customerEmail: order.customerEmail ?? null,
+      customerId: order.customerId ?? null,
       notes: order.notes ?? null,
       status: order.status ?? "pending",
       estimatedTime: order.estimatedTime ?? "30-45 دقيقة",
+      driverEarnings: order.driverEarnings?.toString() ?? "0",
       restaurantId: order.restaurantId ?? null,
-      driverId: order.driverId ?? null,
-      updatedAt: new Date()
+      driverId: order.driverId ?? null
     };
     this.orders.set(id, newOrder);
     return newOrder;
@@ -638,7 +689,7 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
   async updateUiSetting(key: string, value: string): Promise<UiSettings | undefined> {
     const existing = this.uiSettings.get(key);
     if (existing) {
-      const updated = { ...existing, value };
+      const updated = { ...existing, value, updatedAt: new Date() };
       this.uiSettings.set(key, updated);
       return updated;
     }
@@ -647,6 +698,9 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
       id: randomUUID(),
       key,
       value,
+      category: "general",
+      description: null,
+      isActive: true,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -659,6 +713,9 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
     const newSetting: UiSettings = {
       ...setting,
       id,
+      category: setting.category ?? "general",
+      description: setting.description ?? null,
+      isActive: setting.isActive ?? true,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -693,6 +750,9 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
       ...address,
       id,
       userId,
+      latitude: address.latitude ?? null,
+      longitude: address.longitude ?? null,
+      details: address.details ?? null,
       isDefault: address.isDefault ?? false,
       createdAt: new Date()
     };
@@ -745,6 +805,10 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
     const newRating: Rating = {
       ...rating,
       id,
+      orderId: rating.orderId ?? null,
+      restaurantId: rating.restaurantId ?? null,
+      customerPhone: rating.customerPhone ?? null,
+      comment: rating.comment ?? null,
       isApproved: rating.isApproved ?? false,
       createdAt: new Date()
     };
@@ -758,6 +822,148 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
     const updated = { ...existing, ...rating };
     this.ratings.set(id, updated);
     return updated;
+  }
+
+  // Cart methods
+  async getCartItems(userId: string): Promise<Cart[]> {
+    return Array.from(this.cartItems.values()).filter(item => item.userId === userId);
+  }
+
+  async addToCart(cart: InsertCart): Promise<Cart> {
+    const id = randomUUID();
+    const newCartItem: Cart = {
+      ...cart,
+      id,
+      quantity: cart.quantity ?? 1,
+      specialInstructions: cart.specialInstructions ?? null,
+      addedAt: new Date()
+    };
+    this.cartItems.set(id, newCartItem);
+    return newCartItem;
+  }
+
+  async updateCartItem(id: string, updates: Partial<InsertCart>): Promise<Cart | undefined> {
+    const existing = this.cartItems.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...updates };
+    this.cartItems.set(id, updated);
+    return updated;
+  }
+
+  async removeFromCart(id: string): Promise<boolean> {
+    return this.cartItems.delete(id);
+  }
+
+  async clearCart(userId: string): Promise<boolean> {
+    const userCartItems = Array.from(this.cartItems.entries())
+      .filter(([_, item]) => item.userId === userId);
+    
+    userCartItems.forEach(([id, _]) => {
+      this.cartItems.delete(id);
+    });
+    
+    return true;
+  }
+
+  // Favorites methods
+  async getFavoriteRestaurants(userId: string): Promise<Favorites[]> {
+    return Array.from(this.favorites.values()).filter(fav => fav.userId === userId);
+  }
+
+  async addToFavorites(favorite: InsertFavorites): Promise<Favorites> {
+    const id = randomUUID();
+    const newFavorite: Favorites = {
+      ...favorite,
+      id,
+      addedAt: new Date()
+    };
+    this.favorites.set(id, newFavorite);
+    return newFavorite;
+  }
+
+  async removeFromFavorites(userId: string, restaurantId: string): Promise<boolean> {
+    const favorite = Array.from(this.favorites.entries())
+      .find(([_, fav]) => fav.userId === userId && fav.restaurantId === restaurantId);
+    
+    if (favorite) {
+      return this.favorites.delete(favorite[0]);
+    }
+    return false;
+  }
+
+  async isRestaurantFavorite(userId: string, restaurantId: string): Promise<boolean> {
+    return Array.from(this.favorites.values())
+      .some(fav => fav.userId === userId && fav.restaurantId === restaurantId);
+  }
+
+  // Admin session methods
+  async deleteAdminSession(token: string): Promise<boolean> {
+    const session = Array.from(this.adminSessions.entries())
+      .find(([_, sess]) => sess.token === token);
+    
+    if (session) {
+      return this.adminSessions.delete(session[0]);
+    }
+    return false;
+  }
+
+  // Notification methods
+  async getNotifications(recipientId?: string, type?: string): Promise<Notification[]> {
+    let notifications = Array.from(this.notifications.values());
+    
+    if (recipientId) {
+      notifications = notifications.filter(n => n.recipientId === recipientId);
+    }
+    if (type) {
+      notifications = notifications.filter(n => n.type === type);
+    }
+    
+    return notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const id = randomUUID();
+    const newNotification: Notification = {
+      ...notification,
+      id,
+      recipientId: notification.recipientId ?? null,
+      orderId: notification.orderId ?? null,
+      isRead: notification.isRead ?? false,
+      createdAt: new Date()
+    };
+    this.notifications.set(id, newNotification);
+    return newNotification;
+  }
+
+  // Search methods
+  async searchCategories(query: string): Promise<Category[]> {
+    const searchTerm = query.toLowerCase();
+    return Array.from(this.categories.values())
+      .filter(cat => cat.name.toLowerCase().includes(searchTerm));
+  }
+
+  async searchMenuItemsAdvanced(query: string, filters?: any): Promise<MenuItem[]> {
+    const searchTerm = query.toLowerCase();
+    let items = Array.from(this.menuItems.values())
+      .filter(item => 
+        item.name.toLowerCase().includes(searchTerm) ||
+        item.description?.toLowerCase().includes(searchTerm) ||
+        item.category.toLowerCase().includes(searchTerm)
+      );
+    
+    if (filters) {
+      if (filters.restaurantId) {
+        items = items.filter(item => item.restaurantId === filters.restaurantId);
+      }
+      if (filters.category) {
+        items = items.filter(item => item.category === filters.category);
+      }
+      if (filters.isAvailable !== undefined) {
+        items = items.filter(item => item.isAvailable === filters.isAvailable);
+      }
+    }
+    
+    return items;
   }
 }
 

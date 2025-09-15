@@ -25,6 +25,7 @@ import {
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { eq, and, gte, lte, desc, isNull } from "drizzle-orm";
+import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -293,7 +294,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const menuItem = await storage.createMenuItem(validatedData);
       res.status(201).json(menuItem);
     } catch (error) {
-      res.status(400).json({ message: "Invalid menu item data" });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error.issues.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message,
+            code: issue.code
+          }))
+        });
+      } else {
+        return res.status(500).json({ message: "Server error", error: error.message });
+      }
     }
   });
 
@@ -554,14 +566,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status } = req.query;
       
-      const db = storage.db;
-      let driverOrders;
+      // Get all orders and filter by driver
+      const allOrders = await storage.getOrders();
+      let driverOrders = allOrders.filter(order => order.driverId === id);
       
       if (status) {
-        driverOrders = await db.select().from(orders).where(and(eq(orders.driverId, id), eq(orders.status, status as string))).orderBy(desc(orders.createdAt));
-      } else {
-        driverOrders = await db.select().from(orders).where(eq(orders.driverId, id)).orderBy(desc(orders.createdAt));
+        driverOrders = driverOrders.filter(order => order.status === status);
       }
+      
+      // Sort by creation date (newest first)
+      driverOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       
       res.json(driverOrders);
     } catch (error) {
@@ -595,15 +609,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { orderId } = req.body;
       
       // Update order status and assign driver
-      const db = storage.db;
-      const [updatedOrder] = await db
-        .update(orders)
-        .set({ 
-          driverId: driverId,
-          status: 'accepted',
-        })
-        .where(eq(orders.id, orderId))
-        .returning();
+      const updatedOrder = await storage.updateOrder(orderId, {
+        driverId: driverId,
+        status: 'accepted',
+      });
       
       if (!updatedOrder) {
         return res.status(404).json({ message: "Order not found" });
@@ -624,14 +633,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { orderId } = req.body;
       
       // Update order status
-      const db = storage.db;
-      const [updatedOrder] = await db
-        .update(orders)
-        .set({ 
-          status: 'delivered',
-        })
-        .where(eq(orders.id, orderId))
-        .returning();
+      const updatedOrder = await storage.updateOrder(orderId, {
+        status: 'delivered',
+      });
       
       if (!updatedOrder) {
         return res.status(404).json({ message: "Order not found" });
@@ -694,18 +698,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate.setHours(0, 0, 0, 0);
       }
       
-      const db = storage.db;
-      const driverOrders = await db
-        .select()
-        .from(orders)
-        .where(
-          and(
-            eq(orders.driverId, id),
-            eq(orders.status, 'delivered'),
-            gte(orders.createdAt, startDate),
-            lte(orders.createdAt, endDate)
-          )
-        );
+      // Get all orders and filter by driver and status
+      const allOrders = await storage.getOrders();
+      const driverOrders = allOrders.filter(order => 
+        order.driverId === id && 
+        order.status === 'delivered' &&
+        new Date(order.createdAt) >= startDate &&
+        new Date(order.createdAt) <= endDate
+      );
       
       const totalEarnings = driverOrders.reduce((sum: number, order: any) => {
         // Prefer driverEarnings for driver-specific calculations
@@ -732,27 +732,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       
-      // Get orders that are pending and near the driver's location
-      const db = storage.db;
-      const availableOrders = await db
-        .select({
-          id: orders.id,
-          totalAmount: orders.totalAmount,
-          status: orders.status,
-          createdAt: orders.createdAt,
-          deliveryAddress: orders.deliveryAddress,
-          restaurantId: orders.restaurantId,
-          customerName: orders.customerName,
-        })
-        .from(orders)
-        .where(
-          and(
-            eq(orders.status, 'pending'),
-            isNull(orders.driverId)
-          )
-        )
-        .orderBy(desc(orders.createdAt))
-        .limit(10);
+      // Get orders that are pending and without assigned driver
+      const allOrders = await storage.getOrders();
+      const availableOrders = allOrders
+        .filter(order => order.status === 'pending' && !order.driverId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10)
+        .map(order => ({
+          id: order.id,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          createdAt: order.createdAt,
+          deliveryAddress: order.deliveryAddress,
+          restaurantId: order.restaurantId,
+          customerName: order.customerName,
+        }));
       
       res.json(availableOrders);
     } catch (error) {
@@ -1031,7 +1025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/favorites", async (req, res) => {
     try {
       const validatedData = insertFavoritesSchema.parse(req.body);
-      const newFavorite = await storage.addToFavorites(validatedData.userId, validatedData.restaurantId);
+      const newFavorite = await storage.addToFavorites(validatedData);
       res.status(201).json(newFavorite);
     } catch (error) {
       console.error('Error adding to favorites:', error);

@@ -3,16 +3,58 @@ import { storage } from "../storage";
 import { authService } from "../auth";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import { eq, and, desc, sql, or, like, asc, inArray } from "drizzle-orm";
 import {
   insertRestaurantSchema,
   insertCategorySchema,
   insertSpecialOfferSchema,
   insertAdminUserSchema,
   insertDriverSchema,
-  insertMenuItemSchema
+  insertMenuItemSchema,
+  adminUsers,
+  adminSessions,
+  categories,
+  restaurantSections,
+  restaurants,
+  menuItems,
+  users,
+  userAddresses,
+  orders,
+  specialOffers,
+  notifications,
+  ratings,
+  systemSettingsTable as systemSettings,
+  drivers,
+  orderTracking,
+  cart,
+  favorites
 } from "@shared/schema";
+import { DatabaseStorage } from "../db";
 
 const router = express.Router();
+const dbStorage = new DatabaseStorage();
+const db = dbStorage.db;
+
+// Schema object for direct database operations
+const schema = {
+  adminUsers,
+  adminSessions,
+  categories,
+  restaurantSections,
+  restaurants,
+  menuItems,
+  users,
+  userAddresses,
+  orders,
+  specialOffers,
+  notifications,
+  ratings,
+  systemSettings,
+  drivers,
+  orderTracking,
+  cart,
+  favorites
+};
 
 // Middleware للتحقق من صلاحيات المدير
 const requireAdmin = async (req: any, res: any, next: any) => {
@@ -158,8 +200,10 @@ router.get("/categories", requireAdmin, async (req, res) => {
     const categories = await storage.getCategories();
     // ترتيب التصنيفات حسب sortOrder ثم الاسم
     const sortedCategories = categories.sort((a, b) => {
-      if (a.sortOrder !== b.sortOrder) {
-        return a.sortOrder - b.sortOrder;
+      const aOrder = a.sortOrder ?? 0;
+      const bOrder = b.sortOrder ?? 0;
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
       }
       return a.name.localeCompare(b.name);
     });
@@ -718,10 +762,7 @@ router.put("/special-offers/:id", requireAdmin, async (req, res) => {
     // التحقق من صحة البيانات المحدثة (جزئي)
     const validatedData = insertSpecialOfferSchema.partial().parse(req.body);
     
-    const updatedOffer = await storage.updateSpecialOffer(id, {
-      ...validatedData, 
-      updatedAt: new Date()
-    });
+    const updatedOffer = await storage.updateSpecialOffer(id, validatedData);
     
     if (!updatedOffer) {
       return res.status(404).json({ error: "العرض الخاص غير موجود" });
@@ -1179,13 +1220,13 @@ router.put("/change-password", requireAdmin, async (req: any, res) => {
       return res.status(400).json({ error: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
     }
 
-    // التحقق من كلمة المرور الحالية
-    const admin = await dbStorage.getAdminByEmail(req.admin.email);
-    if (!admin) {
+    // Get current admin/driver info from storage
+    const currentDriver = await storage.getDriver(adminId);
+    if (!currentDriver) {
       return res.status(404).json({ error: "المدير غير موجود" });
     }
 
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, admin.password);
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, currentDriver.password);
     if (!isCurrentPasswordValid) {
       return res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
     }
@@ -1193,13 +1234,10 @@ router.put("/change-password", requireAdmin, async (req: any, res) => {
     // تشفير كلمة المرور الجديدة
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-    // تحديث كلمة المرور
-    await db.update(schema.adminUsers)
-      .set({
-        password: hashedNewPassword,
-        updatedAt: new Date()
-      })
-      .where(eq(schema.adminUsers.id, adminId));
+    // تحديث كلمة المرور باستخدام storage interface
+    await storage.updateDriver(adminId, {
+      password: hashedNewPassword
+    });
 
     res.json({ message: "تم تغيير كلمة المرور بنجاح" });
   } catch (error) {

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { Home, Search, Receipt, User, Menu, Settings, Shield, MapPin, Clock, Truck, UserCog } from 'lucide-react';
+import { Home, Search, Receipt, User, Menu, Settings, Shield, MapPin, Clock, Truck, UserCog, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../contexts/CartContext';
 import CartButton from './CartButton';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,7 +11,7 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-interface MenuItem {
+interface NavigationItem {
   icon: React.ComponentType<any>;
   label: string;
   path: string;
@@ -21,7 +21,8 @@ interface MenuItem {
 
 export default function Layout({ children }: LayoutProps) {
   const [location, setLocation] = useLocation();
-  const { getItemCount } = useCart();
+  const { state } = useCart();
+  const getItemCount = () => state.items.reduce((sum, item) => sum + item.quantity, 0);
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
@@ -69,7 +70,6 @@ export default function Layout({ children }: LayoutProps) {
     };
   }, []);
 
-  const isHomePage = location === '/';
   const isAdminPage = location.startsWith('/admin');
   const isDeliveryPage = location.startsWith('/delivery');
 
@@ -279,9 +279,15 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </div>
 
-          {/* Left side - Location pin icon */}
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-            <MapPin className="h-5 w-5 text-white" />
+          {/* Left side - Cart icon */}
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center relative cursor-pointer"
+               onClick={() => window.dispatchEvent(new CustomEvent('openCart'))}>
+            <ShoppingCart className="h-5 w-5 text-white" />
+            {getItemCount() > 0 && (
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                {getItemCount()}
+              </div>
+            )}
           </div>
         </div>
       </header>

@@ -1,8 +1,8 @@
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { MenuItem } from '@shared/schema';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface MenuItemCardProps {
@@ -27,7 +27,8 @@ export default function MenuItemCard({ item, disabled = false, disabledMessage }
       return;
     }
     
-    addItem(item);
+    // Need restaurant context - this will need to be passed as props
+    addItem(item, 'unknown', 'مطعم غير محدد');
     toast({
       title: "تمت الإضافة للسلة",
       description: `تم إضافة ${item.name} للسلة`,
@@ -35,7 +36,7 @@ export default function MenuItemCard({ item, disabled = false, disabledMessage }
   };
 
   const isSpecialOffer = item.isSpecialOffer && item.originalPrice;
-  const savings = isSpecialOffer ? item.originalPrice! - item.price : 0;
+  const savings = isSpecialOffer ? parseFloat(String(item.originalPrice!)) - parseFloat(String(item.price)) : 0;
 
   return (
     <Card 

@@ -1,15 +1,25 @@
 import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCart } from '../context/CartContext';
-import { useLocation } from 'wouter';
-import { useState } from 'react';
+import { useCart } from '../contexts/CartContext';
+import { useState, useEffect } from 'react';
 import { Cart } from './Cart';
 
 export default function CartButton() {
-  const { getItemCount } = useCart();
-  const [, setLocation] = useLocation();
+  const { state } = useCart();
   const [showCart, setShowCart] = useState(false);
-  const itemCount = getItemCount();
+  const itemCount = state.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Listen for openCart event from header
+  useEffect(() => {
+    const handleOpenCart = () => {
+      setShowCart(true);
+    };
+
+    window.addEventListener('openCart', handleOpenCart);
+    return () => {
+      window.removeEventListener('openCart', handleOpenCart);
+    };
+  }, []);
 
   return (
     <>

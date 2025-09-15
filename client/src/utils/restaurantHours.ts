@@ -138,6 +138,11 @@ function getDayName(day: number): string {
 }
 
 export function canOrderFromRestaurant(restaurant: any): { canOrder: boolean; message?: string } {
+  // If restaurant is manually set to open, allow ordering regardless of hours (for demo)
+  if (restaurant.isOpen && !restaurant.isTemporarilyClosed) {
+    return { canOrder: true };
+  }
+  
   const status = getRestaurantStatus(restaurant);
   
   if (!status.isOpen) {

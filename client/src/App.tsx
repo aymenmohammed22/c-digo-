@@ -63,8 +63,11 @@ function AuthenticatedApp() {
 
   // Handle admin routes (completely separate from customer app)
   if (window.location.pathname.startsWith('/admin')) {
-    // TEMPORARY BYPASS: Skip authentication check for testing
-    console.log('TEMPORARY BYPASS: Accessing admin dashboard without auth check');
+    // Require admin authentication
+    if (userType !== 'admin') {
+      window.location.href = '/admin-login';
+      return null;
+    }
     return (
       <AdminApp 
         onLogout={() => {
@@ -76,8 +79,11 @@ function AuthenticatedApp() {
 
   // Handle driver routes (completely separate from customer app)
   if (window.location.pathname.startsWith('/driver/')) {
-    // TEMPORARY BYPASS: Skip authentication check for testing
-    console.log('TEMPORARY BYPASS: Accessing driver dashboard without auth check');
+    // Require driver authentication
+    if (userType !== 'driver') {
+      window.location.href = '/admin-login';
+      return null;
+    }
     return (
       <DriverDashboard 
         onLogout={() => {

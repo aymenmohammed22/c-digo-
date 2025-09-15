@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Store, Save, X, Clock, Star, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, Store, Save, X, Clock, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -30,6 +31,11 @@ export default function AdminRestaurants() {
     minimumOrder: '0',
     isOpen: true,
     categoryId: '',
+    openingTime: '08:00',
+    closingTime: '23:00',
+    workingDays: '0,1,2,3,4,5,6', // Sunday=0, Monday=1, ..., Saturday=6
+    isTemporarilyClosed: false,
+    temporaryCloseReason: '',
   });
 
   const { data: restaurants, isLoading: restaurantsLoading } = useQuery<Restaurant[]>({
@@ -97,6 +103,11 @@ export default function AdminRestaurants() {
       minimumOrder: '0',
       isOpen: true,
       categoryId: '',
+      openingTime: '08:00',
+      closingTime: '23:00',
+      workingDays: '0,1,2,3,4,5,6',
+      isTemporarilyClosed: false,
+      temporaryCloseReason: '',
     });
     setEditingRestaurant(null);
   };
@@ -112,6 +123,11 @@ export default function AdminRestaurants() {
       minimumOrder: restaurant.minimumOrder || '0',
       isOpen: restaurant.isOpen,
       categoryId: restaurant.categoryId || '',
+      openingTime: restaurant.openingTime || '08:00',
+      closingTime: restaurant.closingTime || '23:00',
+      workingDays: restaurant.workingDays || '0,1,2,3,4,5,6',
+      isTemporarilyClosed: restaurant.isTemporarilyClosed || false,
+      temporaryCloseReason: restaurant.temporaryCloseReason || '',
     });
     setIsDialogOpen(true);
   };
@@ -119,10 +135,50 @@ export default function AdminRestaurants() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Basic validation
     if (!formData.name.trim()) {
       toast({
         title: "خطأ",
         description: "يرجى إدخال اسم المطعم",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Working days validation
+    const workingDaysArray = formData.workingDays.split(',').filter(Boolean);
+    if (workingDaysArray.length === 0) {
+      toast({
+        title: "خطأ في أيام العمل",
+        description: "يجب اختيار يوم واحد على الأقل للعمل",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Time validation
+    if (formData.openingTime && formData.closingTime) {
+      const [openHour, openMin] = formData.openingTime.split(':').map(Number);
+      const [closeHour, closeMin] = formData.closingTime.split(':').map(Number);
+      
+      const openingMinutes = openHour * 60 + openMin;
+      const closingMinutes = closeHour * 60 + closeMin;
+      
+      if (openingMinutes >= closingMinutes) {
+        toast({
+          title: "خطأ في أوقات العمل",
+          description: "وقت الفتح يجب أن يكون قبل وقت الإغلاق",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Temporary closure validation
+    if (formData.isTemporarilyClosed && !formData.temporaryCloseReason.trim()) {
+      toast({
+        title: "خطأ في الإغلاق المؤقت",
+        description: "يرجى إدخال سبب الإغلاق المؤقت",
         variant: "destructive",
       });
       return;
@@ -290,6 +346,107 @@ export default function AdminRestaurants() {
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isOpen: checked }))}
                   data-testid="switch-restaurant-open"
                 />
+              </div>
+
+              {/* Restaurant Hours Section */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="text-lg font-semibold text-foreground">أوقات العمل</h3>
+                
+                {/* Opening and Closing Times */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="openingTime">وقت الفتح</Label>
+                    <Input
+                      id="openingTime"
+                      type="time"
+                      value={formData.openingTime}
+                      onChange={(e) => setFormData(prev => ({ ...prev, openingTime: e.target.value }))}
+                      data-testid="input-restaurant-opening-time"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="closingTime">وقت الإغلاق</Label>
+                    <Input
+                      id="closingTime"
+                      type="time"
+                      value={formData.closingTime}
+                      onChange={(e) => setFormData(prev => ({ ...prev, closingTime: e.target.value }))}
+                      data-testid="input-restaurant-closing-time"
+                    />
+                  </div>
+                </div>
+
+                {/* Working Days */}
+                <div>
+                  <Label className="text-base font-medium">أيام العمل</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                    {[
+                      { value: '0', label: 'الأحد' },
+                      { value: '1', label: 'الإثنين' },
+                      { value: '2', label: 'الثلاثاء' },
+                      { value: '3', label: 'الأربعاء' },
+                      { value: '4', label: 'الخميس' },
+                      { value: '5', label: 'الجمعة' },
+                      { value: '6', label: 'السبت' },
+                    ].map((day) => {
+                      const workingDaysArray = formData.workingDays.split(',').filter(Boolean);
+                      const isChecked = workingDaysArray.includes(day.value);
+                      
+                      return (
+                        <div key={day.value} className="flex items-center space-x-2 space-x-reverse">
+                          <Checkbox
+                            id={`day-${day.value}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              const currentDays = formData.workingDays.split(',').filter(Boolean);
+                              let newDays;
+                              if (checked) {
+                                newDays = [...currentDays, day.value].sort((a, b) => parseInt(a) - parseInt(b));
+                              } else {
+                                newDays = currentDays.filter(d => d !== day.value);
+                              }
+                              setFormData(prev => ({ ...prev, workingDays: newDays.join(',') }));
+                            }}
+                            data-testid={`checkbox-working-day-${day.value}`}
+                          />
+                          <Label
+                            htmlFor={`day-${day.value}`}
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            {day.label}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Temporary Closure */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="isTemporarilyClosed">إغلاق مؤقت</Label>
+                    <Switch
+                      id="isTemporarilyClosed"
+                      checked={formData.isTemporarilyClosed}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isTemporarilyClosed: checked }))}
+                      data-testid="switch-restaurant-temporarily-closed"
+                    />
+                  </div>
+                  
+                  {formData.isTemporarilyClosed && (
+                    <div>
+                      <Label htmlFor="temporaryCloseReason">سبب الإغلاق المؤقت</Label>
+                      <Textarea
+                        id="temporaryCloseReason"
+                        value={formData.temporaryCloseReason}
+                        onChange={(e) => setFormData(prev => ({ ...prev, temporaryCloseReason: e.target.value }))}
+                        placeholder="مثال: أعمال صيانة، إجازة، ظروف خاصة..."
+                        rows={2}
+                        data-testid="input-restaurant-temporary-close-reason"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2 pt-4">

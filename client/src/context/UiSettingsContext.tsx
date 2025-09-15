@@ -2,10 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface UiSetting {
   id: string;
-  settingKey: string;
-  settingValue: string;
-  description: string | null;
-  isActive: boolean;
+  key: string;
+  value: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface UiSettingsContextType {
@@ -29,7 +29,7 @@ export function UiSettingsProvider({ children }: { children: React.ReactNode }) 
       if (response.ok) {
         const settingsData: UiSetting[] = await response.json();
         const settingsMap = settingsData.reduce((acc, setting) => {
-          acc[setting.settingKey] = setting.settingValue;
+          acc[setting.key] = setting.value;
           return acc;
         }, {} as Record<string, string>);
         setSettings(settingsMap);

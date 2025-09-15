@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { dbStorage } from "./db";
+import { log } from "./vite";
 import { authService } from "./auth";
 import { customerRoutes } from "./routes/customer";
 import driverRoutes from "./routes/driver";
@@ -637,17 +639,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Special Offers
   app.get("/api/special-offers", async (req, res) => {
     try {
+      log("🔍 Storage type: " + dbStorage.constructor.name);
+      
+      // Disable caching to see changes
+      res.set('Cache-Control', 'no-store');
+      
       const { active } = req.query;
       let offers;
       
-      if (active === 'true') {
-        offers = await storage.getActiveSpecialOffers();
+      // Default to active offers for homepage
+      if (active === 'false') {
+        offers = await dbStorage.getSpecialOffers();
       } else {
-        offers = await storage.getSpecialOffers();
+        offers = await dbStorage.getActiveSpecialOffers();
       }
       
+      log("📊 Found offers: " + offers.length + " offers");
       res.json(offers);
     } catch (error) {
+      log("خطأ في جلب العروض الخاصة: " + error.message);
       res.status(500).json({ message: "Failed to fetch special offers" });
     }
   });

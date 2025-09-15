@@ -37,7 +37,8 @@ function getDb() {
       throw new Error("DATABASE_URL must be defined in environment variables");
     }
     
-    console.log("Using database connection...");  // Debug log
+    console.log("🗺️ Using database connection...");  // Debug log
+    console.log("🔗 DATABASE_URL exists:", !!databaseUrl);
     
     // Use DATABASE_URL as-is for secure Neon connection
     const sqlClient = neon(databaseUrl);

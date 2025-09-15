@@ -84,23 +84,22 @@ router.get("/restaurants/:id/menu", async (req, res) => {
 // جلب العروض الخاصة
 router.get("/special-offers", async (req, res) => {
   try {
-    const { restaurantId, categoryId } = req.query;
+    console.log("🔍 Storage type:", dbStorage.constructor.name);
     
-    let whereConditions = [eq(schema.specialOffers.isActive, true)];
+    // Disable caching to see changes
+    res.set('Cache-Control', 'no-store');
     
-    if (restaurantId) {
-      whereConditions.push(eq(schema.specialOffers.restaurantId, restaurantId as string));
+    const { active } = req.query;
+    let offers;
+    
+    // Default to active offers for homepage
+    if (active === 'false') {
+      offers = await dbStorage.getSpecialOffers();
+    } else {
+      offers = await dbStorage.getActiveSpecialOffers();
     }
     
-    if (categoryId) {
-      whereConditions.push(eq(schema.specialOffers.categoryId, categoryId as string));
-    }
-
-    const offers = await db.query.specialOffers.findMany({
-      where: and(...whereConditions),
-      orderBy: [desc(schema.specialOffers.createdAt)]
-    });
-
+    console.log("📊 Found offers:", offers.length, offers);
     res.json(offers);
   } catch (error) {
     console.error("خطأ في جلب العروض الخاصة:", error);

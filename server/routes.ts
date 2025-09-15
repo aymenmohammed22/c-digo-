@@ -27,9 +27,6 @@ import { eq, and, gte, lte, desc, isNull } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // Initialize default admin user on startup
-  await authService.createDefaultAdmin();
-  
   // Admin Authentication Routes
   app.post("/api/admin/login", async (req, res) => {
     try {
@@ -653,6 +650,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { period = 'today' } = req.query;
       
+      // Validate UUID format (supports both with and without hyphens)
+      const uuidRe = /^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$/i;
+      if (!id || id.length < 8 || !uuidRe.test(id.replace(/-/g, ''))) {
+        return res.status(400).json({ message: "Invalid driver id format" });
+      }
+      
+      // Check if driver exists
+      const driver = await dbStorage.getDriver(id);
+      if (!driver) {
+        // Return zero stats for non-existent driver to keep client stable
+        const startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        return res.json({
+          totalOrders: 0,
+          totalEarnings: 0,
+          avgOrderValue: 0,
+          period,
+          startDate,
+          endDate: new Date()
+        });
+      }
+      
       let startDate: Date;
       const endDate = new Date();
       
@@ -688,7 +707,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       
       const totalEarnings = driverOrders.reduce((sum: number, order: any) => {
-        return sum + (parseFloat(order.totalAmount) || 0);
+        // Prefer driverEarnings for driver-specific calculations
+        const amount = order.driverEarnings ?? order.totalAmount ?? order.total ?? 0;
+        return sum + parseFloat(amount.toString() || '0');
       }, 0);
       
       const stats = {

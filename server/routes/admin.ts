@@ -3,6 +3,14 @@ import { dbStorage } from "../db.js";
 import * as schema from "../../shared/schema.js";
 import { eq, desc, and, or, like, count, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { z } from "zod";
+import {
+  insertRestaurantSchema,
+  insertCategorySchema,
+  insertSpecialOfferSchema,
+  insertAdminUserSchema,
+  insertDriverSchema
+} from "../../shared/schema.js";
 
 // Get database instance for direct queries
 const db = dbStorage.db;
@@ -24,7 +32,7 @@ const requireAdmin = async (req: any, res: any, next: any) => {
       return res.status(401).json({ error: "جلسة منتهية الصلاحية" });
     }
 
-    const admin = await dbStorage.getAdminByEmail(session.adminId!);
+    const admin = await dbStorage.getAdminById(session.adminId!);
 
     if (!admin || admin.userType !== 'admin') {
       return res.status(403).json({ error: "صلاحيات غير كافية" });
@@ -116,17 +124,14 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
     ] = await Promise.all([
       db.select({ count: count() }).from(schema.restaurants),
       db.select({ count: count() }).from(schema.orders),
-      db.select({ count: count() }).from(schema.adminUsers).where(eq(schema.adminUsers.userType, "driver")),
+      db.select({ count: count() }).from(schema.drivers),
       db.select({ count: count() }).from(schema.customers),
       db.select({ count: count() }).from(schema.orders)
         .where(sql`DATE(created_at) = CURRENT_DATE`),
       db.select({ count: count() }).from(schema.orders)
         .where(eq(schema.orders.status, "pending")),
-      db.select({ count: count() }).from(schema.adminUsers)
-        .where(and(
-          eq(schema.adminUsers.userType, "driver"),
-          eq(schema.adminUsers.isActive, true)
-        ))
+      db.select({ count: count() }).from(schema.drivers)
+        .where(eq(schema.drivers.isActive, true))
     ]);
 
     // إحصائيات مالية
@@ -184,13 +189,27 @@ router.get("/categories", requireAdmin, async (req, res) => {
 
 router.post("/categories", requireAdmin, async (req, res) => {
   try {
-    const categoryData = req.body;
+    // التحقق من صحة البيانات مع الحقول المطلوبة
+    const validatedData = insertCategorySchema.parse({
+      ...req.body,
+      // التأكد من وجود الحقول المطلوبة
+      sortOrder: req.body.sortOrder || 0,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    });
+    
     const [newCategory] = await db.insert(schema.categories)
-      .values(categoryData)
+      .values(validatedData)
       .returning();
     
     res.json(newCategory);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات التصنيف غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في إضافة التصنيف:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -198,15 +217,28 @@ router.post("/categories", requireAdmin, async (req, res) => {
 router.put("/categories/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    
+    // التحقق من صحة البيانات المحدثة (جزئي)
+    const validatedData = insertCategorySchema.partial().parse(req.body);
     
     const [updatedCategory] = await db.update(schema.categories)
-      .set({ ...updateData, updatedAt: new Date() })
+      .set({ ...validatedData, updatedAt: new Date() })
       .where(eq(schema.categories.id, id))
       .returning();
     
+    if (!updatedCategory) {
+      return res.status(404).json({ error: "التصنيف غير موجود" });
+    }
+    
     res.json(updatedCategory);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات تحديث التصنيف غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في تحديث التصنيف:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -290,19 +322,38 @@ router.get("/restaurants", requireAdmin, async (req, res) => {
 
 router.post("/restaurants", requireAdmin, async (req, res) => {
   try {
-    const restaurantData = req.body;
-    
-    // إضافة صورة افتراضية إذا لم تكن موجودة
-    if (!restaurantData.image) {
-      restaurantData.image = "https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg";
-    }
+    // التحقق من صحة البيانات مع إضافة الحقول المطلوبة
+    const validatedData = insertRestaurantSchema.parse({
+      ...req.body,
+      // إضافة صورة افتراضية إذا لم تكن موجودة
+      image: req.body.image || "https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg",
+      // إضافة وقت التسليم الافتراضي إذا لم يكن موجود
+      deliveryTime: req.body.deliveryTime || "30-45 دقيقة",
+      // التأكد من الحقول الافتراضية
+      openingTime: req.body.openingTime || "08:00",
+      closingTime: req.body.closingTime || "23:00",
+      workingDays: req.body.workingDays || "0,1,2,3,4,5,6",
+      minimumOrder: req.body.minimumOrder || "0",
+      deliveryFee: req.body.deliveryFee || "0",
+      isOpen: req.body.isOpen !== undefined ? req.body.isOpen : true,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+      isFeatured: req.body.isFeatured !== undefined ? req.body.isFeatured : false,
+      isNew: req.body.isNew !== undefined ? req.body.isNew : false,
+      isTemporarilyClosed: req.body.isTemporarilyClosed !== undefined ? req.body.isTemporarilyClosed : false
+    });
     
     const [newRestaurant] = await db.insert(schema.restaurants)
-      .values(restaurantData)
+      .values(validatedData)
       .returning();
     
     res.json(newRestaurant);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات المطعم غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
     console.error("خطأ في إضافة المطعم:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
@@ -311,15 +362,28 @@ router.post("/restaurants", requireAdmin, async (req, res) => {
 router.put("/restaurants/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    
+    // التحقق من صحة البيانات المحدثة (جزئي)
+    const validatedData = insertRestaurantSchema.partial().parse(req.body);
     
     const [updatedRestaurant] = await db.update(schema.restaurants)
-      .set({ ...updateData, updatedAt: new Date() })
+      .set({ ...validatedData, updatedAt: new Date() })
       .where(eq(schema.restaurants.id, id))
       .returning();
     
+    if (!updatedRestaurant) {
+      return res.status(404).json({ error: "المطعم غير موجود" });
+    }
+    
     res.json(updatedRestaurant);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات تحديث المطعم غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في تحديث المطعم:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -484,33 +548,48 @@ router.put("/orders/:id/status", requireAdmin, async (req: any, res) => {
   }
 });
 
-// إدارة السائقين
+// إدارة السائقين - استخدام جدول السائقين المخصص
 router.get("/drivers", requireAdmin, async (req, res) => {
   try {
     const drivers = await db.select()
-      .from(schema.adminUsers)
-      .where(eq(schema.adminUsers.userType, "driver"))
-      .orderBy(desc(schema.adminUsers.createdAt));
+      .from(schema.drivers)
+      .orderBy(desc(schema.drivers.createdAt));
     
     res.json(drivers);
   } catch (error) {
+    console.error("خطأ في جلب السائقين:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
 
 router.post("/drivers", requireAdmin, async (req, res) => {
   try {
-    const driverData = {
+    // التحقق من صحة البيانات مع الحقول المطلوبة
+    const validatedData = insertDriverSchema.parse({
       ...req.body,
-      userType: "driver"
-    };
+      // تشفير كلمة المرور
+      password: await bcrypt.hash(req.body.password, 10),
+      // التأكد من وجود الحقول الافتراضية
+      isAvailable: req.body.isAvailable !== undefined ? req.body.isAvailable : true,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+      earnings: req.body.earnings || "0"
+    });
     
-    const [newDriver] = await db.insert(schema.adminUsers)
-      .values(driverData)
+    const [newDriver] = await db.insert(schema.drivers)
+      .values(validatedData)
       .returning();
     
-    res.json(newDriver);
+    // إخفاء كلمة المرور في الاستجابة
+    const { password, ...driverWithoutPassword } = newDriver;
+    res.json(driverWithoutPassword);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات السائق غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في إضافة السائق:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -518,15 +597,38 @@ router.post("/drivers", requireAdmin, async (req, res) => {
 router.put("/drivers/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
     
-    const [updatedDriver] = await db.update(schema.adminUsers)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(schema.adminUsers.id, id))
+    // إعداد البيانات للتحديث
+    const updateData = { ...req.body };
+    
+    // تشفير كلمة المرور الجديدة إذا تم تقديمها
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+    
+    // التحقق من صحة البيانات المحدثة (جزئي)
+    const validatedData = insertDriverSchema.partial().parse(updateData);
+    
+    const [updatedDriver] = await db.update(schema.drivers)
+      .set(validatedData)
+      .where(eq(schema.drivers.id, id))
       .returning();
     
-    res.json(updatedDriver);
+    if (!updatedDriver) {
+      return res.status(404).json({ error: "السائق غير موجود" });
+    }
+    
+    // إخفاء كلمة المرور في الاستجابة
+    const { password, ...driverWithoutPassword } = updatedDriver;
+    res.json(driverWithoutPassword);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات تحديث السائق غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في تحديث السائق:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -535,11 +637,22 @@ router.delete("/drivers/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    await db.delete(schema.adminUsers)
-      .where(eq(schema.adminUsers.id, id));
+    // التحقق من وجود السائق أولاً
+    const existingDriver = await db.select()
+      .from(schema.drivers)
+      .where(eq(schema.drivers.id, id))
+      .limit(1);
     
-    res.json({ success: true });
+    if (existingDriver.length === 0) {
+      return res.status(404).json({ error: "السائق غير موجود" });
+    }
+    
+    await db.delete(schema.drivers)
+      .where(eq(schema.drivers.id, id));
+    
+    res.json({ success: true, message: "تم حذف السائق بنجاح" });
   } catch (error) {
+    console.error("خطأ في حذف السائق:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -593,14 +706,29 @@ router.get("/special-offers", requireAdmin, async (req, res) => {
 
 router.post("/special-offers", requireAdmin, async (req, res) => {
   try {
-    const offerData = req.body;
+    // التحقق من صحة البيانات مع الحقول المطلوبة
+    const validatedData = insertSpecialOfferSchema.parse({
+      ...req.body,
+      // إضافة صورة افتراضية إذا لم تكن موجودة
+      image: req.body.image || "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg",
+      // التأكد من وجود الحقول الافتراضية
+      minimumOrder: req.body.minimumOrder || "0",
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    });
     
     const [newOffer] = await db.insert(schema.specialOffers)
-      .values(offerData)
+      .values(validatedData)
       .returning();
     
     res.json(newOffer);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات العرض الخاص غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في إضافة العرض الخاص:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -608,15 +736,28 @@ router.post("/special-offers", requireAdmin, async (req, res) => {
 router.put("/special-offers/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    
+    // التحقق من صحة البيانات المحدثة (جزئي)
+    const validatedData = insertSpecialOfferSchema.partial().parse(req.body);
     
     const [updatedOffer] = await db.update(schema.specialOffers)
-      .set({ ...updateData, updatedAt: new Date() })
+      .set({ ...validatedData, updatedAt: new Date() })
       .where(eq(schema.specialOffers.id, id))
       .returning();
     
+    if (!updatedOffer) {
+      return res.status(404).json({ error: "العرض الخاص غير موجود" });
+    }
+    
     res.json(updatedOffer);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات تحديث العرض الخاص غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في تحديث العرض الخاص:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });

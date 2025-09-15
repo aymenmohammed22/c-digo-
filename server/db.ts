@@ -30,19 +30,14 @@ let db: ReturnType<typeof drizzle> | null = null;
 
 function getDb() {
   if (!db) {
-    // Try multiple sources for DATABASE_URL
-    const databaseUrl = process.env.DATABASE_URL || 
-                       process.env.REPLIT_DB_URL ||
-                       "postgresql://neondb_owner:%23Acard7mo%2A%2A@ep-bitter-cherry-ad50f0sk-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+    // Use DATABASE_URL from environment variables
+    const databaseUrl = process.env.DATABASE_URL;
     
     if (!databaseUrl) {
       throw new Error("DATABASE_URL must be defined in environment variables");
     }
     
     console.log("Using database connection...");  // Debug log
-    
-    // Configure for Replit environment to handle SSL issues
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     
     const sqlClient = neon(databaseUrl);
     
@@ -476,46 +471,43 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (filters?.search) {
-      const searchConditions = [
-        like(restaurants.name, `%${filters.search}%`),
-        like(restaurants.description, `%${filters.search}%`),
-        like(restaurants.address, `%${filters.search}%`)
-      ];
-      
-      if (searchConditions.length > 0) {
-        conditions.push(or(...searchConditions));
-      }
+      conditions.push(
+        sql`(
+          ${restaurants.name} ILIKE ${'%' + filters.search + '%'} OR
+          COALESCE(${restaurants.description}, '') ILIKE ${'%' + filters.search + '%'} OR
+          COALESCE(${restaurants.address}, '') ILIKE ${'%' + filters.search + '%'}
+        )`
+      );
     }
     
-    // Base query with sorting
-    let orderByClause;
+    // Build and execute query with temporary type assertion for compilation
+    let baseQuery: any = this.db.select().from(restaurants);
+    
+    if (conditions.length > 0) {
+      baseQuery = baseQuery.where(and(...conditions));
+    }
+    
+    // Apply sorting
     switch (filters?.sortBy) {
       case 'rating':
-        orderByClause = desc(restaurants.rating);
+        // Convert varchar rating to numeric for proper sorting
+        baseQuery = baseQuery.orderBy(sql`(${restaurants.rating})::numeric DESC`);
         break;
       case 'deliveryTime':
-        orderByClause = asc(restaurants.deliveryTime);
+        baseQuery = baseQuery.orderBy(asc(restaurants.deliveryTime));
         break;
       case 'newest':
-        orderByClause = desc(restaurants.createdAt);
+        baseQuery = baseQuery.orderBy(desc(restaurants.createdAt));
         break;
       case 'distance':
         // Will handle distance sorting in the application layer
-        orderByClause = restaurants.name;
+        baseQuery = baseQuery.orderBy(restaurants.name);
         break;
       default:
-        orderByClause = restaurants.name;
+        baseQuery = baseQuery.orderBy(restaurants.name);
     }
     
-    let query = this.db.select().from(restaurants);
-    
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-    
-    query = query.orderBy(orderByClause);
-    
-    const result = await query;
+    const result = await baseQuery;
     const restaurants_list = Array.isArray(result) ? result : [];
     
     // If user location is provided and we're sorting by distance

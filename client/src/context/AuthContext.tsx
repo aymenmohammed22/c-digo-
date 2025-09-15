@@ -35,38 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // DEV ONLY: Auth bypass for development/testing - NEVER in production
-    const isDevelopment = import.meta.env.MODE === 'development' || import.meta.env.DEV;
-    const enableDevBypass = isDevelopment && import.meta.env.VITE_ENABLE_DEV_AUTH_BYPASS === 'true';
-    
-    if (enableDevBypass) {
-      const currentPath = window.location.pathname;
-      
-      if (currentPath.startsWith('/admin')) {
-        console.log('🔓 DEV BYPASS: Auto-authenticating as admin for development testing');
-        setAuthState({
-          isAuthenticated: true,
-          userType: 'admin',
-          token: 'dev-admin-token',
-          adminId: 'dev-admin-id',
-          user: { name: 'مدير النظام', email: 'admin@example.com' },
-        });
-        setLoading(false);
-        return;
-      } else if (currentPath.startsWith('/delivery')) {
-        console.log('🔓 DEV BYPASS: Auto-authenticating as driver for development testing');
-        setAuthState({
-          isAuthenticated: true,
-          userType: 'driver',
-          token: 'dev-driver-token',
-          adminId: 'dev-driver-id',
-          user: { name: 'سائق النظام', phone: '+967-771234567' },
-        });
-        setLoading(false);
-        return;
-      }
-    }
-
+    // Authentication bypasses removed - all authentication must go through proper login
     // Normal authentication flow
     const token = localStorage.getItem('admin_token');
     if (token) {

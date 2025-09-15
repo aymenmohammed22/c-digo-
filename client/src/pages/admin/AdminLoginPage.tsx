@@ -61,34 +61,7 @@ export default function AdminLoginPage() {
     if (error) setError(''); // مسح الخطأ عند الكتابة
   };
 
-  // دخول سريع بصلاحيات المدير
-  const handleQuickLogin = async () => {
-    setError('');
-    setIsSubmitting(true);
-
-    try {
-      const result = await login('admin@alsarie-one.com', 'admin123456', 'admin');
-      
-      if (result.success) {
-        setLocation('/admin');
-      } else {
-        setError(result.message || 'فشل في تسجيل الدخول');
-      }
-    } catch (error) {
-      setError('حدث خطأ غير متوقع');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // تعبئة البيانات الافتراضية
-  const fillDefaultCredentials = () => {
-    setFormData({
-      email: 'admin@alsarie-one.com',
-      password: 'admin123456'
-    });
-    setError('');
-  };
+  // Hardcoded credentials and quick login removed for security
 
   if (loading) {
     return (
@@ -195,41 +168,17 @@ export default function AdminLoginPage() {
                   )}
                 </Button>
 
-                {/* أزرار الدخول السريع - بيئة التطوير فقط */}
-                {(import.meta.env.MODE === 'development' || import.meta.env.DEV) && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      onClick={handleQuickLogin}
-                      className="h-10 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-                      disabled={isSubmitting}
-                    >
-                      🚀 دخول سريع
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      onClick={fillDefaultCredentials}
-                      variant="outline"
-                      className="h-10 border-green-300 text-green-700 hover:bg-green-50 text-sm font-medium rounded-lg transition-all duration-200"
-                      disabled={isSubmitting}
-                    >
-                      📝 تعبئة البيانات
-                    </Button>
-                  </div>
-                )}
               </div>
             </form>
 
             {/* Demo Credentials - بيئة التطوير فقط */}
-            {(import.meta.env.MODE === 'development' || import.meta.env.DEV) && (
+            {(import.meta as any).env.DEV && (
               <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                 <p className="text-sm text-green-800 font-medium mb-2">🔑 بيانات المدير الافتراضية (تطوير):</p>
                 <div className="text-xs text-green-700 space-y-1">
                   <p>البريد الإلكتروني: admin@alsarie-one.com</p>
                   <p>كلمة المرور: admin123456</p>
                 </div>
-                <p className="text-xs text-green-600 mt-2">💡 استخدم "دخول سريع" أو "تعبئة البيانات" للدخول بسرعة</p>
               </div>
             )}
           </CardContent>

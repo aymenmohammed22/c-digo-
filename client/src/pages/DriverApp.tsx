@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Phone, DollarSign, Clock, CheckCircle, XCircle, Bell } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, Phone, Clock, CheckCircle, Bell } from 'lucide-react';
 
 interface Order {
   id: string;

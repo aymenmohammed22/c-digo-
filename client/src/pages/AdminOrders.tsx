@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Clock, CheckCircle, XCircle, Truck, Phone, MapPin, Filter } from 'lucide-react';
+import { Package, CheckCircle, XCircle, Phone, MapPin, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ export default function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: orders, isLoading } = useQuery<Order[]>({
-    queryKey: ['/api/orders', statusFilter !== 'all' ? { status: statusFilter } : {}],
+    queryKey: statusFilter !== 'all' ? ['/api/orders', statusFilter] : ['/api/orders'],
   });
 
   const updateOrderStatusMutation = useMutation({

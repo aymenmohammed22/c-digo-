@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Trash2, MapPin, Calendar, Clock, DollarSign, Wallet, CreditCard, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import { ArrowRight, Trash2, MapPin, Calendar, Clock, DollarSign, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { useCart } from '../context/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
@@ -18,7 +17,6 @@ export default function Cart() {
   const [, setLocation] = useLocation();
   const { items, removeItem, updateQuantity, clearCart, getSubtotal, getTotal } = useCart();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [orderForm, setOrderForm] = useState({
     customerName: '',
@@ -78,20 +76,16 @@ export default function Cart() {
       items: JSON.stringify(items),
       subtotal: getSubtotal().toString(),
       deliveryFee: '5',
+      total: getTotal().toString(),
       totalAmount: getTotal().toString(),
       restaurantId: items[0]?.restaurantId || '',
       status: 'pending',
+      orderNumber: `ORD${Date.now()}`,
     };
 
     placeOrderMutation.mutate(orderData);
   };
 
-  // دالة لتحويل السعر من string إلى number للحسابات
-  const parsePrice = (price: string | number): number => {
-    if (typeof price === 'number') return price;
-    const num = parseFloat(price);
-    return isNaN(num) ? 0 : num;
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">

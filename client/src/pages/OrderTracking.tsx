@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
-import { ArrowRight, MapPin, Clock, Phone, CheckCircle, Truck, Package, User } from 'lucide-react';
+import { ArrowRight, MapPin, Clock, Phone, Truck, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

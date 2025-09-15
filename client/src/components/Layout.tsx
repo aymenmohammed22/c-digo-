@@ -32,15 +32,15 @@ export default function Layout({ children }: LayoutProps) {
   const [lastProfileClickTime, setLastProfileClickTime] = useState(0);
   
   // States for admin panel and delivery app visibility
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [showDeliveryApp, setShowDeliveryApp] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(true);
+  const [showDeliveryApp, setShowDeliveryApp] = useState(true);
   const [showOrdersPage, setShowOrdersPage] = useState(true);
   const [showTrackOrdersPage, setShowTrackOrdersPage] = useState(true);
   
   // Load visibility settings from localStorage
   useEffect(() => {
-    const adminPanelVisible = localStorage.getItem('show_admin_panel') === 'true';
-    const deliveryAppVisible = localStorage.getItem('show_delivery_app') === 'true';
+    const adminPanelVisible = localStorage.getItem('show_admin_panel') !== 'false';
+    const deliveryAppVisible = localStorage.getItem('show_delivery_app') !== 'false';
     const ordersPageVisible = localStorage.getItem('show_orders_page') !== 'false';
     const trackOrdersPageVisible = localStorage.getItem('show_track_orders_page') !== 'false';
     setShowAdminPanel(adminPanelVisible);
@@ -106,7 +106,7 @@ export default function Layout({ children }: LayoutProps) {
     adminDeliveryItems.push({ 
       icon: Truck, 
       label: 'تطبيق التوصيل', 
-      path: '/delivery', 
+      path: '/driver/dashboard', 
       testId: 'sidebar-delivery',
       className: 'text-green-600 border-l-4 border-green-600 bg-green-50 dark:bg-green-900/20' 
     });

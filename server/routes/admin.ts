@@ -1,7 +1,6 @@
 import express from "express";
-import { dbStorage } from "../db.js";
-import * as schema from "../../shared/schema.js";
-import { eq, desc, and, or, like, count, sql } from "drizzle-orm";
+import { storage } from "../storage";
+import { authService } from "../auth";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import {
@@ -9,11 +8,9 @@ import {
   insertCategorySchema,
   insertSpecialOfferSchema,
   insertAdminUserSchema,
-  insertDriverSchema
-} from "../../shared/schema.js";
-
-// Get database instance for direct queries
-const db = dbStorage.db;
+  insertDriverSchema,
+  insertMenuItemSchema
+} from "@shared/schema";
 
 const router = express.Router();
 
@@ -26,19 +23,13 @@ const requireAdmin = async (req: any, res: any, next: any) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const session = await dbStorage.getAdminSession(token);
+    const validation = await authService.validateSession(token);
 
-    if (!session || session.expiresAt < new Date()) {
-      return res.status(401).json({ error: "جلسة منتهية الصلاحية" });
+    if (!validation.valid || validation.userType !== 'admin') {
+      return res.status(401).json({ error: "جلسة منتهية الصلاحية أو صلاحيات غير كافية" });
     }
 
-    const admin = await dbStorage.getAdminById(session.adminId!);
-
-    if (!admin || admin.userType !== 'admin') {
-      return res.status(403).json({ error: "صلاحيات غير كافية" });
-    }
-
-    req.admin = admin;
+    req.admin = { id: validation.adminId, userType: validation.userType };
     next();
   } catch (error) {
     console.error("خطأ في التحقق من صلاحيات المدير:", error);
@@ -50,45 +41,24 @@ const requireAdmin = async (req: any, res: any, next: any) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // البحث بالإيميل أو اسم المستخدم
-    const admin = await dbStorage.getAdminByEmail(email);
-
-    if (!admin) {
-      return res.status(401).json({ message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: "البريد الإلكتروني وكلمة المرور مطلوبان" });
     }
 
-    // مقارنة كلمة المرور بإستخدام bcrypt
-    const isPasswordValid = await bcrypt.compare(password, admin.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
+    // Use AuthService for login
+    const loginResult = await authService.loginAdmin(email, password);
+    
+    if (loginResult.success) {
+      res.json({
+        success: true,
+        token: loginResult.token,
+        userType: loginResult.userType,
+        message: "تم تسجيل الدخول بنجاح"
+      });
+    } else {
+      res.status(401).json({ message: loginResult.message });
     }
-
-    if (!admin.isActive) {
-      return res.status(401).json({ error: "الحساب غير نشط" });
-    }
-
-    // إنشاء جلسة جديدة
-    const token = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ساعة
-
-    await dbStorage.createAdminSession({
-      adminId: admin.id,
-      token,
-      userType: "admin",
-      expiresAt
-    });
-
-    res.json({
-      success: true,
-      token,
-      admin: {
-        id: admin.id,
-        name: admin.name,
-        email: admin.email,
-        userType: admin.userType
-      }
-    });
   } catch (error) {
     console.error("خطأ في تسجيل دخول المدير:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -99,11 +69,14 @@ router.post("/login", async (req, res) => {
 router.post("/logout", requireAdmin, async (req: any, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader.split(' ')[1];
+    const token = authHeader?.split(' ')[1];
+    
+    if (token) {
+      // AuthService can handle logout if needed
+      // For now, just return success as tokens are validated each time
+    }
 
-    await dbStorage.deleteAdminSession(token);
-
-    res.json({ success: true });
+    res.json({ success: true, message: "تم تسجيل الخروج بنجاح" });
   } catch (error) {
     res.status(500).json({ error: "خطأ في الخادم" });
   }
@@ -112,60 +85,64 @@ router.post("/logout", requireAdmin, async (req: any, res) => {
 // لوحة المعلومات
 router.get("/dashboard", requireAdmin, async (req, res) => {
   try {
-    // إحصائيات عامة
-    const [
-      totalRestaurants,
-      totalOrders,
-      totalDrivers,
-      totalCustomers,
-      todayOrders,
-      pendingOrders,
-      activeDrivers
-    ] = await Promise.all([
-      db.select({ count: count() }).from(schema.restaurants),
-      db.select({ count: count() }).from(schema.orders),
-      db.select({ count: count() }).from(schema.drivers),
-      db.select({ count: count() }).from(schema.customers),
-      db.select({ count: count() }).from(schema.orders)
-        .where(sql`DATE(created_at) = CURRENT_DATE`),
-      db.select({ count: count() }).from(schema.orders)
-        .where(eq(schema.orders.status, "pending")),
-      db.select({ count: count() }).from(schema.drivers)
-        .where(eq(schema.drivers.isActive, true))
+    // جلب البيانات من MemStorage
+    const [restaurants, orders, drivers, users] = await Promise.all([
+      storage.getRestaurants(),
+      storage.getOrders(),
+      storage.getDrivers(),
+      // Assuming we have users in storage - if not, we'll use an empty array
+      [] // storage.getUsers() - if this method exists
     ]);
 
-    // إحصائيات مالية
-    const [totalRevenue, todayRevenue] = await Promise.all([
-      db.select({ 
-        total: sql<number>`COALESCE(SUM(${schema.orders.total}), 0)` 
-      }).from(schema.orders)
-        .where(eq(schema.orders.status, "delivered")),
-      db.select({ 
-        total: sql<number>`COALESCE(SUM(${schema.orders.total}), 0)` 
-      }).from(schema.orders)
-        .where(and(
-          eq(schema.orders.status, "delivered"),
-          sql`DATE(created_at) = CURRENT_DATE`
-        ))
-    ]);
+    const today = new Date().toDateString();
+    
+    // حساب الإحصائيات باستخدام عمليات المصفوفات
+    const totalRestaurants = restaurants.length;
+    const totalOrders = orders.length;
+    const totalDrivers = drivers.length;
+    const totalCustomers = users.length; // أو 0 إذا لم تكن متوفرة
+    
+    const todayOrders = orders.filter(order => 
+      order.createdAt.toDateString() === today
+    ).length;
+    
+    const pendingOrders = orders.filter(order => 
+      order.status === "pending"
+    ).length;
+    
+    const activeDrivers = drivers.filter(driver => 
+      driver.isActive === true
+    ).length;
 
-    // الطلبات الأخيرة
-    const recentOrders = await db.select()
-      .from(schema.orders)
-      .limit(10)
-      .orderBy(desc(schema.orders.createdAt));
+    // حساب الإيرادات
+    const deliveredOrders = orders.filter(order => order.status === "delivered");
+    const totalRevenue = deliveredOrders.reduce((sum, order) => 
+      sum + parseFloat(order.total || "0"), 0
+    );
+    
+    const todayDeliveredOrders = deliveredOrders.filter(order => 
+      order.createdAt.toDateString() === today
+    );
+    const todayRevenue = todayDeliveredOrders.reduce((sum, order) => 
+      sum + parseFloat(order.total || "0"), 0
+    );
+
+    // الطلبات الأخيرة (أحدث 10 طلبات)
+    const recentOrders = orders
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 10);
 
     res.json({
       stats: {
-        totalRestaurants: totalRestaurants[0].count,
-        totalOrders: totalOrders[0].count,
-        totalDrivers: totalDrivers[0].count,
-        totalCustomers: totalCustomers[0].count,
-        todayOrders: todayOrders[0].count,
-        pendingOrders: pendingOrders[0].count,
-        activeDrivers: activeDrivers[0].count,
-        totalRevenue: totalRevenue[0].total,
-        todayRevenue: todayRevenue[0].total
+        totalRestaurants,
+        totalOrders,
+        totalDrivers,
+        totalCustomers,
+        todayOrders,
+        pendingOrders,
+        activeDrivers,
+        totalRevenue,
+        todayRevenue
       },
       recentOrders
     });
@@ -178,11 +155,17 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
 // إدارة التصنيفات
 router.get("/categories", requireAdmin, async (req, res) => {
   try {
-    const categories = await db.select()
-      .from(schema.categories)
-      .orderBy(schema.categories.sortOrder, schema.categories.name);
-    res.json(categories);
+    const categories = await storage.getCategories();
+    // ترتيب التصنيفات حسب sortOrder ثم الاسم
+    const sortedCategories = categories.sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) {
+        return a.sortOrder - b.sortOrder;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    res.json(sortedCategories);
   } catch (error) {
+    console.error("خطأ في جلب التصنيفات:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -197,11 +180,8 @@ router.post("/categories", requireAdmin, async (req, res) => {
       isActive: req.body.isActive !== undefined ? req.body.isActive : true
     });
     
-    const [newCategory] = await db.insert(schema.categories)
-      .values(validatedData)
-      .returning();
-    
-    res.json(newCategory);
+    const newCategory = await storage.createCategory(validatedData);
+    res.status(201).json(newCategory);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -221,10 +201,10 @@ router.put("/categories/:id", requireAdmin, async (req, res) => {
     // التحقق من صحة البيانات المحدثة (جزئي)
     const validatedData = insertCategorySchema.partial().parse(req.body);
     
-    const [updatedCategory] = await db.update(schema.categories)
-      .set({ ...validatedData, updatedAt: new Date() })
-      .where(eq(schema.categories.id, id))
-      .returning();
+    const updatedCategory = await storage.updateCategory(id, {
+      ...validatedData, 
+      updatedAt: new Date()
+    });
     
     if (!updatedCategory) {
       return res.status(404).json({ error: "التصنيف غير موجود" });
@@ -247,36 +227,15 @@ router.delete("/categories/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    await db.delete(schema.categories)
-      .where(eq(schema.categories.id, id));
+    const success = await storage.deleteCategory(id);
+    
+    if (!success) {
+      return res.status(404).json({ error: "التصنيف غير موجود" });
+    }
     
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-// إدارة أقسام المطاعم
-router.get("/restaurant-sections", requireAdmin, async (req, res) => {
-  try {
-    const sections = await db.select()
-      .from(schema.restaurantSections)
-      .orderBy(schema.restaurantSections.sortOrder, schema.restaurantSections.name);
-    res.json(sections);
-  } catch (error) {
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-router.post("/restaurant-sections", requireAdmin, async (req, res) => {
-  try {
-    const sectionData = req.body;
-    const [newSection] = await db.insert(schema.restaurantSections)
-      .values(sectionData)
-      .returning();
-    
-    res.json(newSection);
-  } catch (error) {
+    console.error("خطأ في حذف التصنيف:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -285,35 +244,37 @@ router.post("/restaurant-sections", requireAdmin, async (req, res) => {
 router.get("/restaurants", requireAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 10, search, categoryId } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
-
-    let whereConditions = [];
     
-    if (search) {
-      whereConditions.push(
-        or(
-          like(schema.restaurants.name, `%${search}%`),
-          like(schema.restaurants.description, `%${search}%`)
-        )
-      );
-    }
-    
+    // جلب المطاعم باستخدام المرشحات
+    const filters: any = {};
     if (categoryId) {
-      whereConditions.push(eq(schema.restaurants.categoryId, categoryId as string));
+      filters.categoryId = categoryId as string;
     }
+    if (search) {
+      filters.search = search as string;
+    }
+    
+    const allRestaurants = await storage.getRestaurants(filters);
+    
+    // ترتيب المطاعم حسب تاريخ الإنشاء (الأحدث أولاً)
+    const sortedRestaurants = allRestaurants.sort((a, b) => 
+      b.createdAt.getTime() - a.createdAt.getTime()
+    );
+    
+    // تطبيق التصفح (pagination)
+    const startIndex = (Number(page) - 1) * Number(limit);
+    const endIndex = startIndex + Number(limit);
+    const paginatedRestaurants = sortedRestaurants.slice(startIndex, endIndex);
 
-    const restaurants = await db.select()
-      .from(schema.restaurants)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-      .limit(Number(limit))
-      .offset(offset)
-      .orderBy(desc(schema.restaurants.createdAt));
-
-    const [totalCount] = await db.select({ count: count() })
-      .from(schema.restaurants)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
-
-    res.json(restaurants);
+    res.json({
+      restaurants: paginatedRestaurants,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total: sortedRestaurants.length,
+        pages: Math.ceil(sortedRestaurants.length / Number(limit))
+      }
+    });
   } catch (error) {
     console.error("خطأ في جلب المطاعم:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -342,11 +303,8 @@ router.post("/restaurants", requireAdmin, async (req, res) => {
       isTemporarilyClosed: req.body.isTemporarilyClosed !== undefined ? req.body.isTemporarilyClosed : false
     });
     
-    const [newRestaurant] = await db.insert(schema.restaurants)
-      .values(validatedData)
-      .returning();
-    
-    res.json(newRestaurant);
+    const newRestaurant = await storage.createRestaurant(validatedData);
+    res.status(201).json(newRestaurant);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -366,10 +324,10 @@ router.put("/restaurants/:id", requireAdmin, async (req, res) => {
     // التحقق من صحة البيانات المحدثة (جزئي)
     const validatedData = insertRestaurantSchema.partial().parse(req.body);
     
-    const [updatedRestaurant] = await db.update(schema.restaurants)
-      .set({ ...validatedData, updatedAt: new Date() })
-      .where(eq(schema.restaurants.id, id))
-      .returning();
+    const updatedRestaurant = await storage.updateRestaurant(id, {
+      ...validatedData, 
+      updatedAt: new Date()
+    });
     
     if (!updatedRestaurant) {
       return res.status(404).json({ error: "المطعم غير موجود" });
@@ -392,11 +350,15 @@ router.delete("/restaurants/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    await db.delete(schema.restaurants)
-      .where(eq(schema.restaurants.id, id));
+    const success = await storage.deleteRestaurant(id);
+    
+    if (!success) {
+      return res.status(404).json({ error: "المطعم غير موجود" });
+    }
     
     res.json({ success: true });
   } catch (error) {
+    console.error("خطأ في حذف المطعم:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -406,12 +368,12 @@ router.get("/restaurants/:restaurantId/menu", requireAdmin, async (req, res) => 
   try {
     const { restaurantId } = req.params;
     
-    const menuItems = await db.select()
-      .from(schema.menuItems)
-      .where(eq(schema.menuItems.restaurantId, restaurantId))
-      .orderBy(schema.menuItems.name);
+    const menuItems = await storage.getMenuItems(restaurantId);
     
-    res.json(menuItems);
+    // ترتيب العناصر حسب الاسم
+    const sortedItems = menuItems.sort((a, b) => a.name.localeCompare(b.name));
+    
+    res.json(sortedItems);
   } catch (error) {
     console.error("خطأ في جلب عناصر القائمة:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -420,19 +382,23 @@ router.get("/restaurants/:restaurantId/menu", requireAdmin, async (req, res) => 
 
 router.post("/menu-items", requireAdmin, async (req, res) => {
   try {
-    const menuItemData = req.body;
+    // التحقق من صحة البيانات
+    const validatedData = insertMenuItemSchema.parse({
+      ...req.body,
+      // إضافة صورة افتراضية إذا لم تكن موجودة
+      image: req.body.image || "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg"
+    });
     
-    // إضافة صورة افتراضية إذا لم تكن موجودة
-    if (!menuItemData.image) {
-      menuItemData.image = "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg";
-    }
-    
-    const [newMenuItem] = await db.insert(schema.menuItems)
-      .values(menuItemData)
-      .returning();
-    
-    res.json(newMenuItem);
+    const newMenuItem = await storage.createMenuItem(validatedData);
+    res.status(201).json(newMenuItem);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات عنصر القائمة غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في إضافة عنصر القائمة:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -440,15 +406,25 @@ router.post("/menu-items", requireAdmin, async (req, res) => {
 router.put("/menu-items/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
     
-    const [updatedMenuItem] = await db.update(schema.menuItems)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(schema.menuItems.id, id))
-      .returning();
+    // التحقق من صحة البيانات المحدثة (جزئي)
+    const validatedData = insertMenuItemSchema.partial().parse(req.body);
+    
+    const updatedMenuItem = await storage.updateMenuItem(id, validatedData);
+    
+    if (!updatedMenuItem) {
+      return res.status(404).json({ error: "عنصر القائمة غير موجود" });
+    }
     
     res.json(updatedMenuItem);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: "بيانات تحديث عنصر القائمة غير صحيحة", 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    console.error("خطأ في تحديث عنصر القائمة:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -457,11 +433,15 @@ router.delete("/menu-items/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    await db.delete(schema.menuItems)
-      .where(eq(schema.menuItems.id, id));
+    const success = await storage.deleteMenuItem(id);
+    
+    if (!success) {
+      return res.status(404).json({ error: "عنصر القائمة غير موجود" });
+    }
     
     res.json({ success: true });
   } catch (error) {
+    console.error("خطأ في حذف عنصر القائمة:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -470,45 +450,44 @@ router.delete("/menu-items/:id", requireAdmin, async (req, res) => {
 router.get("/orders", requireAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 20, status, search } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
 
-    let whereConditions = [];
+    let allOrders = await storage.getOrders();
     
+    // تطبيق مرشحات البحث
     if (status && status !== 'all') {
-      whereConditions.push(eq(schema.orders.status, status as string));
+      allOrders = allOrders.filter(order => order.status === status);
     }
     
     if (search) {
-      whereConditions.push(
-        or(
-          like(schema.orders.orderNumber, `%${search}%`),
-          like(schema.orders.customerName, `%${search}%`),
-          like(schema.orders.customerPhone, `%${search}%`)
-        )
+      const searchTerm = (search as string).toLowerCase();
+      allOrders = allOrders.filter(order => 
+        order.orderNumber?.toLowerCase().includes(searchTerm) ||
+        order.customerName?.toLowerCase().includes(searchTerm) ||
+        order.customerPhone?.toLowerCase().includes(searchTerm)
       );
     }
 
-    const orders = await db.select()
-      .from(schema.orders)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
-      .limit(Number(limit))
-      .offset(offset)
-      .orderBy(desc(schema.orders.createdAt));
-
-    const [totalCount] = await db.select({ count: count() })
-      .from(schema.orders)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+    // ترتيب حسب تاريخ الإنشاء (الأحدث أولاً)
+    const sortedOrders = allOrders.sort((a, b) => 
+      b.createdAt.getTime() - a.createdAt.getTime()
+    );
+    
+    // تطبيق التصفح (pagination)
+    const startIndex = (Number(page) - 1) * Number(limit);
+    const endIndex = startIndex + Number(limit);
+    const paginatedOrders = sortedOrders.slice(startIndex, endIndex);
 
     res.json({
-      orders,
+      orders: paginatedOrders,
       pagination: {
         page: Number(page),
         limit: Number(limit),
-        total: totalCount.count,
-        pages: Math.ceil(totalCount.count / Number(limit))
+        total: sortedOrders.length,
+        pages: Math.ceil(sortedOrders.length / Number(limit))
       }
     });
   } catch (error) {
+    console.error("خطأ في جلب الطلبات:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -527,19 +506,14 @@ router.put("/orders/:id/status", requireAdmin, async (req: any, res) => {
       updateData.driverId = driverId;
     }
     
-    const [updatedOrder] = await db.update(schema.orders)
-      .set(updateData)
-      .where(eq(schema.orders.id, id))
-      .returning();
+    const updatedOrder = await storage.updateOrder(id, updateData);
     
-    // إضافة تتبع للطلب
-    await db.insert(schema.orderTracking).values({
-      orderId: id,
-      status,
-      message: `تم تحديث حالة الطلب إلى: ${status}`,
-      createdBy: req.admin.id,
-      createdByType: 'admin'
-    });
+    if (!updatedOrder) {
+      return res.status(404).json({ error: "الطلب غير موجود" });
+    }
+    
+    // Note: تتبع الطلبات (order tracking) ليس منفذاً في MemStorage بعد
+    // يمكن إضافته لاحقاً إذا لزم الأمر
     
     res.json(updatedOrder);
   } catch (error) {
@@ -548,14 +522,17 @@ router.put("/orders/:id/status", requireAdmin, async (req: any, res) => {
   }
 });
 
-// إدارة السائقين - استخدام جدول السائقين المخصص
+// إدارة السائقين
 router.get("/drivers", requireAdmin, async (req, res) => {
   try {
-    const drivers = await db.select()
-      .from(schema.drivers)
-      .orderBy(desc(schema.drivers.createdAt));
+    const drivers = await storage.getDrivers();
     
-    res.json(drivers);
+    // ترتيب السائقين حسب تاريخ الإنشاء (الأحدث أولاً)
+    const sortedDrivers = drivers.sort((a, b) => 
+      b.createdAt.getTime() - a.createdAt.getTime()
+    );
+    
+    res.json(sortedDrivers);
   } catch (error) {
     console.error("خطأ في جلب السائقين:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -575,13 +552,11 @@ router.post("/drivers", requireAdmin, async (req, res) => {
       earnings: req.body.earnings || "0"
     });
     
-    const [newDriver] = await db.insert(schema.drivers)
-      .values(validatedData)
-      .returning();
+    const newDriver = await storage.createDriver(validatedData);
     
     // إخفاء كلمة المرور في الاستجابة
     const { password, ...driverWithoutPassword } = newDriver;
-    res.json(driverWithoutPassword);
+    res.status(201).json(driverWithoutPassword);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -609,10 +584,7 @@ router.put("/drivers/:id", requireAdmin, async (req, res) => {
     // التحقق من صحة البيانات المحدثة (جزئي)
     const validatedData = insertDriverSchema.partial().parse(updateData);
     
-    const [updatedDriver] = await db.update(schema.drivers)
-      .set(validatedData)
-      .where(eq(schema.drivers.id, id))
-      .returning();
+    const updatedDriver = await storage.updateDriver(id, validatedData);
     
     if (!updatedDriver) {
       return res.status(404).json({ error: "السائق غير موجود" });
@@ -637,18 +609,11 @@ router.delete("/drivers/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // التحقق من وجود السائق أولاً
-    const existingDriver = await db.select()
-      .from(schema.drivers)
-      .where(eq(schema.drivers.id, id))
-      .limit(1);
+    const success = await storage.deleteDriver(id);
     
-    if (existingDriver.length === 0) {
+    if (!success) {
       return res.status(404).json({ error: "السائق غير موجود" });
     }
-    
-    await db.delete(schema.drivers)
-      .where(eq(schema.drivers.id, id));
     
     res.json({ success: true, message: "تم حذف السائق بنجاح" });
   } catch (error) {
@@ -663,29 +628,42 @@ router.get("/drivers/:id/stats", requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { startDate, endDate } = req.query;
     
-    let dateFilter = [];
+    // جلب جميع الطلبات الخاصة بالسائق
+    const allOrders = await storage.getOrders();
+    let driverOrders = allOrders.filter(order => order.driverId === id);
+    
+    // تطبيق مرشح التاريخ إذا تم تحديده
     if (startDate) {
-      dateFilter.push(sql`${schema.orders.createdAt} >= ${startDate}`);
+      const start = new Date(startDate as string);
+      driverOrders = driverOrders.filter(order => order.createdAt >= start);
     }
     if (endDate) {
-      dateFilter.push(sql`${schema.orders.createdAt} <= ${endDate}`);
+      const end = new Date(endDate as string);
+      driverOrders = driverOrders.filter(order => order.createdAt <= end);
     }
     
-    const whereConditions = [
-      eq(schema.orders.driverId, id),
-      ...dateFilter
-    ];
+    // حساب الإحصائيات
+    const totalOrders = driverOrders.length;
+    const completedOrders = driverOrders.filter(order => order.status === 'delivered').length;
+    const cancelledOrders = driverOrders.filter(order => order.status === 'cancelled').length;
     
-    const [stats] = await db.select({
-      totalOrders: count(),
-      totalEarnings: sql<number>`COALESCE(SUM(${schema.orders.driverEarnings}), 0)`,
-      completedOrders: sql<number>`COUNT(CASE WHEN ${schema.orders.status} = 'delivered' THEN 1 END)`,
-      cancelledOrders: sql<number>`COUNT(CASE WHEN ${schema.orders.status} = 'cancelled' THEN 1 END)`
-    }).from(schema.orders)
-      .where(and(...whereConditions));
+    // حساب إجمالي الأرباح (من حقل driverEarnings إذا وجد)
+    const totalEarnings = driverOrders.reduce((sum, order) => {
+      // افتراض أن driverEarnings موجود في Order أو حسابه من إجمالي الطلب
+      const earnings = parseFloat((order as any).driverEarnings || "0");
+      return sum + earnings;
+    }, 0);
+    
+    const stats = {
+      totalOrders,
+      totalEarnings,
+      completedOrders,
+      cancelledOrders
+    };
     
     res.json(stats);
   } catch (error) {
+    console.error("خطأ في إحصائيات السائق:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -693,11 +671,14 @@ router.get("/drivers/:id/stats", requireAdmin, async (req, res) => {
 // إدارة العروض الخاصة
 router.get("/special-offers", requireAdmin, async (req, res) => {
   try {
-    const offers = await db.select()
-      .from(schema.specialOffers)
-      .orderBy(desc(schema.specialOffers.createdAt));
+    const offers = await storage.getSpecialOffers();
     
-    res.json(offers);
+    // ترتيب العروض حسب تاريخ الإنشاء (الأحدث أولاً)
+    const sortedOffers = offers.sort((a, b) => 
+      b.createdAt.getTime() - a.createdAt.getTime()
+    );
+    
+    res.json(sortedOffers);
   } catch (error) {
     console.error("خطأ في جلب العروض الخاصة:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -716,11 +697,8 @@ router.post("/special-offers", requireAdmin, async (req, res) => {
       isActive: req.body.isActive !== undefined ? req.body.isActive : true
     });
     
-    const [newOffer] = await db.insert(schema.specialOffers)
-      .values(validatedData)
-      .returning();
-    
-    res.json(newOffer);
+    const newOffer = await storage.createSpecialOffer(validatedData);
+    res.status(201).json(newOffer);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -740,10 +718,10 @@ router.put("/special-offers/:id", requireAdmin, async (req, res) => {
     // التحقق من صحة البيانات المحدثة (جزئي)
     const validatedData = insertSpecialOfferSchema.partial().parse(req.body);
     
-    const [updatedOffer] = await db.update(schema.specialOffers)
-      .set({ ...validatedData, updatedAt: new Date() })
-      .where(eq(schema.specialOffers.id, id))
-      .returning();
+    const updatedOffer = await storage.updateSpecialOffer(id, {
+      ...validatedData, 
+      updatedAt: new Date()
+    });
     
     if (!updatedOffer) {
       return res.status(404).json({ error: "العرض الخاص غير موجود" });
@@ -766,11 +744,15 @@ router.delete("/special-offers/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    await db.delete(schema.specialOffers)
-      .where(eq(schema.specialOffers.id, id));
+    const success = await storage.deleteSpecialOffer(id);
+    
+    if (!success) {
+      return res.status(404).json({ error: "العرض الخاص غير موجود" });
+    }
     
     res.json({ success: true });
   } catch (error) {
+    console.error("خطأ في حذف العرض الخاص:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });

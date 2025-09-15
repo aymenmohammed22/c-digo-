@@ -6,7 +6,9 @@ import {
   type Driver, type InsertDriver,
   type SpecialOffer, type InsertSpecialOffer,
   type User, type InsertUser,
-  type UiSettings, type InsertUiSettings
+  type UserAddress, type InsertUserAddress,
+  type UiSettings, type InsertUiSettings,
+  type Rating, type InsertRating
 } from "../shared/schema";
 import { randomUUID } from "crypto";
 
@@ -24,7 +26,7 @@ export interface IStorage {
   deleteCategory(id: string): Promise<boolean>;
 
   // Restaurants
-  getRestaurants(): Promise<Restaurant[]>;
+  getRestaurants(filters?: any): Promise<Restaurant[]>;
   getRestaurant(id: string): Promise<Restaurant | undefined>;
   getRestaurantsByCategory(categoryId: string): Promise<Restaurant[]>;
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
@@ -66,6 +68,17 @@ export interface IStorage {
   updateUiSetting?(key: string, value: string): Promise<UiSettings | undefined>;
   createUiSetting?(setting: InsertUiSettings): Promise<UiSettings>;
   deleteUiSetting?(key: string): Promise<boolean>;
+
+  // User Addresses
+  getUserAddresses(userId: string): Promise<UserAddress[]>;
+  createUserAddress(userId: string, address: InsertUserAddress): Promise<UserAddress>;
+  updateUserAddress(addressId: string, userId: string, address: Partial<InsertUserAddress>): Promise<UserAddress | undefined>;
+  deleteUserAddress(addressId: string, userId: string): Promise<boolean>;
+
+  // Ratings
+  getRatings(orderId?: string, restaurantId?: string): Promise<Rating[]>;
+  createRating(rating: InsertRating): Promise<Rating>;
+  updateRating(id: string, rating: Partial<InsertRating>): Promise<Rating | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -76,6 +89,9 @@ export class MemStorage implements IStorage {
   private orders: Map<string, Order>;
   private drivers: Map<string, Driver>;
   private specialOffers: Map<string, SpecialOffer>;
+  private uiSettings: Map<string, UiSettings>;
+  private userAddresses: Map<string, UserAddress>;
+  private ratings: Map<string, Rating>;
 
   constructor() {
     this.users = new Map();
@@ -85,6 +101,9 @@ export class MemStorage implements IStorage {
     this.orders = new Map();
     this.drivers = new Map();
     this.specialOffers = new Map();
+    this.uiSettings = new Map();
+    this.userAddresses = new Map();
+    this.ratings = new Map();
     
     this.initializeData();
   }
@@ -163,7 +182,7 @@ export class MemStorage implements IStorage {
         rating: "4.5",
         reviewCount: 1876,
         deliveryTime: "يفتح في 8:00 ص",
-        isOpen: false,
+        isOpen: true,
         minimumOrder: "20",
         deliveryFee: "4",
         categoryId: "2",
@@ -265,6 +284,36 @@ export class MemStorage implements IStorage {
       }
     ];
     drivers.forEach(driver => this.drivers.set(driver.id, driver));
+
+    // Initialize UI Settings
+    const uiSettingsData = [
+      { key: "show_categories", value: "true", description: "عرض تصنيفات المطاعم" },
+      { key: "show_search_bar", value: "true", description: "عرض شريط البحث" },
+      { key: "show_special_offers", value: "true", description: "عرض العروض الخاصة" },
+      { key: "show_navigation_home", value: "true", description: "عرض قائمة الرئيسية" },
+      { key: "show_navigation_search", value: "true", description: "عرض قائمة البحث" },
+      { key: "show_navigation_orders", value: "true", description: "عرض قائمة الطلبات" },
+      { key: "show_navigation_profile", value: "true", description: "عرض قائمة الملف الشخصي" },
+      { key: "enable_dark_mode", value: "false", description: "تفعيل الوضع المظلم" },
+      { key: "enable_notifications", value: "true", description: "تفعيل الإشعارات" },
+      { key: "enable_location_services", value: "true", description: "تفعيل خدمات الموقع" },
+      { key: "enable_voice_search", value: "false", description: "تفعيل البحث الصوتي" },
+      { key: "enable_quick_order", value: "true", description: "تفعيل الطلب السريع" }
+    ];
+
+    uiSettingsData.forEach(setting => {
+      const uiSetting: UiSettings = {
+        id: randomUUID(),
+        key: setting.key,
+        value: setting.value,
+        category: "ui",
+        description: setting.description,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      this.uiSettings.set(setting.key, uiSetting);
+    });
   }
 
   // Users
@@ -310,7 +359,9 @@ export class MemStorage implements IStorage {
     const newCategory: Category = { 
       ...category, 
       id,
-      isActive: category.isActive ?? true 
+      isActive: category.isActive ?? true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     this.categories.set(id, newCategory);
     return newCategory;
@@ -329,8 +380,32 @@ export class MemStorage implements IStorage {
   }
 
   // Restaurants
-  async getRestaurants(): Promise<Restaurant[]> {
-    return Array.from(this.restaurants.values());
+  async getRestaurants(filters?: any): Promise<Restaurant[]> {
+    let restaurants = Array.from(this.restaurants.values());
+    
+    if (filters) {
+      if (filters.categoryId) {
+        restaurants = restaurants.filter(r => r.categoryId === filters.categoryId);
+      }
+      if (filters.isOpen !== undefined) {
+        restaurants = restaurants.filter(r => r.isOpen === filters.isOpen);
+      }
+      if (filters.isFeatured) {
+        restaurants = restaurants.filter(r => r.isFeatured);
+      }
+      if (filters.isNew) {
+        restaurants = restaurants.filter(r => r.isNew);
+      }
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        restaurants = restaurants.filter(r => 
+          r.name.toLowerCase().includes(searchTerm) || 
+          r.description?.toLowerCase().includes(searchTerm)
+        );
+      }
+    }
+    
+    return restaurants;
   }
 
   async getRestaurant(id: string): Promise<Restaurant | undefined> {
@@ -550,7 +625,145 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
   async deleteSpecialOffer(id: string): Promise<boolean> {
     return this.specialOffers.delete(id);
   }
+
+  // UI Settings
+  async getUiSettings(): Promise<UiSettings[]> {
+    return Array.from(this.uiSettings.values());
+  }
+
+  async getUiSetting(key: string): Promise<UiSettings | undefined> {
+    return this.uiSettings.get(key);
+  }
+
+  async updateUiSetting(key: string, value: string): Promise<UiSettings | undefined> {
+    const existing = this.uiSettings.get(key);
+    if (existing) {
+      const updated = { ...existing, value };
+      this.uiSettings.set(key, updated);
+      return updated;
+    }
+    // Create new setting if it doesn't exist
+    const newSetting: UiSettings = {
+      id: randomUUID(),
+      key,
+      value,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.uiSettings.set(key, newSetting);
+    return newSetting;
+  }
+
+  async createUiSetting(setting: InsertUiSettings): Promise<UiSettings> {
+    const id = randomUUID();
+    const newSetting: UiSettings = {
+      ...setting,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.uiSettings.set(setting.key, newSetting);
+    return newSetting;
+  }
+
+  async deleteUiSetting(key: string): Promise<boolean> {
+    return this.uiSettings.delete(key);
+  }
+
+  // User Addresses
+  async getUserAddresses(userId: string): Promise<UserAddress[]> {
+    return Array.from(this.userAddresses.values()).filter(address => address.userId === userId);
+  }
+
+  async createUserAddress(userId: string, address: InsertUserAddress): Promise<UserAddress> {
+    const id = randomUUID();
+    
+    // If this is being set as default, unset other defaults for this user
+    if (address.isDefault) {
+      const userAddresses = await this.getUserAddresses(userId);
+      userAddresses.forEach(addr => {
+        if (addr.isDefault) {
+          const updated = { ...addr, isDefault: false };
+          this.userAddresses.set(addr.id, updated);
+        }
+      });
+    }
+
+    const newAddress: UserAddress = {
+      ...address,
+      id,
+      userId,
+      isDefault: address.isDefault ?? false,
+      createdAt: new Date()
+    };
+    this.userAddresses.set(id, newAddress);
+    return newAddress;
+  }
+
+  async updateUserAddress(addressId: string, userId: string, address: Partial<InsertUserAddress>): Promise<UserAddress | undefined> {
+    const existing = this.userAddresses.get(addressId);
+    if (!existing || existing.userId !== userId) return undefined;
+    
+    // If this is being set as default, unset other defaults for this user
+    if (address.isDefault) {
+      const userAddresses = await this.getUserAddresses(userId);
+      userAddresses.forEach(addr => {
+        if (addr.isDefault && addr.id !== addressId) {
+          const updated = { ...addr, isDefault: false };
+          this.userAddresses.set(addr.id, updated);
+        }
+      });
+    }
+
+    const updated = { ...existing, ...address };
+    this.userAddresses.set(addressId, updated);
+    return updated;
+  }
+
+  async deleteUserAddress(addressId: string, userId: string): Promise<boolean> {
+    const existing = this.userAddresses.get(addressId);
+    if (!existing || existing.userId !== userId) return false;
+    return this.userAddresses.delete(addressId);
+  }
+
+  // Ratings
+  async getRatings(orderId?: string, restaurantId?: string): Promise<Rating[]> {
+    let ratings = Array.from(this.ratings.values());
+    
+    if (orderId) {
+      ratings = ratings.filter(rating => rating.orderId === orderId);
+    }
+    if (restaurantId) {
+      ratings = ratings.filter(rating => rating.restaurantId === restaurantId);
+    }
+    
+    return ratings;
+  }
+
+  async createRating(rating: InsertRating): Promise<Rating> {
+    const id = randomUUID();
+    const newRating: Rating = {
+      ...rating,
+      id,
+      isApproved: rating.isApproved ?? false,
+      createdAt: new Date()
+    };
+    this.ratings.set(id, newRating);
+    return newRating;
+  }
+
+  async updateRating(id: string, rating: Partial<InsertRating>): Promise<Rating | undefined> {
+    const existing = this.ratings.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...rating };
+    this.ratings.set(id, updated);
+    return updated;
+  }
 }
 
 import { dbStorage } from './db';
-export const storage = dbStorage;
+
+// Switch between MemStorage and DatabaseStorage
+const USE_MEMORY_STORAGE = true; // Set to false to use database
+
+export const storage = USE_MEMORY_STORAGE ? new MemStorage() : dbStorage;

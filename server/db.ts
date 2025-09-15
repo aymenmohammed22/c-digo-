@@ -805,6 +805,130 @@ export class DatabaseStorage implements IStorage {
       );
     return result.length > 0;
   }
+
+  // User Addresses
+  async getUserAddresses(userId: string): Promise<UserAddress[]> {
+    try {
+      const result = await this.db.select().from(userAddresses)
+        .where(eq(userAddresses.userId, userId))
+        .orderBy(desc(userAddresses.isDefault), desc(userAddresses.createdAt));
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error('Error fetching user addresses:', error);
+      return [];
+    }
+  }
+
+  async createUserAddress(userId: string, address: InsertUserAddress): Promise<UserAddress> {
+    // If this is being set as default, unset other defaults for this user
+    if (address.isDefault) {
+      await this.db.update(userAddresses)
+        .set({ isDefault: false })
+        .where(
+          and(
+            eq(userAddresses.userId, userId),
+            eq(userAddresses.isDefault, true)
+          )
+        );
+    }
+
+    const [newAddress] = await this.db.insert(userAddresses)
+      .values({
+        ...address,
+        userId,
+        isDefault: address.isDefault ?? false
+      })
+      .returning();
+    return newAddress;
+  }
+
+  async updateUserAddress(addressId: string, userId: string, address: Partial<InsertUserAddress>): Promise<UserAddress | undefined> {
+    // Verify ownership
+    const existingAddress = await this.db.select().from(userAddresses)
+      .where(
+        and(
+          eq(userAddresses.id, addressId),
+          eq(userAddresses.userId, userId)
+        )
+      );
+    
+    if (existingAddress.length === 0) {
+      return undefined;
+    }
+
+    // If this is being set as default, unset other defaults for this user
+    if (address.isDefault) {
+      await this.db.update(userAddresses)
+        .set({ isDefault: false })
+        .where(
+          and(
+            eq(userAddresses.userId, userId),
+            eq(userAddresses.isDefault, true)
+          )
+        );
+    }
+
+    const [updated] = await this.db.update(userAddresses)
+      .set(address)
+      .where(eq(userAddresses.id, addressId))
+      .returning();
+    return updated;
+  }
+
+  async deleteUserAddress(addressId: string, userId: string): Promise<boolean> {
+    const result = await this.db.delete(userAddresses)
+      .where(
+        and(
+          eq(userAddresses.id, addressId),
+          eq(userAddresses.userId, userId)
+        )
+      );
+    return result.rowCount > 0;
+  }
+
+  // Ratings
+  async getRatings(orderId?: string, restaurantId?: string): Promise<Rating[]> {
+    try {
+      let query = this.db.select().from(ratings);
+      
+      if (orderId && restaurantId) {
+        query = query.where(
+          and(
+            eq(ratings.orderId, orderId),
+            eq(ratings.restaurantId, restaurantId)
+          )
+        );
+      } else if (orderId) {
+        query = query.where(eq(ratings.orderId, orderId));
+      } else if (restaurantId) {
+        query = query.where(eq(ratings.restaurantId, restaurantId));
+      }
+      
+      const result = await query.orderBy(desc(ratings.createdAt));
+      return Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error('Error fetching ratings:', error);
+      return [];
+    }
+  }
+
+  async createRating(rating: InsertRating): Promise<Rating> {
+    const [newRating] = await this.db.insert(ratings)
+      .values({
+        ...rating,
+        isApproved: rating.isApproved ?? false
+      })
+      .returning();
+    return newRating;
+  }
+
+  async updateRating(id: string, rating: Partial<InsertRating>): Promise<Rating | undefined> {
+    const [updated] = await this.db.update(ratings)
+      .set(rating)
+      .where(eq(ratings.id, id))
+      .returning();
+    return updated;
+  }
 }
 
 export const dbStorage = new DatabaseStorage();

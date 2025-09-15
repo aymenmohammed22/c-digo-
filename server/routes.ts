@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { dbStorage } from "./db";
+import { storage } from "./storage";
 import { authService } from "./auth";
+import { customerRoutes } from "./routes/customer";
 import { 
   insertRestaurantSchema, 
   insertMenuItemSchema, 
@@ -59,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { token } = req.body;
       if (token) {
-        await dbStorage.deleteAdminSession(token);
+        await storage.deleteAdminSession ? storage.deleteAdminSession(token) : Promise.resolve();
       }
       res.json({ message: "تم تسجيل الخروج بنجاح" });
     } catch (error) {
@@ -96,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const user = await dbStorage.getUser(id);
+      const user = await storage.getUser(id);
       if (!user) {
         return res.status(404).json({ message: "المستخدم غير موجود" });
       }
@@ -109,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/username/:username", async (req, res) => {
     try {
       const { username } = req.params;
-      const user = await dbStorage.getUserByUsername(username);
+      const user = await storage.getUserByUsername(username);
       if (!user) {
         return res.status(404).json({ message: "المستخدم غير موجود" });
       }
@@ -122,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", async (req, res) => {
     try {
       const validatedData = insertUserSchema.parse(req.body);
-      const user = await dbStorage.createUser(validatedData);
+      const user = await storage.createUser(validatedData);
       res.status(201).json(user);
     } catch (error) {
       res.status(400).json({ message: "بيانات المستخدم غير صحيحة" });
@@ -133,7 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertUserSchema.partial().parse(req.body);
-      const user = await dbStorage.updateUser(id, validatedData);
+      const user = await storage.updateUser(id, validatedData);
       if (!user) {
         return res.status(404).json({ message: "المستخدم غير موجود" });
       }
@@ -146,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
-      const categories = await dbStorage.getCategories();
+      const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch categories" });
@@ -156,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/categories", async (req, res) => {
     try {
       const validatedData = insertCategorySchema.parse(req.body);
-      const category = await dbStorage.createCategory(validatedData);
+      const category = await storage.createCategory(validatedData);
       res.status(201).json(category);
     } catch (error) {
       res.status(400).json({ message: "Invalid category data" });
@@ -167,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertCategorySchema.partial().parse(req.body);
-      const category = await dbStorage.updateCategory(id, validatedData);
+      const category = await storage.updateCategory(id, validatedData);
       if (!category) {
         return res.status(404).json({ message: "Category not found" });
       }
@@ -180,7 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/categories/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const success = await dbStorage.deleteCategory(id);
+      const success = await storage.deleteCategory(id);
       if (!success) {
         return res.status(404).json({ message: "Category not found" });
       }
@@ -217,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isOpen: isOpen !== undefined ? isOpen === 'true' : undefined
       };
       
-      const restaurants = await dbStorage.getRestaurants(filters);
+      const restaurants = await storage.getRestaurants(filters);
       res.json(restaurants);
     } catch (error) {
       console.error('Error fetching restaurants:', error);
@@ -228,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/restaurants/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const restaurant = await dbStorage.getRestaurant(id);
+      const restaurant = await storage.getRestaurant(id);
       if (!restaurant) {
         return res.status(404).json({ message: "Restaurant not found" });
       }
@@ -241,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/restaurants", async (req, res) => {
     try {
       const validatedData = insertRestaurantSchema.parse(req.body);
-      const restaurant = await dbStorage.createRestaurant(validatedData);
+      const restaurant = await storage.createRestaurant(validatedData);
       res.status(201).json(restaurant);
     } catch (error) {
       res.status(400).json({ message: "Invalid restaurant data" });
@@ -252,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertRestaurantSchema.partial().parse(req.body);
-      const restaurant = await dbStorage.updateRestaurant(id, validatedData);
+      const restaurant = await storage.updateRestaurant(id, validatedData);
       if (!restaurant) {
         return res.status(404).json({ message: "Restaurant not found" });
       }
@@ -265,7 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/restaurants/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const success = await dbStorage.deleteRestaurant(id);
+      const success = await storage.deleteRestaurant(id);
       if (!success) {
         return res.status(404).json({ message: "Restaurant not found" });
       }
@@ -279,7 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/restaurants/:restaurantId/menu", async (req, res) => {
     try {
       const { restaurantId } = req.params;
-      const menuItems = await dbStorage.getMenuItems(restaurantId);
+      const menuItems = await storage.getMenuItems(restaurantId);
       res.json(menuItems);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch menu items" });
@@ -289,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/menu-items", async (req, res) => {
     try {
       const validatedData = insertMenuItemSchema.parse(req.body);
-      const menuItem = await dbStorage.createMenuItem(validatedData);
+      const menuItem = await storage.createMenuItem(validatedData);
       res.status(201).json(menuItem);
     } catch (error) {
       res.status(400).json({ message: "Invalid menu item data" });
@@ -300,7 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertMenuItemSchema.partial().parse(req.body);
-      const menuItem = await dbStorage.updateMenuItem(id, validatedData);
+      const menuItem = await storage.updateMenuItem(id, validatedData);
       if (!menuItem) {
         return res.status(404).json({ message: "Menu item not found" });
       }
@@ -313,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/menu-items/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const success = await dbStorage.deleteMenuItem(id);
+      const success = await storage.deleteMenuItem(id);
       if (!success) {
         return res.status(404).json({ message: "Menu item not found" });
       }
@@ -330,9 +331,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let orders;
       
       if (restaurantId) {
-        orders = await dbStorage.getOrdersByRestaurant(restaurantId as string);
+        orders = await storage.getOrdersByRestaurant(restaurantId as string);
       } else {
-        orders = await dbStorage.getOrders();
+        orders = await storage.getOrders();
       }
       
       res.json(orders);
@@ -344,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/orders/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const order = await dbStorage.getOrder(id);
+      const order = await storage.getOrder(id);
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -357,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/orders", async (req, res) => {
     try {
       const validatedData = insertOrderSchema.parse(req.body);
-      const order = await dbStorage.createOrder(validatedData);
+      const order = await storage.createOrder(validatedData);
       res.status(201).json(order);
     } catch (error) {
       res.status(400).json({ message: "Invalid order data" });
@@ -368,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertOrderSchema.partial().parse(req.body);
-      const order = await dbStorage.updateOrder(id, validatedData);
+      const order = await storage.updateOrder(id, validatedData);
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -385,9 +386,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let drivers;
       
       if (available === 'true') {
-        drivers = await dbStorage.getAvailableDrivers();
+        drivers = await storage.getAvailableDrivers();
       } else {
-        drivers = await dbStorage.getDrivers();
+        drivers = await storage.getDrivers();
       }
       
       res.json(drivers);
@@ -399,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/drivers/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const driver = await dbStorage.getDriver(id);
+      const driver = await storage.getDriver(id);
       if (!driver) {
         return res.status(404).json({ message: "Driver not found" });
       }
@@ -412,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/drivers", async (req, res) => {
     try {
       const validatedData = insertDriverSchema.parse(req.body);
-      const driver = await dbStorage.createDriver(validatedData);
+      const driver = await storage.createDriver(validatedData);
       res.status(201).json(driver);
     } catch (error) {
       res.status(400).json({ message: "Invalid driver data" });
@@ -423,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertDriverSchema.partial().parse(req.body);
-      const driver = await dbStorage.updateDriver(id, validatedData);
+      const driver = await storage.updateDriver(id, validatedData);
       if (!driver) {
         return res.status(404).json({ message: "Driver not found" });
       }
@@ -436,7 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/drivers/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const success = await dbStorage.deleteDriver(id);
+      const success = await storage.deleteDriver(id);
       if (!success) {
         return res.status(404).json({ message: "Driver not found" });
       }
@@ -453,9 +454,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let offers;
       
       if (active === 'true') {
-        offers = await dbStorage.getActiveSpecialOffers();
+        offers = await storage.getActiveSpecialOffers();
       } else {
-        offers = await dbStorage.getSpecialOffers();
+        offers = await storage.getSpecialOffers();
       }
       
       res.json(offers);
@@ -467,7 +468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/special-offers", async (req, res) => {
     try {
       const validatedData = insertSpecialOfferSchema.parse(req.body);
-      const offer = await dbStorage.createSpecialOffer(validatedData);
+      const offer = await storage.createSpecialOffer(validatedData);
       res.status(201).json(offer);
     } catch (error) {
       res.status(400).json({ message: "Invalid special offer data" });
@@ -478,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const validatedData = insertSpecialOfferSchema.partial().parse(req.body);
-      const offer = await dbStorage.updateSpecialOffer(id, validatedData);
+      const offer = await storage.updateSpecialOffer(id, validatedData);
       if (!offer) {
         return res.status(404).json({ message: "Special offer not found" });
       }
@@ -491,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/special-offers/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const success = await dbStorage.deleteSpecialOffer(id);
+      const success = await storage.deleteSpecialOffer(id);
       if (!success) {
         return res.status(404).json({ message: "Special offer not found" });
       }
@@ -504,7 +505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // UI Settings Routes
   app.get("/api/ui-settings", async (req, res) => {
     try {
-      const settings = await dbStorage.getUiSettings();
+      const settings = await storage.getUiSettings();
       res.json(settings);
     } catch (error) {
       console.error('خطأ في جلب إعدادات الواجهة:', error);
@@ -515,7 +516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ui-settings/:key", async (req, res) => {
     try {
       const { key } = req.params;
-      const setting = await dbStorage.getUiSetting(key);
+      const setting = await storage.getUiSetting(key);
       if (!setting) {
         return res.status(404).json({ message: "الإعداد غير موجود" });
       }
@@ -535,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "قيمة الإعداد مطلوبة" });
       }
 
-      const updated = await dbStorage.updateUiSetting(key, value);
+      const updated = await storage.updateUiSetting(key, value);
       if (!updated) {
         return res.status(404).json({ message: "الإعداد غير موجود" });
       }
@@ -553,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status } = req.query;
       
-      const db = dbStorage.db;
+      const db = storage.db;
       let driverOrders;
       
       if (status) {
@@ -573,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { status, latitude, longitude } = req.body;
       
-      const driver = await dbStorage.updateDriver(id, {
+      const driver = await storage.updateDriver(id, {
         isAvailable: status === 'available',
         currentLocation: latitude && longitude ? `${latitude},${longitude}` : undefined,
       });
@@ -594,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { orderId } = req.body;
       
       // Update order status and assign driver
-      const db = dbStorage.db;
+      const db = storage.db;
       const [updatedOrder] = await db
         .update(orders)
         .set({ 
@@ -609,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update driver availability
-      await dbStorage.updateDriver(driverId, { isAvailable: false });
+      await storage.updateDriver(driverId, { isAvailable: false });
       
       res.json(updatedOrder);
     } catch (error) {
@@ -623,7 +624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { orderId } = req.body;
       
       // Update order status
-      const db = dbStorage.db;
+      const db = storage.db;
       const [updatedOrder] = await db
         .update(orders)
         .set({ 
@@ -637,7 +638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update driver availability
-      await dbStorage.updateDriver(driverId, { isAvailable: true });
+      await storage.updateDriver(driverId, { isAvailable: true });
       
       res.json(updatedOrder);
     } catch (error) {
@@ -657,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if driver exists
-      const driver = await dbStorage.getDriver(id);
+      const driver = await storage.getDriver(id);
       if (!driver) {
         // Return zero stats for non-existent driver to keep client stable
         const startDate = new Date();
@@ -693,7 +694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           startDate.setHours(0, 0, 0, 0);
       }
       
-      const db = dbStorage.db;
+      const db = storage.db;
       const driverOrders = await db
         .select()
         .from(orders)
@@ -732,7 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       
       // Get orders that are pending and near the driver's location
-      const db = dbStorage.db;
+      const db = storage.db;
       const availableOrders = await db
         .select({
           id: orders.id,
@@ -769,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/notifications", async (req, res) => {
     try {
       const { recipientType, recipientId, unread } = req.query;
-      const notifications = await dbStorage.getNotifications(
+      const notifications = await storage.getNotifications(
         recipientType as string, 
         recipientId as string, 
         unread === 'true'
@@ -783,7 +784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/notifications", async (req, res) => {
     try {
       const validatedData = insertNotificationSchema.parse(req.body);
-      const notification = await dbStorage.createNotification(validatedData);
+      const notification = await storage.createNotification(validatedData);
       res.status(201).json(notification);
     } catch (error) {
       res.status(400).json({ message: "Invalid notification data" });
@@ -795,7 +796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/notifications/:id/read", async (req, res) => {
     try {
       const { id } = req.params;
-      const notification = await dbStorage.markNotificationAsRead(id);
+      const notification = await storage.markNotificationAsRead(id);
       if (!notification) {
         return res.status(404).json({ message: "Notification not found" });
       }
@@ -825,7 +826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { driverId } = req.body;
       
       // Update order with driver
-      const order = await dbStorage.updateOrder(id, { 
+      const order = await storage.updateOrder(id, { 
         driverId,
         status: 'assigned',
         updatedAt: new Date()
@@ -836,7 +837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create notification for driver
-      await dbStorage.createNotification({
+      await storage.createNotification({
         type: 'order',
         title: 'طلب جديد',
         message: `تم تكليفك بطلب جديد رقم ${id.slice(0, 8)}`,
@@ -854,14 +855,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/orders/track/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const order = await dbStorage.getOrder(id);
+      const order = await storage.getOrder(id);
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
       
       let driverLocation = null;
       if (order.driverId) {
-        const driver = await dbStorage.getDriver(order.driverId);
+        const driver = await storage.getDriver(order.driverId);
         if (driver) {
           driverLocation = driver.currentLocation;
         }
@@ -924,11 +925,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!type || type === 'categories') {
-        results.categories = await dbStorage.searchCategories(query as string);
+        results.categories = await storage.searchCategories(query as string);
       }
       
       if (!type || type === 'menu-items') {
-        results.menuItems = await dbStorage.searchMenuItemsAdvanced(query as string);
+        results.menuItems = await storage.searchMenuItemsAdvanced(query as string);
       }
       
       const total = (results.restaurants?.length || 0) + 
@@ -946,7 +947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/cart/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
-      const cartItems = await dbStorage.getCartItems(userId);
+      const cartItems = await storage.getCartItems(userId);
       res.json(cartItems);
     } catch (error) {
       console.error('Error fetching cart:', error);
@@ -957,7 +958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/cart", async (req, res) => {
     try {
       const validatedData = insertCartSchema.parse(req.body);
-      const newItem = await dbStorage.addToCart(validatedData);
+      const newItem = await storage.addToCart(validatedData);
       res.status(201).json(newItem);
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -971,10 +972,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { quantity } = req.body;
       
       if (quantity <= 0) {
-        await dbStorage.removeFromCart(cartId);
+        await storage.removeFromCart(cartId);
         res.json({ message: 'Item removed from cart' });
       } else {
-        const updatedItem = await dbStorage.updateCartItem(cartId, quantity);
+        const updatedItem = await storage.updateCartItem(cartId, quantity);
         res.json(updatedItem);
       }
     } catch (error) {
@@ -986,7 +987,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/cart/:cartId", async (req, res) => {
     try {
       const { cartId } = req.params;
-      const success = await dbStorage.removeFromCart(cartId);
+      const success = await storage.removeFromCart(cartId);
       
       if (success) {
         res.json({ message: 'Item removed from cart' });
@@ -1002,7 +1003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/cart/clear/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
-      const success = await dbStorage.clearCart(userId);
+      const success = await storage.clearCart(userId);
       
       if (success) {
         res.json({ message: 'Cart cleared successfully' });
@@ -1019,7 +1020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/favorites/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
-      const favorites = await dbStorage.getFavoriteRestaurants(userId);
+      const favorites = await storage.getFavoriteRestaurants(userId);
       res.json(favorites);
     } catch (error) {
       console.error('Error fetching favorites:', error);
@@ -1030,7 +1031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/favorites", async (req, res) => {
     try {
       const validatedData = insertFavoritesSchema.parse(req.body);
-      const newFavorite = await dbStorage.addToFavorites(validatedData.userId, validatedData.restaurantId);
+      const newFavorite = await storage.addToFavorites(validatedData.userId, validatedData.restaurantId);
       res.status(201).json(newFavorite);
     } catch (error) {
       console.error('Error adding to favorites:', error);
@@ -1041,7 +1042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/favorites/:userId/:restaurantId", async (req, res) => {
     try {
       const { userId, restaurantId } = req.params;
-      const success = await dbStorage.removeFromFavorites(userId, restaurantId);
+      const success = await storage.removeFromFavorites(userId, restaurantId);
       
       if (success) {
         res.json({ message: 'Restaurant removed from favorites' });
@@ -1057,13 +1058,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/favorites/check/:userId/:restaurantId", async (req, res) => {
     try {
       const { userId, restaurantId } = req.params;
-      const isFavorite = await dbStorage.isRestaurantFavorite(userId, restaurantId);
+      const isFavorite = await storage.isRestaurantFavorite(userId, restaurantId);
       res.json({ isFavorite });
     } catch (error) {
       console.error('Error checking favorite status:', error);
       res.status(500).json({ message: 'Failed to check favorite status' });
     }
   });
+
+  // Register customer routes
+  app.use("/api/customer", customerRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

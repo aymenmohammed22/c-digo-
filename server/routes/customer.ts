@@ -1,7 +1,7 @@
 import express from "express";
-import { db } from "../db.js";
-import * as schema from "../../shared/schema.js";
-import { eq, desc, and } from "drizzle-orm";
+import { storage } from "../storage";
+import { insertUserSchema, insertUserAddressSchema, insertRatingSchema, type UserAddress } from "../../shared/schema";
+import { randomUUID } from "crypto";
 
 const router = express.Router();
 
@@ -10,16 +10,34 @@ router.post("/auth", async (req, res) => {
   try {
     const { phone, name } = req.body;
 
-    // البحث عن العميل
-    let customer = await db.query.customers.findFirst({
-      where: eq(schema.customers.phone, phone)
-    });
+    if (!phone || !name) {
+      return res.status(400).json({ error: "رقم الهاتف والاسم مطلوبان" });
+    }
 
-    if (!customer) {
-      // إنشاء عميل جديد
-      [customer] = await db.insert(schema.customers)
-        .values({ phone, name })
-        .returning();
+    // البحث عن العميل بالهاتف (نحتاج طريقة للبحث بالهاتف)
+    // سنحتاج إلى تحديث الطريقة للبحث بالهاتف
+    // للآن سننشئ مستخدم جديد في كل مرة أو نبحث بطريقة أخرى
+    const userId = randomUUID();
+    const userData = {
+      username: phone, // استخدام رقم الهاتف كاسم المستخدم
+      password: "default_password", // كلمة مرور افتراضية
+      name,
+      phone,
+      email: null,
+      address: null
+    };
+
+    let customer;
+    try {
+      // محاولة البحث عن المستخدم أولاً
+      customer = await storage.getUserByUsername(phone);
+      if (!customer) {
+        // إنشاء عميل جديد
+        customer = await storage.createUser(userData);
+      }
+    } catch (error) {
+      // إنشاء عميل جديد في حالة عدم وجوده
+      customer = await storage.createUser(userData);
     }
 
     res.json(customer);
@@ -34,9 +52,7 @@ router.get("/:id/profile", async (req, res) => {
   try {
     const { id } = req.params;
     
-    const customer = await db.query.customers.findFirst({
-      where: eq(schema.customers.id, id)
-    });
+    const customer = await storage.getUser(id);
 
     if (!customer) {
       return res.status(404).json({ error: "العميل غير موجود" });
@@ -44,6 +60,7 @@ router.get("/:id/profile", async (req, res) => {
 
     res.json(customer);
   } catch (error) {
+    console.error("خطأ في جلب ملف العميل:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -54,13 +71,15 @@ router.put("/:id/profile", async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    const [updatedCustomer] = await db.update(schema.customers)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(schema.customers.id, id))
-      .returning();
+    const updatedCustomer = await storage.updateUser(id, updateData);
+
+    if (!updatedCustomer) {
+      return res.status(404).json({ error: "العميل غير موجود" });
+    }
 
     res.json(updatedCustomer);
   } catch (error) {
+    console.error("خطأ في تحديث ملف العميل:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -70,13 +89,18 @@ router.get("/:id/addresses", async (req, res) => {
   try {
     const { id } = req.params;
     
-    const addresses = await db.query.customerAddresses.findMany({
-      where: eq(schema.customerAddresses.customerId, id),
-      orderBy: [desc(schema.customerAddresses.isDefault), desc(schema.customerAddresses.createdAt)]
+    const addresses = await storage.getUserAddresses(id);
+    
+    // ترتيب العناوين (الافتراضي أولاً، ثم حسب تاريخ الإنشاء)
+    addresses.sort((a: UserAddress, b: UserAddress) => {
+      if (a.isDefault && !b.isDefault) return -1;
+      if (!a.isDefault && b.isDefault) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
     res.json(addresses);
   } catch (error) {
+    console.error("خطأ في جلب عناوين العميل:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -85,22 +109,27 @@ router.get("/:id/addresses", async (req, res) => {
 router.post("/:id/addresses", async (req, res) => {
   try {
     const { id } = req.params;
-    const addressData = { ...req.body, customerId: id };
+    const addressData = req.body;
 
-    // إذا كان العنوان افتراضي، إلغاء الافتراضي من العناوين الأخرى
-    if (addressData.isDefault) {
-      await db.update(schema.customerAddresses)
-        .set({ isDefault: false })
-        .where(eq(schema.customerAddresses.customerId, id));
+    // التحقق من وجود العميل
+    const customer = await storage.getUser(id);
+    if (!customer) {
+      return res.status(404).json({ error: "العميل غير موجود" });
     }
 
-    const [newAddress] = await db.insert(schema.customerAddresses)
-      .values(addressData)
-      .returning();
+    // التحقق من صحة البيانات
+    const validatedData = insertUserAddressSchema.omit({ id: true, userId: true, createdAt: true }).parse(addressData);
+
+    const newAddress = await storage.createUserAddress(id, validatedData as any);
 
     res.json(newAddress);
   } catch (error) {
-    res.status(500).json({ error: "خطأ في الخادم" });
+    console.error("خطأ في إضافة عنوان جديد:", error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      res.status(400).json({ error: "بيانات العنوان غير صحيحة" });
+    } else {
+      res.status(500).json({ error: "خطأ في الخادم" });
+    }
   }
 });
 
@@ -110,24 +139,23 @@ router.put("/:customerId/addresses/:addressId", async (req, res) => {
     const { customerId, addressId } = req.params;
     const updateData = req.body;
 
-    // إذا كان العنوان افتراضي، إلغاء الافتراضي من العناوين الأخرى
-    if (updateData.isDefault) {
-      await db.update(schema.customerAddresses)
-        .set({ isDefault: false })
-        .where(eq(schema.customerAddresses.customerId, customerId));
-    }
+    // التحقق من صحة البيانات
+    const validatedData = insertUserAddressSchema.omit({ id: true, userId: true, createdAt: true }).partial().parse(updateData);
 
-    const [updatedAddress] = await db.update(schema.customerAddresses)
-      .set(updateData)
-      .where(and(
-        eq(schema.customerAddresses.id, addressId),
-        eq(schema.customerAddresses.customerId, customerId)
-      ))
-      .returning();
+    const updatedAddress = await storage.updateUserAddress(addressId, customerId, validatedData);
+
+    if (!updatedAddress) {
+      return res.status(404).json({ error: "العنوان غير موجود أو لا يخص هذا العميل" });
+    }
 
     res.json(updatedAddress);
   } catch (error) {
-    res.status(500).json({ error: "خطأ في الخادم" });
+    console.error("خطأ في تحديث العنوان:", error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      res.status(400).json({ error: "بيانات العنوان غير صحيحة" });
+    } else {
+      res.status(500).json({ error: "خطأ في الخادم" });
+    }
   }
 });
 
@@ -136,14 +164,15 @@ router.delete("/:customerId/addresses/:addressId", async (req, res) => {
   try {
     const { customerId, addressId } = req.params;
 
-    await db.delete(schema.customerAddresses)
-      .where(and(
-        eq(schema.customerAddresses.id, addressId),
-        eq(schema.customerAddresses.customerId, customerId)
-      ));
+    const success = await storage.deleteUserAddress(addressId, customerId);
+
+    if (!success) {
+      return res.status(404).json({ error: "العنوان غير موجود أو لا يخص هذا العميل" });
+    }
 
     res.json({ success: true });
   } catch (error) {
+    console.error("خطأ في حذف العنوان:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -153,21 +182,24 @@ router.get("/:id/orders", async (req, res) => {
   try {
     const { id } = req.params;
     const { page = 1, limit = 10 } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
+    
+    // جلب جميع الطلبات
+    const allOrders = await storage.getOrders();
+    
+    // فلترة طلبات العميل
+    const customerOrders = allOrders.filter(order => order.customerId === id);
+    
+    // ترتيب حسب التاريخ (الأحدث أولاً)
+    customerOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    // تطبيق الترقيم
+    const startIndex = (Number(page) - 1) * Number(limit);
+    const endIndex = startIndex + Number(limit);
+    const paginatedOrders = customerOrders.slice(startIndex, endIndex);
 
-    const orders = await db.query.orders.findMany({
-      where: eq(schema.orders.customerId, id),
-      with: {
-        restaurantId: true,
-        driverId: true
-      },
-      limit: Number(limit),
-      offset,
-      orderBy: desc(schema.orders.createdAt)
-    });
-
-    res.json(orders);
+    res.json(paginatedOrders);
   } catch (error) {
+    console.error("خطأ في جلب طلبات العميل:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -176,29 +208,46 @@ router.get("/:id/orders", async (req, res) => {
 router.post("/orders/:orderId/review", async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { customerId, rating, comment, foodQuality, deliverySpeed, packaging, driverService } = req.body;
+    const { customerId, rating, comment } = req.body;
 
-    // تحديث تقييم الطلب
-    await db.update(schema.orders)
-      .set({ rating, review: comment })
-      .where(eq(schema.orders.id, orderId));
+    // التحقق من وجود الطلب
+    const order = await storage.getOrder(orderId);
+    if (!order) {
+      return res.status(404).json({ error: "الطلب غير موجود" });
+    }
 
-    // إضافة مراجعة مفصلة
-    const [newReview] = await db.insert(schema.reviews)
-      .values({
-        customerId,
-        orderId,
-        rating,
-        comment,
-        foodQuality,
-        deliverySpeed,
-        packaging,
-        driverService
-      })
-      .returning();
+    // التحقق من أن العميل يملك هذا الطلب
+    if (order.customerId !== customerId) {
+      return res.status(403).json({ error: "غير مصرح لك بتقييم هذا الطلب" });
+    }
+
+    // التحقق من صحة بيانات التقييم
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "التقييم يجب أن يكون بين 1 و 5" });
+    }
+
+    // الحصول على بيانات العميل
+    const customer = await storage.getUser(customerId);
+    if (!customer) {
+      return res.status(404).json({ error: "العميل غير موجود" });
+    }
+
+    // إنشاء تقييم جديد
+    const reviewData = {
+      orderId,
+      restaurantId: order.restaurantId,
+      customerName: customer.name,
+      customerPhone: customer.phone || "",
+      rating: Number(rating),
+      comment: comment || null,
+      isApproved: false
+    };
+
+    const newReview = await storage.createRating(reviewData);
 
     res.json(newReview);
   } catch (error) {
+    console.error("خطأ في إضافة التقييم:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });

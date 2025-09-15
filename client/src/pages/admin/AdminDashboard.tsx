@@ -49,8 +49,8 @@ export default function AdminDashboard() {
       icon: ShoppingBag, 
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      change: '+12%',
-      changeType: 'positive'
+      change: stats.todayOrders ? `اليوم: ${stats.todayOrders}` : 'جديد',
+      changeType: 'neutral'
     },
     { 
       title: 'العملاء النشطين', 
@@ -58,8 +58,8 @@ export default function AdminDashboard() {
       icon: Users, 
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      change: '+8%',
-      changeType: 'positive'
+      change: 'عملاء مفعلون',
+      changeType: 'neutral'
     },
     { 
       title: 'إجمالي المبيعات', 
@@ -67,8 +67,8 @@ export default function AdminDashboard() {
       icon: DollarSign, 
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      change: '+15%',
-      changeType: 'positive'
+      change: stats.todayRevenue ? `اليوم: ${stats.todayRevenue} ريال` : 'إجمالي',
+      changeType: 'neutral'
     },
     { 
       title: 'السائقين المتاحين', 
@@ -76,8 +76,8 @@ export default function AdminDashboard() {
       icon: Truck, 
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
-      change: '+3%',
-      changeType: 'positive'
+      change: 'متاحين الآن',
+      changeType: 'neutral'
     },
   ];
 

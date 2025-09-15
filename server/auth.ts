@@ -1,6 +1,6 @@
  import bcrypt from 'bcrypt'; // تم التعديل هنا
 import { randomUUID } from 'crypto';
-import { dbStorage } from './db';
+import { storage } from './storage';
 import { type InsertAdminUser, type InsertAdminSession } from '@shared/schema';
 
 export class AuthService {
@@ -13,7 +13,7 @@ export class AuthService {
   async loginAdmin(email: string, password: string): Promise<{ success: boolean; token?: string; userType?: string; message?: string }> {
     try {
       console.log('🔍 Attempting login for email:', email);
-      const admin = await dbStorage.getAdminByEmail(email);
+      const admin = await storage.getAdminByEmail(email);
       if (!admin) return { success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
       console.log('✅ Admin found, checking isActive:', admin.isActive, 'Type:', typeof admin.isActive);
       if (!admin.isActive) return { success: false, message: 'الحساب غير مفعل' };
@@ -28,7 +28,7 @@ export class AuthService {
         userType: admin.userType,
         expiresAt
       };
-      await dbStorage.createAdminSession(sessionData);
+      await storage.createAdminSession(sessionData);
       return { success: true, token, userType: admin.userType };
     } catch (error) {
       console.error('خطأ في تسجيل الدخول:', error);
@@ -37,10 +37,10 @@ export class AuthService {
   }
   async validateSession(token: string): Promise<{ valid: boolean; userType?: string; adminId?: string }> {
     try {
-      const session = await dbStorage.getAdminSession(token);
+      const session = await storage.getAdminSession(token);
       if (!session) return { valid: false };
       if (new Date() > session.expiresAt) {
-        await dbStorage.deleteAdminSession(token);
+        await storage.deleteAdminSession(token);
         return { valid: false };
       }
       return { valid: true, userType: session.userType, adminId: session.adminId || undefined };
@@ -51,7 +51,7 @@ export class AuthService {
   }
   async logout(token: string): Promise<boolean> {
     try {
-      return await dbStorage.deleteAdminSession(token);
+      return await storage.deleteAdminSession(token);
     } catch (error) {
       console.error('خطأ في تسجيل الخروج:', error);
       return false;

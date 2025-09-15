@@ -639,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Special Offers
   app.get("/api/special-offers", async (req, res) => {
     try {
-      log("🔍 Storage type: " + dbStorage.constructor.name);
+      log("🔍 Storage type: " + storage.constructor.name);
       
       // Disable caching to see changes
       res.set('Cache-Control', 'no-store');
@@ -649,9 +649,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Default to active offers for homepage
       if (active === 'false') {
-        offers = await dbStorage.getSpecialOffers();
+        offers = await storage.getSpecialOffers();
       } else {
-        offers = await dbStorage.getActiveSpecialOffers();
+        offers = await storage.getActiveSpecialOffers();
       }
       
       log("📊 Found offers: " + offers.length + " offers");

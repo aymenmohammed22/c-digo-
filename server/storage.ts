@@ -348,7 +348,10 @@ export class MemStorage implements IStorage {
       { key: "enable_notifications", value: "true", description: "تفعيل الإشعارات" },
       { key: "enable_location_services", value: "true", description: "تفعيل خدمات الموقع" },
       { key: "enable_voice_search", value: "false", description: "تفعيل البحث الصوتي" },
-      { key: "enable_quick_order", value: "true", description: "تفعيل الطلب السريع" }
+      { key: "enable_quick_order", value: "true", description: "تفعيل الطلب السريع" },
+      { key: "opening_time", value: "08:00", description: "وقت فتح المتجر" },
+      { key: "closing_time", value: "23:00", description: "وقت إغلاق المتجر" },
+      { key: "store_status", value: "مفتوح", description: "حالة المتجر الحالية" }
     ];
 
     uiSettingsData.forEach(setting => {

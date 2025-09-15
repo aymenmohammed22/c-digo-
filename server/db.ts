@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { 
   adminUsers, adminSessions, categories, restaurantSections, restaurants, 
-  menuItems, users, userAddresses, orders, specialOffers, 
+  menuItems, users, customers, userAddresses, orders, specialOffers, 
   notifications, ratings, systemSettingsTable as systemSettings, drivers, orderTracking,
   cart, favorites,
   type AdminUser, type InsertAdminUser,
@@ -39,12 +39,8 @@ function getDb() {
     
     console.log("Using database connection...");  // Debug log
     
-    // Fix SSL certificate issue for development
-    const modifiedUrl = databaseUrl.includes('sslmode=require') 
-      ? databaseUrl.replace('sslmode=require', 'sslmode=prefer') 
-      : databaseUrl;
-    
-    const sqlClient = neon(modifiedUrl);
+    // Use DATABASE_URL as-is for secure Neon connection
+    const sqlClient = neon(databaseUrl);
     
     // Pass schema to enable db.query functionality
     const schema = {
@@ -55,6 +51,7 @@ function getDb() {
       restaurants,
       menuItems,
       users,
+      customers,
       userAddresses,
       orders,
       specialOffers,
@@ -118,6 +115,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Users
+  async getUsers(): Promise<User[]> {
+    const result = await this.db.select().from(users);
+    return Array.isArray(result) ? result : [];
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await this.db.select().from(users).where(eq(users.id, id));
     return user;

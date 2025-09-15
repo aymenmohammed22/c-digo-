@@ -114,12 +114,17 @@ router.post("/logout", requireAdmin, async (req: any, res) => {
     const token = authHeader?.split(' ')[1];
     
     if (token) {
-      // AuthService can handle logout if needed
-      // For now, just return success as tokens are validated each time
+      // Properly revoke the session for security
+      const logoutResult = await authService.logout(token);
+      
+      if (!logoutResult) {
+        console.warn("Failed to revoke session on logout, but proceeding with logout");
+      }
     }
 
     res.json({ success: true, message: "تم تسجيل الخروج بنجاح" });
   } catch (error) {
+    console.error("خطأ في تسجيل الخروج:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
@@ -127,13 +132,12 @@ router.post("/logout", requireAdmin, async (req: any, res) => {
 // لوحة المعلومات
 router.get("/dashboard", requireAdmin, async (req, res) => {
   try {
-    // جلب البيانات من MemStorage
+    // جلب البيانات من قاعدة البيانات
     const [restaurants, orders, drivers, users] = await Promise.all([
       storage.getRestaurants(),
       storage.getOrders(),
       storage.getDrivers(),
-      // Assuming we have users in storage - if not, we'll use an empty array
-      [] // storage.getUsers() - if this method exists
+      storage.getUsers ? storage.getUsers() : []
     ]);
 
     const today = new Date().toDateString();

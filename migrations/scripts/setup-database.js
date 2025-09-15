@@ -226,7 +226,19 @@ async function setupInitialData() {
 
     // Create default admin
     console.log("👤 Creating default admin...");
-    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123456';
+    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+    
+    if (!adminPassword) {
+      console.error("❌ DEFAULT_ADMIN_PASSWORD environment variable is required for security");
+      console.log("💡 Set a strong admin password using: DEFAULT_ADMIN_PASSWORD=your_secure_password");
+      process.exit(1);
+    }
+    
+    if (adminPassword.length < 8) {
+      console.error("❌ Admin password must be at least 8 characters long");
+      process.exit(1);
+    }
+    
     const hashedAdminPassword = await bcrypt.hash(adminPassword, 10);
     
     const adminData = {

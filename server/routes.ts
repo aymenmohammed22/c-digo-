@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { authService } from "./auth";
 import { customerRoutes } from "./routes/customer";
 import driverRoutes from "./routes/driver";
+import ordersRoutes from "./routes/orders";
 import { 
   insertRestaurantSchema, 
   insertMenuItemSchema, 
@@ -548,15 +549,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/orders", async (req, res) => {
-    try {
-      const validatedData = insertOrderSchema.parse(req.body);
-      const order = await storage.createOrder(validatedData);
-      res.status(201).json(order);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid order data" });
-    }
-  });
+  // Orders routes are now handled by the dedicated orders router
+  // app.post("/api/orders", ...) - moved to routes/orders.ts
 
   app.put("/api/orders/:id", async (req, res) => {
     try {
@@ -1246,6 +1240,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register driver routes
   app.use("/api/driver", driverRoutes);
+  
+  // Register orders routes
+  app.use("/api/orders", ordersRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

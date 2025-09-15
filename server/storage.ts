@@ -11,6 +11,7 @@ import {
   type Rating, type InsertRating,
   type Cart, type InsertCart,
   type Favorites, type InsertFavorites,
+  type AdminUser, type InsertAdminUser,
   type AdminSession, type InsertAdminSession,
   type Notification, type InsertNotification
 } from "../shared/schema";
@@ -18,6 +19,7 @@ import { randomUUID } from "crypto";
 
 export interface IStorage {
   // Users
+  getUsers(): Promise<User[]>;
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -97,7 +99,12 @@ export interface IStorage {
   removeFromFavorites(userId: string, restaurantId: string): Promise<boolean>;
   isRestaurantFavorite(userId: string, restaurantId: string): Promise<boolean>;
 
-  // Admin session methods
+  // Admin methods
+  createAdminUser(adminUser: InsertAdminUser): Promise<AdminUser>;
+  getAdminByEmail(emailOrUsername: string): Promise<AdminUser | undefined>;
+  getAdminById(id: string): Promise<AdminUser | undefined>;
+  createAdminSession(session: InsertAdminSession): Promise<AdminSession>;
+  getAdminSession(token: string): Promise<AdminSession | undefined>;
   deleteAdminSession(token: string): Promise<boolean>;
 
   // Notification methods
@@ -122,6 +129,7 @@ export class MemStorage implements IStorage {
   private ratings: Map<string, Rating>;
   private cartItems: Map<string, Cart>;
   private favorites: Map<string, Favorites>;
+  private adminUsers: Map<string, AdminUser>;
   private adminSessions: Map<string, AdminSession>;
   private notifications: Map<string, Notification>;
 
@@ -143,6 +151,7 @@ export class MemStorage implements IStorage {
     this.ratings = new Map();
     this.cartItems = new Map();
     this.favorites = new Map();
+    this.adminUsers = new Map();
     this.adminSessions = new Map();
     this.notifications = new Map();
     
@@ -358,6 +367,10 @@ export class MemStorage implements IStorage {
   }
 
   // Users
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -896,7 +909,43 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
       .some(fav => fav.userId === userId && fav.restaurantId === restaurantId);
   }
 
-  // Admin session methods
+  // Admin methods
+  async createAdminUser(adminUser: InsertAdminUser): Promise<AdminUser> {
+    const id = randomUUID();
+    const newAdmin: AdminUser = {
+      ...adminUser,
+      id,
+      createdAt: new Date(),
+    };
+    this.adminUsers.set(id, newAdmin);
+    return newAdmin;
+  }
+
+  async getAdminByEmail(emailOrUsername: string): Promise<AdminUser | undefined> {
+    return Array.from(this.adminUsers.values())
+      .find(admin => admin.email === emailOrUsername || admin.username === emailOrUsername);
+  }
+
+  async getAdminById(id: string): Promise<AdminUser | undefined> {
+    return this.adminUsers.get(id);
+  }
+
+  async createAdminSession(session: InsertAdminSession): Promise<AdminSession> {
+    const id = randomUUID();
+    const newSession: AdminSession = {
+      ...session,
+      id,
+      createdAt: new Date(),
+    };
+    this.adminSessions.set(id, newSession);
+    return newSession;
+  }
+
+  async getAdminSession(token: string): Promise<AdminSession | undefined> {
+    return Array.from(this.adminSessions.values())
+      .find(session => session.token === token);
+  }
+
   async deleteAdminSession(token: string): Promise<boolean> {
     const session = Array.from(this.adminSessions.entries())
       .find(([_, sess]) => sess.token === token);

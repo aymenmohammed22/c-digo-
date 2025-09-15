@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authService } from "./auth";
 import { customerRoutes } from "./routes/customer";
+import driverRoutes from "./routes/driver";
 import { 
   insertRestaurantSchema, 
   insertMenuItemSchema, 
@@ -90,6 +91,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error('خطأ في التحقق:', error);
+      res.status(500).json({ message: "خطأ في الخادم" });
+    }
+  });
+
+  // Driver login route
+  app.post("/api/driver/login", async (req, res) => {
+    try {
+      console.log('🚛 Driver login attempt:', req.body);
+      const { phone, password } = req.body;
+
+      const admin = await storage.getAdminByPhone ? await storage.getAdminByPhone(phone) : null;
+      
+      if (!admin || admin.userType !== 'driver') {
+        return res.status(401).json({ error: "بيانات دخول خاطئة" });
+      }
+
+      // Use AuthService to verify password
+      const isPasswordValid = await authService.verifyPassword(password, admin.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: "بيانات دخول خاطئة" });
+      }
+
+      if (!admin.isActive) {
+        return res.status(401).json({ error: "الحساب غير نشط" });
+      }
+
+      // Generate secure token
+      const token = `driver_${randomUUID()}`;
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      // Create session
+      await storage.createAdminSession({
+        adminId: admin.id,
+        token,
+        userType: "driver",
+        expiresAt
+      });
+
+      res.json({
+        success: true,
+        token,
+        driver: {
+          id: admin.id,
+          name: admin.name,
+          phone: admin.phone,
+          userType: admin.userType
+        }
+      });
+    } catch (error) {
+      console.error("خطأ في تسجيل دخول السائق:", error);
+      res.status(500).json({ error: "خطأ في الخادم" });
+    }
+  });
+
+  // Admin Profile routes
+  app.get("/api/admin/profile", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.replace("Bearer ", "");
+      
+      if (!token) {
+        return res.status(401).json({ message: "رمز التحقق مطلوب" });
+      }
+
+      const validation = await authService.validateSession(token);
+      if (!validation.valid) {
+        return res.status(401).json({ message: "انتهت صلاحية الجلسة" });
+      }
+
+      const admin = await storage.getAdminById(validation.adminId);
+      if (!admin) {
+        return res.status(404).json({ message: "المدير غير موجود" });
+      }
+
+      res.json({
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        username: admin.username,
+        phone: admin.phone
+      });
+    } catch (error) {
+      console.error('خطأ في جلب الملف الشخصي:', error);
+      res.status(500).json({ message: "خطأ في الخادم" });
+    }
+  });
+
+  app.put("/api/admin/profile", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.replace("Bearer ", "");
+      
+      if (!token) {
+        return res.status(401).json({ message: "رمز التحقق مطلوب" });
+      }
+
+      const validation = await authService.validateSession(token);
+      if (!validation.valid) {
+        return res.status(401).json({ message: "انتهت صلاحية الجلسة" });
+      }
+
+      const { name, email, username, phone } = req.body;
+      
+      if (!name || !email) {
+        return res.status(400).json({ message: "الاسم والبريد الإلكتروني مطلوبان" });
+      }
+
+      const updatedAdmin = await storage.updateAdmin(validation.adminId, {
+        name,
+        email,
+        username: username || null,
+        phone: phone || null
+      });
+
+      if (!updatedAdmin) {
+        return res.status(404).json({ message: "المدير غير موجود" });
+      }
+
+      res.json({
+        message: "تم تحديث الملف الشخصي بنجاح",
+        admin: {
+          id: updatedAdmin.id,
+          name: updatedAdmin.name,
+          email: updatedAdmin.email,
+          username: updatedAdmin.username,
+          phone: updatedAdmin.phone
+        }
+      });
+    } catch (error) {
+      console.error('خطأ في تحديث الملف الشخصي:', error);
+      res.status(500).json({ message: "خطأ في الخادم" });
+    }
+  });
+
+  app.put("/api/admin/change-password", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.replace("Bearer ", "");
+      
+      if (!token) {
+        return res.status(401).json({ message: "رمز التحقق مطلوب" });
+      }
+
+      const validation = await authService.validateSession(token);
+      if (!validation.valid) {
+        return res.status(401).json({ message: "انتهت صلاحية الجلسة" });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "كلمة المرور الحالية والجديدة مطلوبتان" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+      }
+
+      const admin = await storage.getAdminById(validation.adminId);
+      if (!admin) {
+        return res.status(404).json({ message: "المدير غير موجود" });
+      }
+
+      const isCurrentPasswordValid = await authService.verifyPassword(currentPassword, admin.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: "كلمة المرور الحالية غير صحيحة" });
+      }
+
+      const hashedNewPassword = await authService.hashPassword(newPassword);
+      const updatedAdmin = await storage.updateAdmin(validation.adminId, {
+        password: hashedNewPassword
+      });
+
+      if (!updatedAdmin) {
+        return res.status(404).json({ message: "المدير غير موجود" });
+      }
+
+      res.json({ message: "تم تغيير كلمة المرور بنجاح" });
+    } catch (error) {
+      console.error('خطأ في تغيير كلمة المرور:', error);
       res.status(500).json({ message: "خطأ في الخادم" });
     }
   });
@@ -1062,6 +1243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register customer routes
   app.use("/api/customer", customerRoutes);
+  
+  // Register driver routes
+  app.use("/api/driver", driverRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

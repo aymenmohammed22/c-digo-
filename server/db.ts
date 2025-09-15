@@ -39,7 +39,12 @@ function getDb() {
     
     console.log("Using database connection...");  // Debug log
     
-    const sqlClient = neon(databaseUrl);
+    // Fix SSL certificate issue for development
+    const modifiedUrl = databaseUrl.includes('sslmode=require') 
+      ? databaseUrl.replace('sslmode=require', 'sslmode=prefer') 
+      : databaseUrl;
+    
+    const sqlClient = neon(modifiedUrl);
     
     // Pass schema to enable db.query functionality
     const schema = {

@@ -1,5 +1,5 @@
 import express from "express";
-import { db } from "../db.js";
+import { dbStorage } from "../db.js";
 import * as schema from "../../shared/schema.js";
 import { eq, desc, and, or, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -15,7 +15,7 @@ const requireDriver = async (req: any, res: any, next: any) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const session = await db.query.adminSessions.findFirst({
+    const session = await dbStorage.db.query.adminSessions.findFirst({
       where: eq(schema.adminSessions.token, token),
     });
 
@@ -23,7 +23,7 @@ const requireDriver = async (req: any, res: any, next: any) => {
       return res.status(401).json({ error: "جلسة منتهية الصلاحية" });
     }
 
-    const driver = await db.query.adminUsers.findFirst({
+    const driver = await dbStorage.db.query.adminUsers.findFirst({
       where: eq(schema.adminUsers.id, session.adminId!)
     });
 
@@ -42,9 +42,10 @@ const requireDriver = async (req: any, res: any, next: any) => {
 // تسجيل دخول السائق
 router.post("/login", async (req, res) => {
   try {
+    console.log('🚛 Driver login attempt:', req.body);
     const { phone, password } = req.body;
 
-    const driver = await db.query.adminUsers.findFirst({
+    const driver = await dbStorage.db.query.adminUsers.findFirst({
       where: and(
         eq(schema.adminUsers.phone, phone),
         eq(schema.adminUsers.userType, "driver")
@@ -69,7 +70,7 @@ router.post("/login", async (req, res) => {
     const token = `driver_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ساعة
 
-    await db.insert(schema.adminSessions).values({
+    await dbStorage.db.insert(schema.adminSessions).values({
       adminId: driver.id,
       token,
       userType: "driver",
@@ -98,7 +99,7 @@ router.post("/logout", requireDriver, async (req: any, res) => {
     const authHeader = req.headers.authorization;
     const token = authHeader.split(' ')[1];
 
-    await db.delete(schema.adminSessions)
+    await dbStorage.db.delete(schema.adminSessions)
       .where(eq(schema.adminSessions.token, token));
 
     res.json({ success: true });
@@ -113,7 +114,7 @@ router.get("/dashboard", requireDriver, async (req: any, res) => {
     const driverId = req.driver.id;
     
     // إحصائيات السائق
-    const [todayStats] = await db.select({
+    const [todayStats] = await dbStorage.db.select({
       todayOrders: sql<number>`COUNT(CASE WHEN DATE(${schema.orders.createdAt}) = CURRENT_DATE THEN 1 END)`,
       todayEarnings: sql<number>`COALESCE(SUM(CASE WHEN DATE(${schema.orders.createdAt}) = CURRENT_DATE THEN ${schema.orders.driverEarnings} END), 0)`,
       completedToday: sql<number>`COUNT(CASE WHEN DATE(${schema.orders.createdAt}) = CURRENT_DATE AND ${schema.orders.status} = 'delivered' THEN 1 END)`,
@@ -124,7 +125,7 @@ router.get("/dashboard", requireDriver, async (req: any, res) => {
       .where(eq(schema.orders.driverId, driverId));
 
     // الطلبات المتاحة (غير مُعيَّنة لسائق)
-    const availableOrders = await db.query.orders.findMany({
+    const availableOrders = await dbStorage.db.query.orders.findMany({
       where: and(
         eq(schema.orders.status, "confirmed"),
         sql`${schema.orders.driverId} IS NULL`
@@ -134,7 +135,7 @@ router.get("/dashboard", requireDriver, async (req: any, res) => {
     });
 
     // الطلبات الحالية للسائق
-    const currentOrders = await db.query.orders.findMany({
+    const currentOrders = await dbStorage.db.query.orders.findMany({
       where: and(
         eq(schema.orders.driverId, driverId),
         or(
@@ -163,7 +164,7 @@ router.post("/orders/:id/accept", requireDriver, async (req: any, res) => {
     const driverId = req.driver.id;
 
     // التحقق من أن الطلب متاح
-    const order = await db.query.orders.findFirst({
+    const order = await dbStorage.db.query.orders.findFirst({
       where: and(
         eq(schema.orders.id, id),
         eq(schema.orders.status, "confirmed"),
@@ -176,7 +177,7 @@ router.post("/orders/:id/accept", requireDriver, async (req: any, res) => {
     }
 
     // تعيين السائق للطلب
-    const [updatedOrder] = await db.update(schema.orders)
+    const [updatedOrder] = await dbStorage.db.update(schema.orders)
       .set({ 
         driverId,
         status: "ready",
@@ -187,12 +188,12 @@ router.post("/orders/:id/accept", requireDriver, async (req: any, res) => {
 
     // حساب أرباح السائق (مثلاً 80% من رسوم التوصيل)
     const driverEarnings = Number(order.deliveryFee) * 0.8;
-    await db.update(schema.orders)
+    await dbStorage.db.update(schema.orders)
       .set({ driverEarnings })
       .where(eq(schema.orders.id, id));
 
     // إضافة تتبع للطلب
-    await db.insert(schema.orderTracking).values({
+    await dbStorage.db.insert(schema.orderTracking).values({
       orderId: id,
       status: "ready",
       message: `تم قبول الطلب من قبل السائق ${req.driver.name}`,
@@ -215,7 +216,7 @@ router.put("/orders/:id/status", requireDriver, async (req: any, res) => {
     const driverId = req.driver.id;
 
     // التحقق من أن الطلب مُعيَّن للسائق
-    const order = await db.query.orders.findFirst({
+    const order = await dbStorage.db.query.orders.findFirst({
       where: and(
         eq(schema.orders.id, id),
         eq(schema.orders.driverId, driverId)
@@ -235,13 +236,13 @@ router.put("/orders/:id/status", requireDriver, async (req: any, res) => {
       updateData.actualDeliveryTime = new Date();
     }
 
-    const [updatedOrder] = await db.update(schema.orders)
+    const [updatedOrder] = await dbStorage.db.update(schema.orders)
       .set(updateData)
       .where(eq(schema.orders.id, id))
       .returning();
 
     // إضافة تتبع للطلب
-    await db.insert(schema.orderTracking).values({
+    await dbStorage.db.insert(schema.orderTracking).values({
       orderId: id,
       status,
       message: getStatusMessage(status),
@@ -264,7 +265,7 @@ router.get("/orders/:id", requireDriver, async (req: any, res) => {
     const { id } = req.params;
     const driverId = req.driver.id;
 
-    const order = await db.query.orders.findFirst({
+    const order = await dbStorage.db.query.orders.findFirst({
       where: and(
         eq(schema.orders.id, id),
         eq(schema.orders.driverId, driverId)
@@ -276,7 +277,7 @@ router.get("/orders/:id", requireDriver, async (req: any, res) => {
     }
 
     // جلب تتبع الطلب
-    const tracking = await db.query.orderTracking.findMany({
+    const tracking = await dbStorage.db.query.orderTracking.findMany({
       where: eq(schema.orderTracking.orderId, id),
       orderBy: desc(schema.orderTracking.timestamp!)
     });
@@ -304,7 +305,7 @@ router.get("/orders", requireDriver, async (req: any, res) => {
       whereConditions.push(eq(schema.orders.status, status as string));
     }
 
-    const orders = await db.query.orders.findMany({
+    const orders = await dbStorage.db.query.orders.findMany({
       where: and(...whereConditions),
       limit: Number(limit),
       offset,
@@ -339,7 +340,7 @@ router.get("/stats", requireDriver, async (req: any, res) => {
         dateFilter = sql`1=1`;
     }
 
-    const [stats] = await db.select({
+    const [stats] = await dbStorage.db.select({
       totalOrders: sql<number>`COUNT(*)`,
       completedOrders: sql<number>`COUNT(CASE WHEN ${schema.orders.status} = 'delivered' THEN 1 END)`,
       cancelledOrders: sql<number>`COUNT(CASE WHEN ${schema.orders.status} = 'cancelled' THEN 1 END)`,
@@ -353,7 +354,7 @@ router.get("/stats", requireDriver, async (req: any, res) => {
       ));
 
     // إحصائيات يومية للأسبوع الماضي
-    const dailyStats = await db.select({
+    const dailyStats = await dbStorage.db.select({
       date: sql<string>`DATE(${schema.orders.createdAt})`,
       orders: sql<number>`COUNT(*)`,
       earnings: sql<number>`COALESCE(SUM(${schema.orders.driverEarnings}), 0)`
@@ -386,7 +387,7 @@ router.put("/profile", requireDriver, async (req: any, res) => {
     delete updateData.userType;
     delete updateData.id;
 
-    const [updatedDriver] = await db.update(schema.adminUsers)
+    const [updatedDriver] = await dbStorage.db.update(schema.adminUsers)
       .set({ ...updateData, updatedAt: new Date() })
       .where(eq(schema.adminUsers.id, driverId))
       .returning();
@@ -404,7 +405,7 @@ router.put("/change-password", requireDriver, async (req: any, res) => {
     const { currentPassword, newPassword } = req.body;
 
     // التحقق من كلمة المرور الحالية
-    const driver = await db.query.adminUsers.findFirst({
+    const driver = await dbStorage.db.query.adminUsers.findFirst({
       where: eq(schema.adminUsers.id, driverId)
     });
 
@@ -422,7 +423,7 @@ router.put("/change-password", requireDriver, async (req: any, res) => {
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
     // تحديث كلمة المرور
-    await db.update(schema.adminUsers)
+    await dbStorage.db.update(schema.adminUsers)
       .set({ password: hashedNewPassword, updatedAt: new Date() })
       .where(eq(schema.adminUsers.id, driverId));
 
@@ -444,4 +445,4 @@ function getStatusMessage(status: string): string {
   return messages[status] || `تم تحديث حالة الطلب إلى: ${status}`;
 }
 
-export { router as driverRoutes };
+export default router;

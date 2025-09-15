@@ -16,6 +16,7 @@ import {
   Heart,
   Timer
 } from 'lucide-react';
+import TimingBanner from '@/components/TimingBanner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,11 +24,16 @@ import type { Category, Restaurant, SpecialOffer } from '@shared/schema';
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all'); // للفئات
+  const [selectedTab, setSelectedTab] = useState('all'); // للتبويبات
 
   // جلب البيانات
   const { data: restaurants } = useQuery<Restaurant[]>({
     queryKey: ['/api/restaurants'],
+  });
+
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ['/api/categories'],
   });
 
   const handleRestaurantClick = (restaurantId: string) => {
@@ -36,48 +42,29 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Timing Banner - Similar to reference */}
-      <div className="bg-gray-100 py-3">
-        <div className="max-w-md mx-auto px-4 text-center">
-          <div className="orange-gradient text-white px-4 py-2 rounded-full inline-flex items-center gap-2 text-sm">
-            <Timer className="h-4 w-4" />
-            <span>أوقات الدوام من الساعة 11:00 من صباحا حتى 11:09 م</span>
-            <span className="bg-white/20 px-2 py-1 rounded text-xs">مغلق</span>
-          </div>
-        </div>
-      </div>
+      {/* Timing Banner - Dynamic from settings */}
+      <TimingBanner />
 
       {/* Main Content */}
       <main className="max-w-md mx-auto px-4 py-6">
-        {/* Category Grid - Matching reference design exactly */}
+        {/* Category Grid - Dynamic from API */}
         <section className="mb-6">
           <div className="grid grid-cols-4 gap-3">
-            {/* Meat Category */}
-            <div className="text-center cursor-pointer" onClick={() => setSelectedCategory('meat')}>
-              <div className="w-16 h-16 mx-auto mb-2 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-gray-100">
-                <Beef className="h-8 w-8 text-red-500" />
+            {categories?.slice(0, 3).map((category) => (
+              <div key={category.id} className="text-center cursor-pointer" onClick={() => { setSelectedCategory(category.id); setSelectedTab('all'); }}>
+                <div className="w-16 h-16 mx-auto mb-2 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-gray-100">
+                  {category.icon ? (
+                    <i className={`${category.icon} text-2xl text-primary`} />
+                  ) : (
+                    <UtensilsCrossed className="h-8 w-8 text-orange-500" />
+                  )}
+                </div>
+                <h4 className="text-xs font-medium text-gray-700">{category.name}</h4>
               </div>
-              <h4 className="text-xs font-medium text-gray-700">اللحوم</h4>
-            </div>
-            
-            {/* Sweets Category */}
-            <div className="text-center cursor-pointer" onClick={() => setSelectedCategory('sweets')}>
-              <div className="w-16 h-16 mx-auto mb-2 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-gray-100">
-                <Cookie className="h-8 w-8 text-pink-500" />
-              </div>
-              <h4 className="text-xs font-medium text-gray-700">الحلويات</h4>
-            </div>
-            
-            {/* Restaurants Category */}
-            <div className="text-center cursor-pointer" onClick={() => setSelectedCategory('restaurants')}>
-              <div className="w-16 h-16 mx-auto mb-2 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-gray-100">
-                <UtensilsCrossed className="h-8 w-8 text-orange-500" />
-              </div>
-              <h4 className="text-xs font-medium text-gray-700">المطاعم</h4>
-            </div>
+            ))}
             
             {/* All Categories */}
-            <div className="text-center cursor-pointer" onClick={() => setSelectedCategory('all')}>
+            <div className="text-center cursor-pointer" onClick={() => { setSelectedCategory('all'); setSelectedTab('all'); }}>
               <div className="w-16 h-16 mx-auto mb-2 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-gray-100">
                 <Menu className="h-8 w-8 text-blue-500" />
               </div>
@@ -130,155 +117,69 @@ export default function HomePage() {
             <div className="flex border-b border-gray-200">
               <button 
                 className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
-                  selectedCategory === 'popular' 
+                  selectedTab === 'popular' 
                     ? 'border-red-500 text-red-600' 
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
-                onClick={() => setSelectedCategory('popular')}
+                onClick={() => setSelectedTab('popular')}
               >
                 المفضلة
               </button>
               <button 
                 className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
-                  selectedCategory === 'nearest' 
+                  selectedTab === 'newest' 
                     ? 'border-red-500 text-red-600' 
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
-                onClick={() => setSelectedCategory('nearest')}
+                onClick={() => setSelectedTab('newest')}
               >
                 الجديدة
               </button>
               <button 
                 className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
-                  selectedCategory === 'offers' 
+                  selectedTab === 'nearest' 
                     ? 'border-red-500 text-red-600' 
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
-                onClick={() => setSelectedCategory('offers')}
+                onClick={() => setSelectedTab('nearest')}
               >
                 الأقرب
               </button>
               <button 
                 className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${
-                  selectedCategory === 'all' 
+                  selectedTab === 'all' 
                     ? 'border-red-500 text-red-600' 
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
-                onClick={() => setSelectedCategory('all')}
+                onClick={() => setSelectedTab('all')}
               >
                 الكل
               </button>
             </div>
           </div>
 
-          {/* Restaurant Cards - Matching reference design */}
+          {/* Restaurant Cards - Dynamic from API */}
           <div className="space-y-4">
-            {/* Sample restaurants since database is empty */}
-            {[
-              {
-                id: '1',
-                name: 'المراسيم',
-                category: 'دولة كاليكس - المنصورة',
-                rating: 5,
-                image: null,
-                deliveryTime: '30-45 دقيقة',
-                deliveryFee: 'مجاني',
-                badge: 'مغلق'
-              },
-              {
-                id: '2', 
-                name: 'مطاعم ومطابخ الطويل',
-                category: 'دولة السيئينة',
-                rating: 5,
-                image: null,
-                deliveryTime: '25-40 دقيقة',
-                deliveryFee: 'مجاني',
-                badge: 'مغلق'
-              },
-              {
-                id: '3',
-                name: 'مطعم الشرق الأوسط',
-                category: 'الحديث (عدن)',
-                rating: 5,
-                image: null,
-                deliveryTime: '20-35 دقيقة',
-                deliveryFee: 'مجاني',
-                badge: 'مغلق'
-              },
-              {
-                id: '4',
-                name: 'مطعم شواطئ عدن',
-                category: 'البساتية',
-                rating: 4,
-                image: null,
-                deliveryTime: '30-50 دقيقة',
-                deliveryFee: 'مجاني',
-                badge: 'مغلق'
+            {restaurants?.filter(restaurant => {
+              // فلترة حسب الفئة
+              if (selectedCategory !== 'all' && restaurant.categoryId !== selectedCategory) {
+                return false;
               }
-            ].map((restaurant) => (
-              <div 
-                key={restaurant.id}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => handleRestaurantClick(restaurant.id)}
-              >
-                <div className="flex p-4">
-                  {/* Restaurant Logo/Image */}
-                  <div className="w-16 h-16 bg-gray-100 rounded-xl flex-shrink-0 flex items-center justify-center mr-4">
-                    {restaurant.image ? (
-                      <img src={restaurant.image} alt={restaurant.name} className="w-full h-full object-cover rounded-xl" />
-                    ) : (
-                      <UtensilsCrossed className="h-8 w-8 text-gray-400" />
-                    )}
-                  </div>
-                  
-                  {/* Restaurant Info */}
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold text-gray-900 text-sm mb-1">{restaurant.name}</h4>
-                        <p className="text-xs text-gray-600 mb-2">{restaurant.category}</p>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <span>خط التسعين</span>
-                        </div>
-                      </div>
-                      
-                      {/* Rating and Actions */}
-                      <div className="text-left flex flex-col items-end">
-                        <div className="flex items-center gap-1 mb-2">
-                          {[...Array(restaurant.rating)].map((_, i) => (
-                            <Star key={i} className="h-3 w-3 text-yellow-400 fill-current" />
-                          ))}
-                          <span className="text-xs font-medium ml-1">{restaurant.rating}</span>
-                        </div>
-                        <Badge 
-                          className={`text-xs mb-2 ${
-                            restaurant.badge === 'مغلق' 
-                              ? 'bg-red-600 text-white hover:bg-red-700' 
-                              : 'bg-green-600 text-white hover:bg-green-700'
-                          }`}
-                        >
-                          {restaurant.badge}
-                        </Badge>
-                        <Heart className="h-4 w-4 text-gray-400 cursor-pointer hover:text-red-500" />
-                      </div>
-                    </div>
-                    
-                    {/* Bottom Action Button */}
-                    <div className="mt-3">
-                      <Button 
-                        size="sm" 
-                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-1 text-xs rounded-full"
-                      >
-                        مغلق
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {/* Database restaurants when available */}
-            {restaurants && restaurants.length > 0 && restaurants.map((restaurant) => (
+              
+              // فلترة حسب التبويب
+              if (selectedTab === 'popular' && !restaurant.isFeatured) {
+                return false;
+              }
+              if (selectedTab === 'newest' && !restaurant.isNew) {
+                return false;
+              }
+              if (selectedTab === 'nearest') {
+                // يمكن إضافة منطق الأقرب هنا لاحقاً
+                return true;
+              }
+              
+              return true;
+            }).map((restaurant) => (
               <Card 
                 key={restaurant.id}
                 className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"

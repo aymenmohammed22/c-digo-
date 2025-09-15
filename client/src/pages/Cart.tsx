@@ -8,14 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import type { InsertOrder } from '@shared/schema';
 
 export default function Cart() {
   const [, setLocation] = useLocation();
-  const { items, removeItem, updateQuantity, clearCart, getSubtotal, getTotal } = useCart();
+  const { state, removeItem, updateQuantity, clearCart } = useCart();
+  const { items, subtotal, total } = state;
   const { toast } = useToast();
 
   const [orderForm, setOrderForm] = useState({
@@ -74,10 +75,10 @@ export default function Cart() {
     const orderData: InsertOrder = {
       ...orderForm,
       items: JSON.stringify(items),
-      subtotal: getSubtotal().toString(),
+      subtotal: subtotal.toString(),
       deliveryFee: '5',
-      total: getTotal().toString(),
-      totalAmount: getTotal().toString(),
+      total: total.toString(),
+      totalAmount: total.toString(),
       restaurantId: items[0]?.restaurantId || '',
       status: 'pending',
       orderNumber: `ORD${Date.now()}`,
@@ -318,21 +319,21 @@ export default function Cart() {
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">المجموع الفرعي</span>
                 <span className="text-xl font-bold text-gray-900" data-testid="text-subtotal">
-                  {getSubtotal()}ريال
+                  {subtotal}ريال
                 </span>
               </div>
               
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">التوصيل</span>
                 <span className="text-gray-900" data-testid="text-delivery-fee">
-                  {getSubtotal() > 0 ? '5ريال' : '0ريال'}
+                  {subtotal > 0 ? '5ريال' : '0ريال'}
                 </span>
               </div>
               
               <div className="flex justify-between items-center pt-2 border-t">
                 <span className="text-gray-800 font-semibold">الإجمالي</span>
                 <span className="text-xl font-bold text-red-500" data-testid="text-total">
-                  {getTotal()}ريال
+                  {total}ريال
                 </span>
               </div>
               
@@ -357,7 +358,7 @@ export default function Cart() {
                 disabled={placeOrderMutation.isPending}
                 data-testid="button-place-order"
               >
-                {placeOrderMutation.isPending ? 'جاري تأكيد الطلب...' : `تأكيد الطلب - ${getTotal()}ريال`}
+                {placeOrderMutation.isPending ? 'جاري تأكيد الطلب...' : `تأكيد الطلب - ${total}ريال`}
               </Button>
             </CardContent>
           </Card>

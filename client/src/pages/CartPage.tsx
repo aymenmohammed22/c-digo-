@@ -1,23 +1,23 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { ArrowRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../contexts/CartContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import type { NewOrder } from '@shared/schema';
+import type { InsertOrder } from '@shared/schema';
 
 export default function CartPage() {
   const [, setLocation] = useLocation();
-  const { items, removeItem, updateQuantity, clearCart, getSubtotal, getTotal } = useCart();
+  const { state, removeItem, updateQuantity, clearCart } = useCart();
+  const { items, subtotal, total } = state;
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [orderForm, setOrderForm] = useState({
     customerName: '',
@@ -69,18 +69,18 @@ export default function CartPage() {
       return;
     }
 
-    const orderData: NewOrder = {
+    const orderData: InsertOrder = {
       orderNumber: `ORD${Date.now()}`,
       customerName: orderForm.customerName,
       customerPhone: orderForm.customerPhone,
       customerEmail: orderForm.customerEmail || undefined,
-      deliveryAddress: { address: orderForm.deliveryAddress },
+      deliveryAddress: orderForm.deliveryAddress,
       notes: orderForm.notes || undefined,
       paymentMethod: orderForm.paymentMethod,
-      items: items,
-      subtotal: getSubtotal().toString(),
+      items: JSON.stringify(items),
+      subtotal: subtotal.toString(),
       deliveryFee: "5",
-      total: getTotal().toString(),
+      total: total.toString(),
       restaurantId: items[0]?.restaurantId || undefined,
       status: 'pending',
     };
@@ -182,7 +182,7 @@ export default function CartPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">المجموع الفرعي</span>
                 <span className="text-foreground" data-testid="order-subtotal">
-                  {getSubtotal()} ريال
+                  {subtotal} ريال
                 </span>
               </div>
               <div className="flex justify-between">
@@ -193,7 +193,7 @@ export default function CartPage() {
                 <div className="flex justify-between font-bold">
                   <span className="text-foreground">الإجمالي</span>
                   <span className="text-primary" data-testid="order-total">
-                    {getTotal()} ريال
+                    {total} ريال
                   </span>
                 </div>
               </div>

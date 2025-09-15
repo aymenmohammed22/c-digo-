@@ -78,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           userType: null,
           token: null,
           adminId: null,
+          user: null,
         });
       }
     } catch (error) {

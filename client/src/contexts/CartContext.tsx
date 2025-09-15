@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { MenuItem } from '../../../shared/schema.js';
+import { useToast } from '@/hooks/use-toast';
 
 export interface CartItem extends MenuItem {
   quantity: number;
@@ -21,7 +22,8 @@ type CartAction =
   | { type: 'UPDATE_QUANTITY'; itemId: string; quantity: number }
   | { type: 'CLEAR_CART' }
   | { type: 'SET_DELIVERY_FEE'; fee: number }
-  | { type: 'ADD_NOTES'; itemId: string; notes: string };
+  | { type: 'ADD_NOTES'; itemId: string; notes: string }
+  | { type: 'RESTORE_CART'; cartState: CartState };
 
 const initialState: CartState = {
   items: [],
@@ -129,6 +131,16 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     case 'CLEAR_CART':
       return initialState;
 
+    case 'RESTORE_CART': {
+      // Restore the complete cart state from localStorage
+      return {
+        ...action.cartState,
+        // Recalculate totals to ensure consistency
+        subtotal: action.cartState.items.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0),
+        total: action.cartState.items.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0) + action.cartState.deliveryFee,
+      };
+    }
+
     default:
       return state;
   }
@@ -149,6 +161,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
+  const { toast } = useToast();
 
   // حفظ السلة في localStorage
   useEffect(() => {
@@ -162,24 +175,39 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         const cartData = JSON.parse(savedCart);
         if (cartData.items?.length > 0) {
-          // تحديث السلة من البيانات المحفوظة
-          cartData.items.forEach((item: CartItem) => {
-            dispatch({
-              type: 'ADD_ITEM',
-              item,
-              restaurantId: cartData.restaurantId,
-              restaurantName: cartData.restaurantName
-            });
+          // استخدام RESTORE_CART لحفظ الحالة بالكامل
+          dispatch({
+            type: 'RESTORE_CART',
+            cartState: cartData
           });
         }
       } catch (error) {
         console.error('Error loading cart from localStorage:', error);
+        localStorage.removeItem('cart'); // إزالة البيانات المعطوبة
       }
     }
   }, []);
 
   const addItem = (item: MenuItem, restaurantId: string, restaurantName: string) => {
+    // التحقق من وجود العنصر في السلة لتحديد نوع الإشعار
+    const existingItem = state.items.find(cartItem => cartItem.id === item.id);
+    
     dispatch({ type: 'ADD_ITEM', item, restaurantId, restaurantName });
+    
+    // إظهار إشعار بنجح إضافة العنصر
+    if (existingItem) {
+      toast({
+        title: "تم زيادة الكمية",
+        description: `تم زيادة كمية "${item.name}" في السلة من ${restaurantName}`,
+        duration: 3000,
+      });
+    } else {
+      toast({
+        title: "تمت الإضافة للسلة",
+        description: `تم إضافة "${item.name}" من ${restaurantName} إلى السلة`,
+        duration: 3000,
+      });
+    }
   };
 
   const removeItem = (itemId: string) => {

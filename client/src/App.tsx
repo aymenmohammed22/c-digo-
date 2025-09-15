@@ -63,15 +63,11 @@ function AuthenticatedApp() {
 
   // Handle admin routes (completely separate from customer app)
   if (window.location.pathname.startsWith('/admin')) {
-    // Require admin authentication
-    if (userType !== 'admin') {
-      window.location.href = '/admin-login';
-      return null;
-    }
+    // Direct access to admin panel without authentication
     return (
       <AdminApp 
         onLogout={() => {
-          window.location.href = '/admin-login';
+          window.location.href = '/';
         }} 
       />
     );
@@ -79,15 +75,11 @@ function AuthenticatedApp() {
 
   // Handle driver routes (completely separate from customer app)
   if (window.location.pathname.startsWith('/driver/')) {
-    // Require driver authentication
-    if (userType !== 'driver') {
-      window.location.href = '/admin-login';
-      return null;
-    }
+    // Direct access to delivery app without authentication
     return (
       <DriverDashboard 
         onLogout={() => {
-          window.location.href = '/admin-login';
+          window.location.href = '/';
         }} 
       />
     );

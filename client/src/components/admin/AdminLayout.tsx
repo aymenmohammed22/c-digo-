@@ -15,7 +15,8 @@ import {
   Users,
   Bell,
   User,
-  Clock
+  Clock,
+  Tag
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -44,6 +45,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: 'المطاعم', 
       path: '/admin/restaurants',
       description: 'إدارة المطاعم والمتاجر'
+    },
+    { 
+      icon: Tag, 
+      label: 'التصنيفات', 
+      path: '/admin/categories',
+      description: 'إدارة فئات المطاعم'
     },
     { 
       icon: Package, 

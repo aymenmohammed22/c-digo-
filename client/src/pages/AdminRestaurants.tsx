@@ -36,6 +36,13 @@ export default function AdminRestaurants() {
     workingDays: '0,1,2,3,4,5,6', // Sunday=0, Monday=1, ..., Saturday=6
     isTemporarilyClosed: false,
     temporaryCloseReason: '',
+    // الحقول المفقودة من قاعدة البيانات
+    latitude: '',
+    longitude: '',
+    address: '',
+    isFeatured: false,
+    isNew: false,
+    isActive: true,
   });
 
   const { data: restaurants, isLoading: restaurantsLoading } = useQuery<Restaurant[]>({
@@ -52,6 +59,9 @@ export default function AdminRestaurants() {
         ...data,
         deliveryFee: parseFloat(data.deliveryFee) || 0,
         minimumOrder: parseFloat(data.minimumOrder) || 0,
+        // تحويل إحداثيات الموقع للأرقام مع التحقق
+        latitude: data.latitude ? parseFloat(data.latitude) : null,
+        longitude: data.longitude ? parseFloat(data.longitude) : null,
       };
       const response = await apiRequest('POST', '/api/admin/restaurants', submitData);
       return response.json();
@@ -73,6 +83,9 @@ export default function AdminRestaurants() {
         ...data,
         deliveryFee: data.deliveryFee != null ? parseFloat(data.deliveryFee) : undefined,
         minimumOrder: data.minimumOrder != null ? parseFloat(data.minimumOrder) : undefined,
+        // تحويل إحداثيات الموقع للأرقام مع التحقق - يسمح بالمسح
+        latitude: data.latitude === '' ? null : data.latitude != null ? parseFloat(data.latitude) : undefined,
+        longitude: data.longitude === '' ? null : data.longitude != null ? parseFloat(data.longitude) : undefined,
       };
       const response = await apiRequest('PUT', `/api/admin/restaurants/${id}`, submitData);
       return response.json();
@@ -118,6 +131,13 @@ export default function AdminRestaurants() {
       workingDays: '0,1,2,3,4,5,6',
       isTemporarilyClosed: false,
       temporaryCloseReason: '',
+      // الحقول المفقودة من قاعدة البيانات
+      latitude: '',
+      longitude: '',
+      address: '',
+      isFeatured: false,
+      isNew: false,
+      isActive: true,
     });
     setEditingRestaurant(null);
   };
@@ -138,6 +158,13 @@ export default function AdminRestaurants() {
       workingDays: restaurant.workingDays || '0,1,2,3,4,5,6',
       isTemporarilyClosed: restaurant.isTemporarilyClosed || false,
       temporaryCloseReason: restaurant.temporaryCloseReason || '',
+      // الحقول المفقودة من قاعدة البيانات
+      latitude: restaurant.latitude || '',
+      longitude: restaurant.longitude || '',
+      address: restaurant.address || '',
+      isFeatured: restaurant.isFeatured || false,
+      isNew: restaurant.isNew || false,
+      isActive: restaurant.isActive !== false, // قيمة افتراضية true
     });
     setIsDialogOpen(true);
   };
@@ -456,6 +483,85 @@ export default function AdminRestaurants() {
                       />
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Location and Status Section - الحقول المفقودة من قاعدة البيانات */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="text-lg font-semibold text-foreground">الموقع والإعدادات</h3>
+                
+                {/* Address */}
+                <div>
+                  <Label htmlFor="address">العنوان</Label>
+                  <Textarea
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                    placeholder="عنوان المطعم الكامل"
+                    rows={2}
+                    data-testid="input-restaurant-address"
+                  />
+                </div>
+
+                {/* Location Coordinates */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="latitude">خط العرض (Latitude)</Label>
+                    <Input
+                      id="latitude"
+                      type="number"
+                      step="any"
+                      value={formData.latitude}
+                      onChange={(e) => setFormData(prev => ({ ...prev, latitude: e.target.value }))}
+                      placeholder="24.7136"
+                      data-testid="input-restaurant-latitude"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="longitude">خط الطول (Longitude)</Label>
+                    <Input
+                      id="longitude"
+                      type="number"
+                      step="any"
+                      value={formData.longitude}
+                      onChange={(e) => setFormData(prev => ({ ...prev, longitude: e.target.value }))}
+                      placeholder="46.6753"
+                      data-testid="input-restaurant-longitude"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Flags */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="isActive">المطعم مفعل</Label>
+                    <Switch
+                      id="isActive"
+                      checked={formData.isActive}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
+                      data-testid="switch-restaurant-active"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="isFeatured">مطعم مميز</Label>
+                    <Switch
+                      id="isFeatured"
+                      checked={formData.isFeatured}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isFeatured: checked }))}
+                      data-testid="switch-restaurant-featured"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="isNew">مطعم جديد</Label>
+                    <Switch
+                      id="isNew"
+                      checked={formData.isNew}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isNew: checked }))}
+                      data-testid="switch-restaurant-new"
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,8 @@ export default function AdminCategories() {
   const [formData, setFormData] = useState({
     name: '',
     icon: '',
+    sortOrder: 0, // الحقل المفقود من قاعدة البيانات
+    isActive: true, // الحقل المفقود من قاعدة البيانات
   });
 
   const { data: categories, isLoading } = useQuery<Category[]>({
@@ -77,6 +80,8 @@ export default function AdminCategories() {
     setFormData({
       name: '',
       icon: '',
+      sortOrder: 0,
+      isActive: true,
     });
     setEditingCategory(null);
   };
@@ -86,6 +91,8 @@ export default function AdminCategories() {
     setFormData({
       name: category.name,
       icon: category.icon || '',
+      sortOrder: category.sortOrder || 0,
+      isActive: category.isActive !== false, // قيمة افتراضية true
     });
     setIsDialogOpen(true);
   };
@@ -184,6 +191,32 @@ export default function AdminCategories() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* الحقول المفقودة من قاعدة البيانات */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="sortOrder">ترتيب العرض</Label>
+                  <Input
+                    id="sortOrder"
+                    type="number"
+                    min="0"
+                    value={formData.sortOrder}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sortOrder: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    data-testid="input-category-sort-order"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="isActive">فئة مفعلة</Label>
+                  <Switch
+                    id="isActive"
+                    checked={formData.isActive}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
+                    data-testid="switch-category-active"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2 pt-4">

@@ -20,7 +20,9 @@ import { randomUUID } from "crypto";
 export interface IStorage {
   // Users
   getUsers(): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
   getUser(id: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
@@ -55,7 +57,9 @@ export interface IStorage {
 
   // Drivers
   getDrivers(): Promise<Driver[]>;
+  getAllDrivers(): Promise<Driver[]>;
   getDriver(id: string): Promise<Driver | undefined>;
+  getDriverById(id: string): Promise<Driver | undefined>;
   getAvailableDrivers(): Promise<Driver[]>;
   createDriver(driver: InsertDriver): Promise<Driver>;
   updateDriver(id: string, driver: Partial<InsertDriver>): Promise<Driver | undefined>;
@@ -101,6 +105,7 @@ export interface IStorage {
 
   // Admin methods
   createAdminUser(adminUser: InsertAdminUser): Promise<AdminUser>;
+  getAllAdminUsers(): Promise<AdminUser[]>;
   getAdminByEmail(emailOrUsername: string): Promise<AdminUser | undefined>;
   getAdminByPhone(phone: string): Promise<AdminUser | undefined>;
   getAdminById(id: string): Promise<AdminUser | undefined>;
@@ -403,7 +408,15 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values());
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
   async getUser(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
 
@@ -649,7 +662,15 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
     return Array.from(this.drivers.values());
   }
 
+  async getAllDrivers(): Promise<Driver[]> {
+    return Array.from(this.drivers.values());
+  }
+
   async getDriver(id: string): Promise<Driver | undefined> {
+    return this.drivers.get(id);
+  }
+
+  async getDriverById(id: string): Promise<Driver | undefined> {
     return this.drivers.get(id);
   }
 
@@ -951,6 +972,10 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
     };
     this.adminUsers.set(id, newAdmin);
     return newAdmin;
+  }
+
+  async getAllAdminUsers(): Promise<AdminUser[]> {
+    return Array.from(this.adminUsers.values());
   }
 
   async getAdminByEmail(emailOrUsername: string): Promise<AdminUser | undefined> {

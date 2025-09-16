@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { dbStorage } from "./db";
 import { log } from "./vite";
-import { authService } from "./auth";
+import { unifiedAuthService } from "./auth";
+import authRoutes from "./routes/auth";
 import { customerRoutes } from "./routes/customer";
 import driverRoutes from "./routes/driver";
 import ordersRoutes from "./routes/orders";
@@ -34,55 +35,8 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
-  // Driver login route
-  app.post("/api/driver/login", async (req, res) => {
-    try {
-      console.log('🚛 Driver login attempt:', req.body);
-      const { phone, password } = req.body;
-
-      const admin = await storage.getAdminByPhone ? await storage.getAdminByPhone(phone) : null;
-      
-      if (!admin || admin.userType !== 'driver') {
-        return res.status(401).json({ error: "بيانات دخول خاطئة" });
-      }
-
-      // Use AuthService to verify password
-      const isPasswordValid = await authService.verifyPassword(password, admin.password);
-      if (!isPasswordValid) {
-        return res.status(401).json({ error: "بيانات دخول خاطئة" });
-      }
-
-      if (!admin.isActive) {
-        return res.status(401).json({ error: "الحساب غير نشط" });
-      }
-
-      // Generate secure token
-      const token = `driver_${randomUUID()}`;
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      // Create session
-      await storage.createAdminSession({
-        adminId: admin.id,
-        token,
-        userType: "driver",
-        expiresAt
-      });
-
-      res.json({
-        success: true,
-        token,
-        driver: {
-          id: admin.id,
-          name: admin.name,
-          phone: admin.phone,
-          userType: admin.userType
-        }
-      });
-    } catch (error) {
-      console.error("خطأ في تسجيل دخول السائق:", error);
-      res.status(500).json({ error: "خطأ في الخادم" });
-    }
-  });
+  // Add authentication routes
+  app.use("/api/auth", authRoutes);
 
 
   // Users
@@ -901,6 +855,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register authentication routes (unified for all user types)
+  app.use("/api/auth", authRoutes);
+  
   // Register admin routes
   app.use("/api/admin", adminRoutes);
   

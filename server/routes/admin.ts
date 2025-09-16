@@ -1,7 +1,7 @@
 import express from "express";
 import { storage } from "../storage";
-import { authService } from "../auth";
-import bcrypt from "bcrypt";
+import { unifiedAuthService } from "../auth";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { eq, and, desc, sql, or, like, asc, inArray } from "drizzle-orm";
 import {
@@ -67,7 +67,7 @@ const requireAdmin = async (req: any, res: any, next: any) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const validation = await authService.validateSession(token);
+    const validation = await unifiedAuthService.validateSession(token);
 
     if (!validation.valid || validation.userType !== 'admin') {
       return res.status(401).json({ error: "جلسة منتهية الصلاحية أو صلاحيات غير كافية" });
@@ -91,7 +91,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Use AuthService for login
-    const loginResult = await authService.loginAdmin(email, password);
+    const loginResult = await unifiedAuthService.login(email, password, 'admin');
     
     if (loginResult.success) {
       res.json({
@@ -118,7 +118,7 @@ router.post("/verify-token", async (req, res) => {
       return res.status(400).json({ error: "الرمز المميز مطلوب" });
     }
 
-    const validation = await authService.validateSession(token);
+    const validation = await unifiedAuthService.validateSession(token);
     
     if (validation.valid) {
       const admin = await storage.getAdminById(validation.adminId!);
@@ -146,7 +146,7 @@ router.post("/logout", requireAdmin, async (req: any, res) => {
     
     if (token) {
       // Properly revoke the session for security
-      const logoutResult = await authService.logout(token);
+      const logoutResult = await unifiedAuthService.logout(token);
       
       if (!logoutResult) {
         console.warn("Failed to revoke session on logout, but proceeding with logout");

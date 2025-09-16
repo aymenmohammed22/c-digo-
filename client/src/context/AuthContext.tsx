@@ -1,17 +1,29 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-interface AuthState {
-  isAuthenticated: boolean;
-  userType: 'admin' | 'driver' | null;
-  token: string | null;
-  adminId: string | null;
-  user: { name: string; email?: string; phone?: string } | null;
+// نوع المستخدم الموحد
+export interface AuthUser {
+  id: string;
+  name: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  userType: 'customer' | 'driver' | 'admin';
+  isActive: boolean;
 }
 
-interface AuthContextType extends AuthState {
-  login: (identifier: string, password: string, userType?: 'admin' | 'driver') => Promise<{ success: boolean; message: string }>;
-  logout: () => void;
+// حالة المصادقة
+interface AuthState {
+  isAuthenticated: boolean;
+  user: AuthUser | null;
+  token: string | null;
   loading: boolean;
+}
+
+// نوع السياق
+interface AuthContextType extends AuthState {
+  login: (identifier: string, password: string, userType?: 'customer' | 'driver' | 'admin') => Promise<{ success: boolean; message: string }>;
+  logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,142 +39,141 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
-    userType: null,
-    token: null,
-    adminId: null,
     user: null,
+    token: null,
+    loading: true,
   });
-  const [loading, setLoading] = useState(true);
 
+  // التحقق من الجلسة المحفوظة عند بدء التطبيق
   useEffect(() => {
-    // Authentication bypasses removed - all authentication must go through proper login
-    // Normal authentication flow
-    const token = localStorage.getItem('admin_token');
-    if (token) {
-      verifyToken(token);
-    } else {
-      setAuthState({
-        isAuthenticated: false,
-        userType: null,
-        token: null,
-        adminId: null,
-        user: null,
-      });
-      setLoading(false);
-    }
+    initializeAuth();
   }, []);
 
-  const verifyToken = async (token: string) => {
+  const initializeAuth = async () => {
     try {
-      const response = await fetch('/api/admin/verify-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAuthState({
-          isAuthenticated: true,
-          userType: data.userType || 'admin',
-          token: token,
-          adminId: data.adminId || 'admin-main',
-          user: { name: data.name || 'مدير النظام', email: data.email },
-        });
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        await validateToken(token);
       } else {
-        localStorage.removeItem('admin_token');
-        setAuthState({
-          isAuthenticated: false,
-          userType: null,
-          token: null,
-          adminId: null,
-          user: null,
-        });
+        setAuthState(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
-      console.error('Token verification failed:', error);
-      localStorage.removeItem('admin_token');
-      setAuthState({
-        isAuthenticated: false,
-        userType: null,
-        token: null,
-        adminId: null,
-        user: null,
-      });
-    } finally {
-      setLoading(false);
+      console.error('خطأ في تهيئة المصادقة:', error);
+      clearAuthState();
     }
   };
 
-  const login = async (identifier: string, password: string, userType: 'admin' | 'driver' = 'admin') => {
+  const validateToken = async (token: string) => {
     try {
-      const endpoint = userType === 'driver' ? '/api/driver/login' : '/api/admin/login';
-      const requestBody = userType === 'driver' 
-        ? { phone: identifier, password }
-        : { email: identifier, password };
+      const response = await fetch('/api/auth/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      const response = await fetch(endpoint, {
+      if (response.ok) {
+        const userData = await response.json();
+        setAuthState({
+          isAuthenticated: true,
+          user: userData.user,
+          token: token,
+          loading: false,
+        });
+      } else {
+        clearAuthState();
+      }
+    } catch (error) {
+      console.error('خطأ في التحقق من الرمز:', error);
+      clearAuthState();
+    }
+  };
+
+  const clearAuthState = () => {
+    localStorage.removeItem('auth_token');
+    setAuthState({
+      isAuthenticated: false,
+      user: null,
+      token: null,
+      loading: false,
+    });
+  };
+
+  const login = async (
+    identifier: string, 
+    password: string, 
+    userType?: 'customer' | 'driver' | 'admin'
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      setAuthState(prev => ({ ...prev, loading: true }));
+
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          identifier,
+          password,
+          userType,
+        }),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (response.ok && data.success) {
-        localStorage.setItem('admin_token', data.token);
+      if (response.ok && result.success) {
+        localStorage.setItem('auth_token', result.token);
         setAuthState({
           isAuthenticated: true,
-          userType: userType,
-          token: data.token,
-          adminId: data.admin?.id || data.driver?.id || 'admin-main',
-          user: {
-            name: data.admin?.name || data.driver?.name || 'مستخدم النظام',
-            email: data.admin?.email,
-            phone: data.driver?.phone
-          },
+          user: result.user,
+          token: result.token,
+          loading: false,
         });
-        return { success: true, message: data.message || 'تم تسجيل الدخول بنجاح' };
+        return { success: true, message: result.message || 'تم تسجيل الدخول بنجاح' };
       } else {
-        return { success: false, message: data.message || data.error || 'خطأ في تسجيل الدخول' };
+        setAuthState(prev => ({ ...prev, loading: false }));
+        return { success: false, message: result.message || 'فشل في تسجيل الدخول' };
       }
     } catch (error) {
-      return { success: false, message: 'خطأ في الاتصال بالخادم' };
+      console.error('خطأ في تسجيل الدخول:', error);
+      setAuthState(prev => ({ ...prev, loading: false }));
+      return { success: false, message: 'حدث خطأ غير متوقع' };
     }
   };
 
   const logout = async () => {
     try {
-      if (authState.token) {
-        await fetch('/api/admin/logout', {
+      const token = authState.token;
+      if (token) {
+        // إشعار الخادم بتسجيل الخروج
+        await fetch('/api/auth/logout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ token: authState.token }),
         });
       }
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('خطأ في تسجيل الخروج:', error);
+    } finally {
+      clearAuthState();
     }
-
-    localStorage.removeItem('admin_token');
-    setAuthState({
-      isAuthenticated: false,
-      userType: null,
-      token: null,
-      adminId: null,
-      user: null,
-    });
   };
 
-  return (
-    <AuthContext.Provider value={{ ...authState, login, logout, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const refreshUser = async () => {
+    if (authState.token) {
+      await validateToken(authState.token);
+    }
+  };
+
+  const value: AuthContextType = {
+    ...authState,
+    login,
+    logout,
+    refreshUser,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

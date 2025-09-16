@@ -93,6 +93,13 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getAdminByPhone(phone: string): Promise<AdminUser | undefined> {
+    const result = await this.db.select().from(adminUsers).where(
+      eq(adminUsers.phone, phone)
+    );
+    return result[0];
+  }
+
   async getAdminById(id: string): Promise<AdminUser | undefined> {
     const result = await this.db.select().from(adminUsers).where(
       eq(adminUsers.id, id)

@@ -109,6 +109,35 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// التحقق من صحة الرمز المميز
+router.post("/verify-token", async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ error: "الرمز المميز مطلوب" });
+    }
+
+    const validation = await authService.validateSession(token);
+    
+    if (validation.valid) {
+      const admin = await storage.getAdminById(validation.adminId!);
+      res.json({
+        success: true,
+        userType: validation.userType,
+        adminId: validation.adminId,
+        name: admin?.name || 'مدير النظام',
+        email: admin?.email
+      });
+    } else {
+      res.status(401).json({ error: "رمز غير صحيح أو منتهي الصلاحية" });
+    }
+  } catch (error) {
+    console.error("خطأ في التحقق من الرمز المميز:", error);
+    res.status(500).json({ error: "خطأ في الخادم" });
+  }
+});
+
 // تسجيل خروج المدير
 router.post("/logout", requireAdmin, async (req: any, res) => {
   try {

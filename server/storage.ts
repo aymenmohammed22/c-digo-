@@ -102,6 +102,7 @@ export interface IStorage {
   // Admin methods
   createAdminUser(adminUser: InsertAdminUser): Promise<AdminUser>;
   getAdminByEmail(emailOrUsername: string): Promise<AdminUser | undefined>;
+  getAdminByPhone(phone: string): Promise<AdminUser | undefined>;
   getAdminById(id: string): Promise<AdminUser | undefined>;
   createAdminSession(session: InsertAdminSession): Promise<AdminSession>;
   getAdminSession(token: string): Promise<AdminSession | undefined>;
@@ -367,6 +368,34 @@ export class MemStorage implements IStorage {
       };
       this.uiSettings.set(setting.key, uiSetting);
     });
+
+    // Initialize admin users
+    const adminUsers = [
+      {
+        id: randomUUID(),
+        name: "مدير النظام",
+        username: "admin",
+        email: "admin@example.com",
+        phone: "+967771234567",
+        password: "$2b$10$oBgkj60B2v86gRLbhsEtw.CwHkfpW2cKRFx8BADK6z6n42r5fBJNG", // 'secret'
+        userType: "admin",
+        isActive: true,
+        createdAt: new Date(),
+      },
+      {
+        id: randomUUID(),
+        name: "أحمد السائق",
+        username: "driver01",
+        email: "driver@example.com",
+        phone: "+967771234568",
+        password: "$2b$10$oBgkj60B2v86gRLbhsEtw.CwHkfpW2cKRFx8BADK6z6n42r5fBJNG", // 'secret'
+        userType: "driver",
+        isActive: true,
+        createdAt: new Date(),
+      }
+    ];
+
+    adminUsers.forEach(admin => this.adminUsers.set(admin.id, admin));
   }
 
   // Users
@@ -929,6 +958,11 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
       .find(admin => admin.email === emailOrUsername || admin.username === emailOrUsername);
   }
 
+  async getAdminByPhone(phone: string): Promise<AdminUser | undefined> {
+    return Array.from(this.adminUsers.values())
+      .find(admin => admin.phone === phone);
+  }
+
   async getAdminById(id: string): Promise<AdminUser | undefined> {
     return this.adminUsers.get(id);
   }
@@ -1022,6 +1056,6 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
 import { dbStorage } from './db';
 
 // Switch between MemStorage and DatabaseStorage
-const USE_MEMORY_STORAGE = false; // Set to false to use database
+const USE_MEMORY_STORAGE = true; // Set to false to use database
 
 export const storage = USE_MEMORY_STORAGE ? new MemStorage() : dbStorage;

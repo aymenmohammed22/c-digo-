@@ -18,12 +18,13 @@ import {
   restaurants,
   menuItems,
   users,
+  customers,
   userAddresses,
   orders,
   specialOffers,
   notifications,
   ratings,
-  systemSettingsTable as systemSettings,
+  systemSettings,
   drivers,
   orderTracking,
   cart,
@@ -44,6 +45,7 @@ const schema = {
   restaurants,
   menuItems,
   users,
+  customers,
   userAddresses,
   orders,
   specialOffers,
@@ -1181,8 +1183,7 @@ router.put("/profile", requireAdmin, async (req: any, res) => {
         name,
         email,
         username: username || null,
-        phone: phone || null,
-        updatedAt: new Date()
+        phone: phone || null
       })
       .where(eq(schema.adminUsers.id, adminId))
       .returning();

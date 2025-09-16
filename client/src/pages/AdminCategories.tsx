@@ -23,16 +23,16 @@ export default function AdminCategories() {
   });
 
   const { data: categories, isLoading } = useQuery<Category[]>({
-    queryKey: ['/api/categories'],
+    queryKey: ['/api/admin/categories'],
   });
 
   const createCategoryMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await apiRequest('POST', '/api/categories', data);
+      const response = await apiRequest('POST', '/api/admin/categories', data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/categories'] });
       toast({
         title: "تم إنشاء القسم",
         description: "تم إضافة القسم الجديد بنجاح",
@@ -44,11 +44,11 @@ export default function AdminCategories() {
 
   const updateCategoryMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const response = await apiRequest('PUT', `/api/categories/${id}`, data);
+      const response = await apiRequest('PUT', `/api/admin/categories/${id}`, data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/categories'] });
       toast({
         title: "تم تحديث القسم",
         description: "تم تحديث القسم بنجاح",
@@ -61,11 +61,11 @@ export default function AdminCategories() {
 
   const deleteCategoryMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/categories/${id}`);
+      const response = await apiRequest('DELETE', `/api/admin/categories/${id}`);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/categories'] });
       toast({
         title: "تم حذف القسم",
         description: "تم حذف القسم بنجاح",

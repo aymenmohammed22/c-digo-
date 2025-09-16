@@ -35,11 +35,11 @@ export default function AdminMenuItems() {
   });
 
   const { data: restaurants } = useQuery<Restaurant[]>({
-    queryKey: ['/api/restaurants'],
+    queryKey: ['/api/admin/restaurants'],
   });
 
   const { data: menuItems, isLoading } = useQuery<MenuItem[]>({
-    queryKey: ['/api/restaurants', selectedRestaurant, 'menu'],
+    queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`],
     enabled: !!selectedRestaurant,
   });
 
@@ -50,11 +50,11 @@ export default function AdminMenuItems() {
         price: parseFloat(data.price),
         originalPrice: data.originalPrice ? parseFloat(data.originalPrice) : null,
       };
-      const response = await apiRequest('POST', '/api/menu-items', submitData);
+      const response = await apiRequest('POST', '/api/admin/menu-items', submitData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', selectedRestaurant, 'menu'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`] });
       toast({
         title: "تم إضافة الوجبة",
         description: "تم إضافة الوجبة الجديدة بنجاح",
@@ -71,11 +71,11 @@ export default function AdminMenuItems() {
         price: parseFloat(data.price),
         originalPrice: data.originalPrice ? parseFloat(data.originalPrice) : null,
       };
-      const response = await apiRequest('PUT', `/api/menu-items/${id}`, submitData);
+      const response = await apiRequest('PUT', `/api/admin/menu-items/${id}`, submitData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', selectedRestaurant, 'menu'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`] });
       toast({
         title: "تم تحديث الوجبة",
         description: "تم تحديث الوجبة بنجاح",
@@ -88,11 +88,11 @@ export default function AdminMenuItems() {
 
   const deleteMenuItemMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/menu-items/${id}`);
+      const response = await apiRequest('DELETE', `/api/admin/menu-items/${id}`);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants', selectedRestaurant, 'menu'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`] });
       toast({
         title: "تم حذف الوجبة",
         description: "تم حذف الوجبة بنجاح",

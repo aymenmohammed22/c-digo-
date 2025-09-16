@@ -39,20 +39,25 @@ export default function AdminRestaurants() {
   });
 
   const { data: restaurants, isLoading: restaurantsLoading } = useQuery<Restaurant[]>({
-    queryKey: ['/api/restaurants'],
+    queryKey: ['/api/admin/restaurants'],
   });
 
   const { data: categories } = useQuery<Category[]>({
-    queryKey: ['/api/categories'],
+    queryKey: ['/api/admin/categories'],
   });
 
   const createRestaurantMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await apiRequest('POST', '/api/restaurants', data);
+      const submitData = {
+        ...data,
+        deliveryFee: parseFloat(data.deliveryFee) || 0,
+        minimumOrder: parseFloat(data.minimumOrder) || 0,
+      };
+      const response = await apiRequest('POST', '/api/admin/restaurants', submitData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/restaurants'] });
       toast({
         title: "تم إضافة المطعم",
         description: "تم إضافة المطعم الجديد بنجاح",
@@ -64,11 +69,16 @@ export default function AdminRestaurants() {
 
   const updateRestaurantMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<typeof formData> }) => {
-      const response = await apiRequest('PUT', `/api/restaurants/${id}`, data);
+      const submitData = {
+        ...data,
+        deliveryFee: data.deliveryFee != null ? parseFloat(data.deliveryFee) : undefined,
+        minimumOrder: data.minimumOrder != null ? parseFloat(data.minimumOrder) : undefined,
+      };
+      const response = await apiRequest('PUT', `/api/admin/restaurants/${id}`, submitData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/restaurants'] });
       toast({
         title: "تم تحديث المطعم",
         description: "تم تحديث بيانات المطعم بنجاح",
@@ -81,11 +91,11 @@ export default function AdminRestaurants() {
 
   const deleteRestaurantMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/restaurants/${id}`);
+      const response = await apiRequest('DELETE', `/api/admin/restaurants/${id}`);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurants'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/restaurants'] });
       toast({
         title: "تم حذف المطعم",
         description: "تم حذف المطعم بنجاح",

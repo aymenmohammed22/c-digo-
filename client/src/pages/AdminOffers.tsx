@@ -32,7 +32,7 @@ export default function AdminOffers() {
   });
 
   const { data: offers, isLoading } = useQuery<SpecialOffer[]>({
-    queryKey: ['/api/special-offers'],
+    queryKey: ['/api/admin/special-offers'],
   });
 
   const createOfferMutation = useMutation({
@@ -44,11 +44,11 @@ export default function AdminOffers() {
         minimumOrder: parseFloat(data.minimumOrder),
         validUntil: data.validUntil ? new Date(data.validUntil) : null,
       };
-      const response = await apiRequest('POST', '/api/special-offers', submitData);
+      const response = await apiRequest('POST', '/api/admin/special-offers', submitData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/special-offers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/special-offers'] });
       toast({
         title: "تم إنشاء العرض",
         description: "تم إضافة العرض الجديد بنجاح",
@@ -67,11 +67,11 @@ export default function AdminOffers() {
         minimumOrder: parseFloat(data.minimumOrder),
         validUntil: data.validUntil ? new Date(data.validUntil) : null,
       };
-      const response = await apiRequest('PUT', `/api/special-offers/${id}`, submitData);
+      const response = await apiRequest('PUT', `/api/admin/special-offers/${id}`, submitData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/special-offers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/special-offers'] });
       toast({
         title: "تم تحديث العرض",
         description: "تم تحديث العرض بنجاح",
@@ -84,11 +84,11 @@ export default function AdminOffers() {
 
   const deleteOfferMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/special-offers/${id}`);
+      const response = await apiRequest('DELETE', `/api/admin/special-offers/${id}`);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/special-offers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/special-offers'] });
       toast({
         title: "تم حذف العرض",
         description: "تم حذف العرض بنجاح",

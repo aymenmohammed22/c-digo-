@@ -29,16 +29,16 @@ export default function AdminDrivers() {
   });
 
   const { data: drivers, isLoading } = useQuery<Driver[]>({
-    queryKey: ['/api/drivers'],
+    queryKey: ['/api/admin/drivers'],
   });
 
   const createDriverMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await apiRequest('POST', '/api/drivers', data);
+      const response = await apiRequest('POST', '/api/admin/drivers', data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/drivers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/drivers'] });
       toast({
         title: "تم إضافة السائق",
         description: "تم إضافة السائق الجديد بنجاح",
@@ -50,11 +50,11 @@ export default function AdminDrivers() {
 
   const updateDriverMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<typeof formData> }) => {
-      const response = await apiRequest('PUT', `/api/drivers/${id}`, data);
+      const response = await apiRequest('PUT', `/api/admin/drivers/${id}`, data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/drivers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/drivers'] });
       toast({
         title: "تم تحديث السائق",
         description: "تم تحديث بيانات السائق بنجاح",
@@ -67,11 +67,11 @@ export default function AdminDrivers() {
 
   const deleteDriverMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/drivers/${id}`);
+      const response = await apiRequest('DELETE', `/api/admin/drivers/${id}`);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/drivers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/drivers'] });
       toast({
         title: "تم حذف السائق",
         description: "تم حذف السائق بنجاح",

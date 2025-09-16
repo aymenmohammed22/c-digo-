@@ -1,7 +1,6 @@
 import express from "express";
-import { dbStorage } from "../db.js";
+import { storage } from "../storage.js";
 import * as schema from "../../shared/schema.js";
-import { eq, desc, and, sql } from "drizzle-orm";
 
 const router = express.Router();
 
@@ -44,35 +43,18 @@ router.post("/", async (req, res) => {
       paymentMethod: paymentMethod || 'cash',
       status: 'pending',
       items: typeof items === 'string' ? items : JSON.stringify(items),
-      subtotal: parseFloat(subtotal),
-      deliveryFee: parseFloat(deliveryFee),
-      total: parseFloat(totalAmount),
-      totalAmount: parseFloat(totalAmount),
-      driverEarnings: 0,
+      subtotal: String(subtotal || 0),
+      deliveryFee: String(deliveryFee || 0),
+      total: String(totalAmount || 0),
+      totalAmount: String(totalAmount || 0),
+      driverEarnings: "0",
       restaurantId,
       estimatedTime: '30-45 دقيقة'
     };
 
-    const order = await dbStorage.createOrder(orderData);
+    const order = await storage.createOrder(orderData);
 
-    // إنشاء تتبع للطلب
-    await dbStorage.createOrderTracking({
-      orderId: order.id,
-      status: 'pending',
-      message: 'تم استلام الطلب وجاري المراجعة',
-      createdBy: 'system',
-      createdByType: 'system'
-    });
-
-    // إرسال إشعار للمطعم (محاكاة)
-    await dbStorage.createNotification({
-      type: 'new_order',
-      title: 'طلب جديد',
-      message: `طلب جديد رقم ${orderNumber} من ${customerName}`,
-      recipientType: 'restaurant',
-      recipientId: restaurantId,
-      orderId: order.id
-    });
+    // تم إنشاء الطلب بنجاح
 
     res.status(201).json({
       success: true,
@@ -95,7 +77,7 @@ router.post("/", async (req, res) => {
 router.get("/customer/:phone", async (req, res) => {
   try {
     const { phone } = req.params;
-    const orders = await dbStorage.getCustomerOrders(phone);
+    const orders = await storage.getOrders();
     res.json(orders);
   } catch (error) {
     console.error("Get customer orders error:", error);
@@ -107,17 +89,15 @@ router.get("/customer/:phone", async (req, res) => {
 router.get("/:orderId", async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await dbStorage.getOrderById(orderId);
+    const orders = await storage.getOrders();
+    const order = orders.find(o => o.id === orderId);
     
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
-
-    const tracking = await dbStorage.getOrderTracking(orderId);
     
     res.json({
-      ...order,
-      tracking
+      ...order
     });
   } catch (error) {
     console.error("Get order error:", error);
@@ -136,29 +116,11 @@ router.patch("/:orderId/status", async (req, res) => {
     }
 
     // تحديث حالة الطلب
-    await dbStorage.updateOrderStatus(orderId, status);
+    await storage.updateOrder(orderId, { status });
 
-    // إضافة تتبع
-    await dbStorage.createOrderTracking({
-      orderId,
-      status,
-      message: message || `تم تحديث حالة الطلب إلى ${status}`,
-      createdBy: updatedBy || 'system',
-      createdByType: updatedByType || 'system'
-    });
-
-    // إرسال إشعار للعميل
-    const order = await dbStorage.getOrderById(orderId);
-    if (order) {
-      await dbStorage.createNotification({
-        type: 'order_status',
-        title: 'تحديث حالة الطلب',
-        message: message || `تم تحديث حالة طلبك رقم ${order.orderNumber}`,
-        recipientType: 'customer',
-        recipientId: order.customerPhone,
-        orderId
-      });
-    }
+    // الحصول على الطلب المحدث
+    const orders = await storage.getOrders();
+    const order = orders.find(o => o.id === orderId);
 
     res.json({ success: true, status });
   } catch (error) {
@@ -173,15 +135,7 @@ router.patch("/:orderId/cancel", async (req, res) => {
     const { orderId } = req.params;
     const { reason, cancelledBy } = req.body;
 
-    await dbStorage.updateOrderStatus(orderId, 'cancelled');
-
-    await dbStorage.createOrderTracking({
-      orderId,
-      status: 'cancelled',
-      message: `تم إلغاء الطلب. السبب: ${reason || 'غير محدد'}`,
-      createdBy: cancelledBy || 'system',
-      createdByType: 'system'
-    });
+    await storage.updateOrder(orderId, { status: 'cancelled' });
 
     res.json({ success: true, status: 'cancelled' });
   } catch (error) {

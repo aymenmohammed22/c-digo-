@@ -7,6 +7,7 @@ import { authService } from "./auth";
 import { customerRoutes } from "./routes/customer";
 import driverRoutes from "./routes/driver";
 import ordersRoutes from "./routes/orders";
+import { adminRoutes } from "./routes/admin";
 import { 
   insertRestaurantSchema, 
   insertMenuItemSchema, 
@@ -32,71 +33,6 @@ import { eq, and, gte, lte, desc, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
-  // Admin Authentication Routes
-  app.post("/api/admin/login", async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ message: "البريد الإلكتروني وكلمة المرور مطلوبان" });
-      }
-
-      // Use AuthService for login
-      const loginResult = await authService.loginAdmin(email, password);
-      
-      if (loginResult.success) {
-        res.json({
-          success: true,
-          token: loginResult.token,
-          userType: loginResult.userType,
-          message: "تم تسجيل الدخول بنجاح"
-        });
-      } else {
-        res.status(401).json({ message: loginResult.message });
-      }
-    } catch (error) {
-      console.error('خطأ في تسجيل الدخول:', error);
-      res.status(500).json({ message: "خطأ في الخادم" });
-    }
-  });
-
-  app.post("/api/admin/logout", async (req, res) => {
-    try {
-      const { token } = req.body;
-      if (token) {
-        await storage.deleteAdminSession ? storage.deleteAdminSession(token) : Promise.resolve();
-      }
-      res.json({ message: "تم تسجيل الخروج بنجاح" });
-    } catch (error) {
-      res.status(500).json({ message: "خطأ في الخادم" });
-    }
-  });
-
-  app.get("/api/admin/verify", async (req, res) => {
-    try {
-      const token = req.headers.authorization?.replace("Bearer ", "");
-      
-      if (!token) {
-        return res.status(401).json({ message: "رمز التحقق مطلوب" });
-      }
-
-      const validation = await authService.validateSession(token);
-      
-      if (validation.valid) {
-        res.json({
-          valid: true,
-          userType: validation.userType,
-          adminId: validation.adminId
-        });
-      } else {
-        res.status(401).json({ message: "انتهت صلاحية الجلسة" });
-      }
-    } catch (error) {
-      console.error('خطأ في التحقق:', error);
-      res.status(500).json({ message: "خطأ في الخادم" });
-    }
-  });
 
   // Driver login route
   app.post("/api/driver/login", async (req, res) => {
@@ -148,135 +84,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin Profile routes
-  app.get("/api/admin/profile", async (req, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.replace("Bearer ", "");
-      
-      if (!token) {
-        return res.status(401).json({ message: "رمز التحقق مطلوب" });
-      }
-
-      const validation = await authService.validateSession(token);
-      if (!validation.valid) {
-        return res.status(401).json({ message: "انتهت صلاحية الجلسة" });
-      }
-
-      const admin = await storage.getAdminById(validation.adminId);
-      if (!admin) {
-        return res.status(404).json({ message: "المدير غير موجود" });
-      }
-
-      res.json({
-        id: admin.id,
-        name: admin.name,
-        email: admin.email,
-        username: admin.username,
-        phone: admin.phone
-      });
-    } catch (error) {
-      console.error('خطأ في جلب الملف الشخصي:', error);
-      res.status(500).json({ message: "خطأ في الخادم" });
-    }
-  });
-
-  app.put("/api/admin/profile", async (req, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.replace("Bearer ", "");
-      
-      if (!token) {
-        return res.status(401).json({ message: "رمز التحقق مطلوب" });
-      }
-
-      const validation = await authService.validateSession(token);
-      if (!validation.valid) {
-        return res.status(401).json({ message: "انتهت صلاحية الجلسة" });
-      }
-
-      const { name, email, username, phone } = req.body;
-      
-      if (!name || !email) {
-        return res.status(400).json({ message: "الاسم والبريد الإلكتروني مطلوبان" });
-      }
-
-      const updatedAdmin = await storage.updateAdmin(validation.adminId, {
-        name,
-        email,
-        username: username || null,
-        phone: phone || null
-      });
-
-      if (!updatedAdmin) {
-        return res.status(404).json({ message: "المدير غير موجود" });
-      }
-
-      res.json({
-        message: "تم تحديث الملف الشخصي بنجاح",
-        admin: {
-          id: updatedAdmin.id,
-          name: updatedAdmin.name,
-          email: updatedAdmin.email,
-          username: updatedAdmin.username,
-          phone: updatedAdmin.phone
-        }
-      });
-    } catch (error) {
-      console.error('خطأ في تحديث الملف الشخصي:', error);
-      res.status(500).json({ message: "خطأ في الخادم" });
-    }
-  });
-
-  app.put("/api/admin/change-password", async (req, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.replace("Bearer ", "");
-      
-      if (!token) {
-        return res.status(401).json({ message: "رمز التحقق مطلوب" });
-      }
-
-      const validation = await authService.validateSession(token);
-      if (!validation.valid) {
-        return res.status(401).json({ message: "انتهت صلاحية الجلسة" });
-      }
-
-      const { currentPassword, newPassword } = req.body;
-      
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({ message: "كلمة المرور الحالية والجديدة مطلوبتان" });
-      }
-
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
-      }
-
-      const admin = await storage.getAdminById(validation.adminId);
-      if (!admin) {
-        return res.status(404).json({ message: "المدير غير موجود" });
-      }
-
-      const isCurrentPasswordValid = await authService.verifyPassword(currentPassword, admin.password);
-      if (!isCurrentPasswordValid) {
-        return res.status(400).json({ message: "كلمة المرور الحالية غير صحيحة" });
-      }
-
-      const hashedNewPassword = await authService.hashPassword(newPassword);
-      const updatedAdmin = await storage.updateAdmin(validation.adminId, {
-        password: hashedNewPassword
-      });
-
-      if (!updatedAdmin) {
-        return res.status(404).json({ message: "المدير غير موجود" });
-      }
-
-      res.json({ message: "تم تغيير كلمة المرور بنجاح" });
-    } catch (error) {
-      console.error('خطأ في تغيير كلمة المرور:', error);
-      res.status(500).json({ message: "خطأ في الخادم" });
-    }
-  });
 
   // Users
   app.get("/api/users/:id", async (req, res) => {
@@ -339,42 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/categories", async (req, res) => {
-    try {
-      const validatedData = insertCategorySchema.parse(req.body);
-      const category = await storage.createCategory(validatedData);
-      res.status(201).json(category);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid category data" });
-    }
-  });
-
-  app.put("/api/categories/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const validatedData = insertCategorySchema.partial().parse(req.body);
-      const category = await storage.updateCategory(id, validatedData);
-      if (!category) {
-        return res.status(404).json({ message: "Category not found" });
-      }
-      res.json(category);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid category data" });
-    }
-  });
-
-  app.delete("/api/categories/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await storage.deleteCategory(id);
-      if (!success) {
-        return res.status(404).json({ message: "Category not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete category" });
-    }
-  });
+  // Category write operations are only available through /api/admin/categories
 
   // Enhanced Restaurants with filtering - مطاعم محسنة مع التصفية
   app.get("/api/restaurants", async (req, res) => {
@@ -424,42 +196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/restaurants", async (req, res) => {
-    try {
-      const validatedData = insertRestaurantSchema.parse(req.body);
-      const restaurant = await storage.createRestaurant(validatedData);
-      res.status(201).json(restaurant);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid restaurant data" });
-    }
-  });
-
-  app.put("/api/restaurants/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const validatedData = insertRestaurantSchema.partial().parse(req.body);
-      const restaurant = await storage.updateRestaurant(id, validatedData);
-      if (!restaurant) {
-        return res.status(404).json({ message: "Restaurant not found" });
-      }
-      res.json(restaurant);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid restaurant data" });
-    }
-  });
-
-  app.delete("/api/restaurants/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await storage.deleteRestaurant(id);
-      if (!success) {
-        return res.status(404).json({ message: "Restaurant not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete restaurant" });
-    }
-  });
+  // Restaurant write operations are only available through /api/admin/restaurants
 
   // Menu Items
   app.get("/api/restaurants/:restaurantId/menu", async (req, res) => {
@@ -472,53 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/menu-items", async (req, res) => {
-    try {
-      const validatedData = insertMenuItemSchema.parse(req.body);
-      const menuItem = await storage.createMenuItem(validatedData);
-      res.status(201).json(menuItem);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: error.issues.map(issue => ({
-            field: issue.path.join('.'),
-            message: issue.message,
-            code: issue.code
-          }))
-        });
-      } else {
-        return res.status(500).json({ message: "Server error", error: error.message });
-      }
-    }
-  });
-
-  app.put("/api/menu-items/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const validatedData = insertMenuItemSchema.partial().parse(req.body);
-      const menuItem = await storage.updateMenuItem(id, validatedData);
-      if (!menuItem) {
-        return res.status(404).json({ message: "Menu item not found" });
-      }
-      res.json(menuItem);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid menu item data" });
-    }
-  });
-
-  app.delete("/api/menu-items/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await storage.deleteMenuItem(id);
-      if (!success) {
-        return res.status(404).json({ message: "Menu item not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete menu item" });
-    }
-  });
+  // Menu item write operations are only available through /api/admin/menu-items
 
   // Orders
   app.get("/api/orders", async (req, res) => {
@@ -662,42 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/special-offers", async (req, res) => {
-    try {
-      const validatedData = insertSpecialOfferSchema.parse(req.body);
-      const offer = await storage.createSpecialOffer(validatedData);
-      res.status(201).json(offer);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid special offer data" });
-    }
-  });
-
-  app.put("/api/special-offers/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const validatedData = insertSpecialOfferSchema.partial().parse(req.body);
-      const offer = await storage.updateSpecialOffer(id, validatedData);
-      if (!offer) {
-        return res.status(404).json({ message: "Special offer not found" });
-      }
-      res.json(offer);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid special offer data" });
-    }
-  });
-
-  app.delete("/api/special-offers/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const success = await storage.deleteSpecialOffer(id);
-      if (!success) {
-        return res.status(404).json({ message: "Special offer not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete special offer" });
-    }
-  });
+  // Special offer write operations are only available through /api/admin/special-offers
 
   // UI Settings Routes
   app.get("/api/ui-settings", async (req, res) => {
@@ -1245,6 +901,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register admin routes
+  app.use("/api/admin", adminRoutes);
+  
   // Register customer routes
   app.use("/api/customer", customerRoutes);
   

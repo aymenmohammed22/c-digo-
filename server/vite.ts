@@ -1,11 +1,11 @@
 // server/vite.ts
-import * as vite from "vite";
+import { createServer } from "vite";
 
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
+import viteConfig from "../vite.config.js";
 import { nanoid } from "nanoid";
 import { fileURLToPath } from "url";
 
@@ -29,7 +29,7 @@ export async function setupVite(app: Express, server: Server) {
   };
 
   // إنشاء Vite server
-  const viteServer = await vite.createServer({
+  const viteServer = await createServer({
     ...viteConfig,
     configFile: path.resolve(__dirname, "..", "client", "vite.config.ts"),
     server: serverOptions,

@@ -143,7 +143,36 @@ export default function AdminMenuItems() {
       return;
     }
 
-    const dataWithRestaurant = { ...formData, restaurantId: selectedRestaurant };
+    // Validate price
+    const price = parseFloat(formData.price);
+    if (isNaN(price) || price <= 0) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال سعر صحيح للوجبة",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate original price if provided
+    if (formData.originalPrice) {
+      const originalPrice = parseFloat(formData.originalPrice);
+      if (isNaN(originalPrice) || originalPrice <= 0) {
+        toast({
+          title: "خطأ",
+          description: "يرجى إدخال السعر الأصلي صحيح",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const dataWithRestaurant = { 
+      ...formData, 
+      restaurantId: selectedRestaurant,
+      // Ensure originalPrice is either null or a valid string
+      originalPrice: formData.originalPrice.trim() || null
+    };
 
     if (editingItem) {
       updateMenuItemMutation.mutate({ id: editingItem.id, data: dataWithRestaurant });
@@ -155,7 +184,13 @@ export default function AdminMenuItems() {
   const toggleItemStatus = (item: MenuItem, field: 'isAvailable' | 'isSpecialOffer') => {
     updateMenuItemMutation.mutate({
       id: item.id,
-      data: { ...formData, [field]: !item[field] }
+      data: { 
+        name: item.name,
+        price: item.price,
+        category: item.category,
+        restaurantId: item.restaurantId,
+        [field]: !item[field] 
+      }
     });
   };
 

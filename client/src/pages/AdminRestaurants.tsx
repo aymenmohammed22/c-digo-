@@ -182,6 +182,37 @@ export default function AdminRestaurants() {
       return;
     }
 
+    if (!formData.deliveryTime.trim()) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال وقت التوصيل",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate numeric fields
+    const deliveryFee = parseFloat(formData.deliveryFee);
+    const minimumOrder = parseFloat(formData.minimumOrder);
+    
+    if (isNaN(deliveryFee) || deliveryFee < 0) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال رسوم توصيل صحيحة",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isNaN(minimumOrder) || minimumOrder < 0) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال حد أدنى للطلب صحيح",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Working days validation
     const workingDaysArray = formData.workingDays.split(',').filter(Boolean);
     if (workingDaysArray.length === 0) {

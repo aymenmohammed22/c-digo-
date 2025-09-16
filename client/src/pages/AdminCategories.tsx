@@ -109,6 +109,15 @@ export default function AdminCategories() {
       return;
     }
 
+    if (!formData.icon) {
+      toast({
+        title: "خطأ",
+        description: "يرجى اختيار أيقونة للقسم",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (editingCategory) {
       updateCategoryMutation.mutate({ id: editingCategory.id, data: formData });
     } else {
@@ -184,7 +193,7 @@ export default function AdminCategories() {
                   onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))}
                   data-testid="select-category-icon"
                 >
-                  <option value="">اختر أيقونة</option>
+                  <option value="">اختر أيقونة *</option>
                   {iconOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}

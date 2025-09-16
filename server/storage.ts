@@ -89,13 +89,13 @@ export interface IStorage {
   // Cart methods
   getCartItems(userId: string): Promise<Cart[]>;
   addToCart(cart: InsertCart): Promise<Cart>;
-  updateCartItem(id: string, updates: Partial<InsertCart>): Promise<Cart | undefined>;
+  updateCartItem(cartId: string, quantity: number): Promise<Cart | undefined>;
   removeFromCart(id: string): Promise<boolean>;
   clearCart(userId: string): Promise<boolean>;
 
   // Favorites methods
-  getFavoriteRestaurants(userId: string): Promise<Favorites[]>;
-  addToFavorites(favorite: InsertFavorites): Promise<Favorites>;
+  getFavoriteRestaurants(userId: string): Promise<Restaurant[]>;
+  addToFavorites(userId: string, restaurantId: string): Promise<Favorites>;
   removeFromFavorites(userId: string, restaurantId: string): Promise<boolean>;
   isRestaurantFavorite(userId: string, restaurantId: string): Promise<boolean>;
 

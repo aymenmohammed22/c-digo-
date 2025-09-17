@@ -5,12 +5,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "./contexts/CartContext";
 import { ThemeProvider } from "./context/ThemeContext";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+// import { AuthProvider, useAuth } from "./context/AuthContext"; // تم حذف نظام المصادقة
 import { LocationProvider, useLocation } from "./context/LocationContext";
 import { UiSettingsProvider } from "./context/UiSettingsContext";
 import { LocationPermissionModal } from "./components/LocationPermissionModal";
 import Layout from "./components/Layout";
-import { LoginPage } from "./pages/LoginPage";
+// import { LoginPage } from "./pages/LoginPage"; // تم حذف صفحات تسجيل الدخول
 import AdminApp from "./pages/AdminApp";
 import { DriverDashboard } from "./pages/DriverDashboard";
 import { useState } from "react";
@@ -28,61 +28,21 @@ import SearchPage from "./pages/SearchPage";
 // Admin pages removed - now handled separately
 import NotFound from "@/pages/not-found";
 
-function AuthenticatedApp() {
-  const { userType, loading } = useAuth();
+function MainApp() {
+  // const { userType, loading } = useAuth(); // تم إزالة نظام المصادقة
   const { location } = useLocation();
   const [showLocationModal, setShowLocationModal] = useState(true);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">جاري التحميل...</p>
-        </div>
-      </div>
-    );
-  }
+  // تم إزالة loading state ومراجع المصادقة
 
-  // Handle admin login route
-  if (window.location.pathname === '/admin-login') {
-    return (
-      <LoginPage 
-        onSuccess={() => {
-          if (userType === 'admin') {
-            window.location.href = '/admin/dashboard';
-          } else if (userType === 'driver') {
-            window.location.href = '/driver/dashboard';
-          } else {
-            window.location.href = '/';
-          }
-        }} 
-      />
-    );
-  }
-
-  // Handle admin routes (completely separate from customer app)
+  // Handle admin routes (direct access without authentication)
   if (window.location.pathname.startsWith('/admin')) {
-    // Direct access to admin panel without authentication
-    return (
-      <AdminApp 
-        onLogout={() => {
-          window.location.href = '/';
-        }} 
-      />
-    );
+    return <AdminApp onLogout={() => window.location.href = '/'} />;
   }
 
-  // Handle driver routes (completely separate from customer app)
-  if (window.location.pathname.startsWith('/driver/')) {
-    // Direct access to delivery app without authentication
-    return (
-      <DriverDashboard 
-        onLogout={() => {
-          window.location.href = '/';
-        }} 
-      />
-    );
+  // Handle driver routes (direct access without authentication)  
+  if (window.location.pathname.startsWith('/driver')) {
+    return <DriverDashboard onLogout={() => window.location.href = '/'} />;
   }
 
   // Remove admin/driver routes from customer app routing
@@ -140,12 +100,10 @@ function App() {
         <ThemeProvider>
           <UiSettingsProvider>
             <LocationProvider>
-              <AuthProvider>
-                <CartProvider>
-                  <Toaster />
-                  <AuthenticatedApp />
-                </CartProvider>
-              </AuthProvider>
+              <CartProvider>
+                <Toaster />
+                <MainApp />
+              </CartProvider>
             </LocationProvider>
           </UiSettingsProvider>
         </ThemeProvider>

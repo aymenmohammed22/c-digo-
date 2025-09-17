@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Package, Save, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Save, X, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,13 +34,30 @@ export default function AdminMenuItems() {
     restaurantId: '',
   });
 
-  const { data: restaurants } = useQuery<Restaurant[]>({
+  // استعلام المطاعم مع معالجة الأخطاء
+  const { 
+    data: restaurants, 
+    error: restaurantsError, 
+    isLoading: isLoadingRestaurants,
+    refetch: refetchRestaurants 
+  } = useQuery<Restaurant[]>({
     queryKey: ['/api/admin/restaurants'],
+    retry: 3,
+    retryDelay: 1000,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: menuItems, isLoading } = useQuery<MenuItem[]>({
+  // استعلام الوجبات مع معالجة الأخطاء
+  const { 
+    data: menuItems, 
+    error: menuItemsError, 
+    isLoading: isLoadingMenuItems,
+    refetch: refetchMenuItems 
+  } = useQuery<MenuItem[]>({
     queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`],
     enabled: !!selectedRestaurant,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const createMenuItemMutation = useMutation({
@@ -51,6 +68,9 @@ export default function AdminMenuItems() {
         originalPrice: data.originalPrice ? parseFloat(data.originalPrice) : null,
       };
       const response = await apiRequest('POST', '/api/admin/menu-items', submitData);
+      if (!response.ok) {
+        throw new Error(`فشل في إنشاء الوجبة: ${response.status}`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -62,6 +82,13 @@ export default function AdminMenuItems() {
       resetForm();
       setIsDialogOpen(false);
     },
+    onError: (error: Error) => {
+      toast({
+        title: "خطأ",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const updateMenuItemMutation = useMutation({
@@ -72,6 +99,9 @@ export default function AdminMenuItems() {
         originalPrice: data.originalPrice ? parseFloat(data.originalPrice) : null,
       };
       const response = await apiRequest('PUT', `/api/admin/menu-items/${id}`, submitData);
+      if (!response.ok) {
+        throw new Error(`فشل في تحديث الوجبة: ${response.status}`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -84,11 +114,21 @@ export default function AdminMenuItems() {
       setEditingItem(null);
       setIsDialogOpen(false);
     },
+    onError: (error: Error) => {
+      toast({
+        title: "خطأ",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteMenuItemMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await apiRequest('DELETE', `/api/admin/menu-items/${id}`);
+      if (!response.ok) {
+        throw new Error(`فشل في حذف الوجبة: ${response.status}`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -96,6 +136,13 @@ export default function AdminMenuItems() {
       toast({
         title: "تم حذف الوجبة",
         description: "تم حذف الوجبة بنجاح",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "خطأ",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -120,13 +167,13 @@ export default function AdminMenuItems() {
     setFormData({
       name: item.name,
       description: item.description || '',
-      price: item.price,
-      originalPrice: item.originalPrice || '',
+      price: item.price.toString(),
+      originalPrice: item.originalPrice?.toString() || '',
       image: item.image,
       category: item.category,
       isAvailable: item.isAvailable,
       isSpecialOffer: item.isSpecialOffer,
-      restaurantId: item.restaurantId || '',
+      restaurantId: item.restaurantId || selectedRestaurant,
     });
     setIsDialogOpen(true);
   };
@@ -143,7 +190,6 @@ export default function AdminMenuItems() {
       return;
     }
 
-    // Validate price
     const price = parseFloat(formData.price);
     if (isNaN(price) || price <= 0) {
       toast({
@@ -154,7 +200,6 @@ export default function AdminMenuItems() {
       return;
     }
 
-    // Validate original price if provided
     if (formData.originalPrice) {
       const originalPrice = parseFloat(formData.originalPrice);
       if (isNaN(originalPrice) || originalPrice <= 0) {
@@ -170,7 +215,6 @@ export default function AdminMenuItems() {
     const dataWithRestaurant = { 
       ...formData, 
       restaurantId: selectedRestaurant,
-      // Ensure originalPrice is either null or a valid string
       originalPrice: formData.originalPrice.trim() || null
     };
 
@@ -185,10 +229,9 @@ export default function AdminMenuItems() {
     updateMenuItemMutation.mutate({
       id: item.id,
       data: { 
-        name: item.name,
-        price: item.price,
-        category: item.category,
-        restaurantId: item.restaurantId,
+        ...item,
+        price: item.price.toString(),
+        originalPrice: item.originalPrice?.toString() || null,
         [field]: !item[field] 
       }
     });
@@ -205,11 +248,26 @@ export default function AdminMenuItems() {
     'أخرى'
   ];
 
-  const parseDecimal = (value: string | null): number => {
-    if (!value) return 0;
-    const num = parseFloat(value);
+  const parseDecimal = (value: string | number | null | undefined): number => {
+    if (value === null || value === undefined) return 0;
+    const num = typeof value === 'string' ? parseFloat(value) : value;
     return isNaN(num) ? 0 : num;
   };
+
+  // عرض رسائل الخطأ
+  if (restaurantsError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <Package className="h-16 w-16 text-destructive mb-4" />
+        <h3 className="text-lg font-semibold text-foreground mb-2">خطأ في تحميل المطاعم</h3>
+        <p className="text-muted-foreground mb-4">{restaurantsError.message}</p>
+        <Button onClick={() => refetchRestaurants()} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          إعادة المحاولة
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -224,9 +282,13 @@ export default function AdminMenuItems() {
         </div>
         
         <div className="flex items-center gap-3">
-          <Select value={selectedRestaurant} onValueChange={setSelectedRestaurant}>
+          <Select 
+            value={selectedRestaurant} 
+            onValueChange={setSelectedRestaurant}
+            disabled={isLoadingRestaurants}
+          >
             <SelectTrigger className="w-48" data-testid="select-restaurant">
-              <SelectValue placeholder="اختر مطعم" />
+              <SelectValue placeholder={isLoadingRestaurants ? "جاري تحميل المطاعم..." : "اختر مطعم"} />
             </SelectTrigger>
             <SelectContent>
               {restaurants?.map((restaurant) => (
@@ -245,7 +307,7 @@ export default function AdminMenuItems() {
                   resetForm();
                   setIsDialogOpen(true);
                 }}
-                disabled={!selectedRestaurant}
+                disabled={!selectedRestaurant || isLoadingRestaurants}
                 data-testid="button-add-menu-item"
               >
                 <Plus className="h-4 w-4" />
@@ -394,8 +456,18 @@ export default function AdminMenuItems() {
         </div>
       </div>
 
+      {/* رسائل التحميل والخطأ */}
+      {isLoadingRestaurants && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">جاري تحميل المطاعم...</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Restaurant Selection Message */}
-      {!selectedRestaurant && (
+      {!selectedRestaurant && !isLoadingRestaurants && (
         <Card>
           <CardContent className="p-8 text-center">
             <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -405,10 +477,25 @@ export default function AdminMenuItems() {
         </Card>
       )}
 
+      {/* رسائل خطأ الوجبات */}
+      {selectedRestaurant && menuItemsError && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Package className="h-16 w-16 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">خطأ في تحميل الوجبات</h3>
+            <p className="text-muted-foreground mb-4">{menuItemsError.message}</p>
+            <Button onClick={() => refetchMenuItems()} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              إعادة المحاولة
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Menu Items Grid */}
-      {selectedRestaurant && (
+      {selectedRestaurant && !menuItemsError && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isLoading ? (
+          {isLoadingMenuItems ? (
             [...Array(6)].map((_, i) => (
               <Card key={i} className="animate-pulse">
                 <div className="w-full h-48 bg-muted" />
@@ -427,6 +514,9 @@ export default function AdminMenuItems() {
                       src={item.image} 
                       alt={item.name}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   ) : (
                     <Package className="h-16 w-16 text-primary/50" />
@@ -536,7 +626,7 @@ export default function AdminMenuItems() {
                 </CardContent>
               </Card>
             ))
-          ) : selectedRestaurant ? (
+          ) : selectedRestaurant && !isLoadingMenuItems ? (
             <div className="col-span-full text-center py-12">
               <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">لا توجد وجبات</h3>

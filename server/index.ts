@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./viteServer";
+import { seedDefaultData } from "./seed";
+import { storage } from "./storage";
 
 const app = express();
 app.use(express.json());
@@ -56,6 +58,12 @@ app.use((req, res, next) => {
       res.status(status).json({ message });
       throw err;
     });
+
+    // Seed database with default data if using DatabaseStorage
+    if (storage.constructor.name === 'DatabaseStorage') {
+      log('🌱 Seeding database with default data...');
+      await seedDefaultData();
+    }
 
     if (app.get("env") === "development") {
       await setupVite(app, server);

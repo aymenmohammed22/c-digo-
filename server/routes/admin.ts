@@ -36,6 +36,61 @@ const router = express.Router();
 const dbStorage = new DatabaseStorage();
 const db = dbStorage.db;
 
+// Helper function to coerce request data for proper Zod validation
+function coerceRequestData(data: any) {
+  const coerced = { ...data };
+  
+  // Convert decimal fields to strings (Zod expects strings for decimal fields)
+  ['minimumOrder', 'deliveryFee', 'latitude', 'longitude', 'discountAmount', 'rating'].forEach(field => {
+    if (coerced[field] !== undefined && coerced[field] !== null && coerced[field] !== '') {
+      coerced[field] = String(coerced[field]);
+    } else {
+      coerced[field] = undefined; // Use undefined instead of null for optional fields
+    }
+  });
+  
+  // Convert integer fields properly
+  ['reviewCount', 'discountPercent'].forEach(field => {
+    if (coerced[field] !== undefined && coerced[field] !== null && coerced[field] !== '') {
+      const parsed = parseInt(coerced[field]);
+      coerced[field] = isNaN(parsed) ? undefined : parsed;
+    } else {
+      coerced[field] = undefined;
+    }
+  });
+  
+  // Properly parse boolean fields
+  ['isOpen', 'isActive', 'isFeatured', 'isNew', 'isTemporarilyClosed'].forEach(field => {
+    if (coerced[field] !== undefined && coerced[field] !== null) {
+      const value = coerced[field];
+      if (typeof value === 'string') {
+        coerced[field] = value === 'true' || value === '1';
+      } else if (typeof value === 'number') {
+        coerced[field] = !!value;
+      } else {
+        coerced[field] = Boolean(value);
+      }
+    }
+  });
+  
+  // Parse date fields
+  if (coerced.validUntil !== undefined && coerced.validUntil !== null && coerced.validUntil !== '') {
+    const date = new Date(coerced.validUntil);
+    coerced.validUntil = isNaN(date.getTime()) ? undefined : date;
+  } else {
+    coerced.validUntil = undefined;
+  }
+  
+  // Convert optional text/UUID fields to undefined instead of null
+  ['categoryId', 'temporaryCloseReason', 'address'].forEach(field => {
+    if (coerced[field] === null || coerced[field] === '') {
+      coerced[field] = undefined;
+    }
+  });
+  
+  return coerced;
+}
+
 // Schema object for direct database operations
 const schema = {
   adminUsers,
@@ -264,30 +319,58 @@ router.get("/restaurants", async (req, res) => {
 
 router.post("/restaurants", async (req, res) => {
   try {
-    // التحقق من صحة البيانات مع إضافة الحقول المطلوبة
-    const validatedData = insertRestaurantSchema.parse({
-      ...req.body,
-      // إضافة صورة افتراضية إذا لم تكن موجودة
-      image: req.body.image || "https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg",
-      // إضافة وقت التسليم الافتراضي إذا لم يكن موجود
-      deliveryTime: req.body.deliveryTime || "30-45 دقيقة",
-      // التأكد من الحقول الافتراضية
-      openingTime: req.body.openingTime || "08:00",
-      closingTime: req.body.closingTime || "23:00",
-      workingDays: req.body.workingDays || "0,1,2,3,4,5,6",
-      minimumOrder: req.body.minimumOrder || "0",
-      deliveryFee: req.body.deliveryFee || "0",
-      isOpen: req.body.isOpen !== undefined ? req.body.isOpen : true,
-      isActive: req.body.isActive !== undefined ? req.body.isActive : true,
-      isFeatured: req.body.isFeatured !== undefined ? req.body.isFeatured : false,
-      isNew: req.body.isNew !== undefined ? req.body.isNew : false,
-      isTemporarilyClosed: req.body.isTemporarilyClosed !== undefined ? req.body.isTemporarilyClosed : false
-    });
+    console.log("Restaurant creation request data:", req.body);
+    
+    // تنظيف وتحويل البيانات باستخدام helper function
+    const coercedData = coerceRequestData(req.body);
+    
+    // تقديم قيم افتراضية للحقول المطلوبة
+    const restaurantData = {
+      // الحقول المطلوبة
+      name: coercedData.name || "مطعم جديد",
+      description: coercedData.description || "وصف المطعم",
+      image: coercedData.image || "https://images.pexels.com/photos/262978/pexels-photo-262978.jpeg",
+      deliveryTime: coercedData.deliveryTime || "30-45 دقيقة",
+      
+      // الحقول الاختيارية مع قيم افتراضية
+      rating: coercedData.rating || "0.0",
+      reviewCount: coercedData.reviewCount || 0,
+      minimumOrder: coercedData.minimumOrder || "0",
+      deliveryFee: coercedData.deliveryFee || "0",
+      categoryId: coercedData.categoryId,
+      
+      // أوقات العمل
+      openingTime: coercedData.openingTime || "08:00",
+      closingTime: coercedData.closingTime || "23:00",
+      workingDays: coercedData.workingDays || "0,1,2,3,4,5,6",
+      
+      // حالات المطعم (الآن مع تحويل صحيح للبوليان)
+      isOpen: coercedData.isOpen !== undefined ? coercedData.isOpen : true,
+      isActive: coercedData.isActive !== undefined ? coercedData.isActive : true,
+      isFeatured: coercedData.isFeatured !== undefined ? coercedData.isFeatured : false,
+      isNew: coercedData.isNew !== undefined ? coercedData.isNew : false,
+      isTemporarilyClosed: coercedData.isTemporarilyClosed !== undefined ? coercedData.isTemporarilyClosed : false,
+      temporaryCloseReason: coercedData.temporaryCloseReason,
+      
+      // الموقع (الآن مع تحويل صحيح للأرقام العشرية)
+      latitude: coercedData.latitude,
+      longitude: coercedData.longitude,
+      address: coercedData.address,
+      
+      // حقول التوقيت (سيتم إضافتها تلقائياً بواسطة قاعدة البيانات)
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    console.log("Processed restaurant data:", restaurantData);
+    
+    const validatedData = insertRestaurantSchema.parse(restaurantData);
     
     const newRestaurant = await storage.createRestaurant(validatedData);
     res.status(201).json(newRestaurant);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Restaurant validation errors:", error.errors);
       return res.status(400).json({ 
         error: "بيانات المطعم غير صحيحة", 
         details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
@@ -302,8 +385,11 @@ router.put("/restaurants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
+    // تطبيق coercion على البيانات المحدثة أيضاً
+    const coercedData = coerceRequestData(req.body);
+    
     // التحقق من صحة البيانات المحدثة (جزئي)
-    const validatedData = insertRestaurantSchema.partial().parse(req.body);
+    const validatedData = insertRestaurantSchema.partial().parse(coercedData);
     
     const updatedRestaurant = await storage.updateRestaurant(id, {
       ...validatedData, 
@@ -653,20 +739,42 @@ router.get("/special-offers", async (req, res) => {
 
 router.post("/special-offers", async (req, res) => {
   try {
-    // التحقق من صحة البيانات مع الحقول المطلوبة
-    const validatedData = insertSpecialOfferSchema.parse({
-      ...req.body,
-      // إضافة صورة افتراضية إذا لم تكن موجودة
-      image: req.body.image || "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg",
-      // التأكد من وجود الحقول الافتراضية
-      minimumOrder: req.body.minimumOrder || "0",
-      isActive: req.body.isActive !== undefined ? req.body.isActive : true
-    });
+    console.log("Special offer creation request data:", req.body);
+    
+    // تنظيف وتحويل البيانات باستخدام helper function
+    const coercedData = coerceRequestData(req.body);
+    
+    // تقديم قيم افتراضية للحقول المطلوبة
+    const offerData = {
+      // الحقول المطلوبة
+      title: coercedData.title || "عرض خاص جديد",
+      description: coercedData.description || "وصف العرض الخاص",
+      image: coercedData.image || "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg",
+      
+      // تفاصيل الخصم (الآن مع تحويل صحيح للأنواع)
+      discountPercent: coercedData.discountPercent,
+      discountAmount: coercedData.discountAmount,
+      minimumOrder: coercedData.minimumOrder || "0",
+      
+      // صلاحية العرض (الآن مع معالجة صحيحة للتاريخ)
+      validUntil: coercedData.validUntil,
+      
+      // حالة العرض (الآن مع تحويل صحيح للبوليان)
+      isActive: coercedData.isActive !== undefined ? coercedData.isActive : true,
+      
+      // حقول التوقيت
+      createdAt: new Date()
+    };
+    
+    console.log("Processed special offer data:", offerData);
+    
+    const validatedData = insertSpecialOfferSchema.parse(offerData);
     
     const newOffer = await storage.createSpecialOffer(validatedData);
     res.status(201).json(newOffer);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Special offer validation errors:", error.errors);
       return res.status(400).json({ 
         error: "بيانات العرض الخاص غير صحيحة", 
         details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
@@ -681,8 +789,11 @@ router.put("/special-offers/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
+    // تطبيق coercion على البيانات المحدثة أيضاً
+    const coercedData = coerceRequestData(req.body);
+    
     // التحقق من صحة البيانات المحدثة (جزئي)
-    const validatedData = insertSpecialOfferSchema.partial().parse(req.body);
+    const validatedData = insertSpecialOfferSchema.partial().parse(coercedData);
     
     const updatedOffer = await storage.updateSpecialOffer(id, validatedData);
     

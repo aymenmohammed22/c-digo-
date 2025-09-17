@@ -1,7 +1,7 @@
 import express from "express";
 import { storage } from "../storage";
-import { unifiedAuthService } from "../auth";
-import bcrypt from "bcryptjs";
+// تم حذف نظام المصادقة
+// تم حذف bcrypt - لا حاجة لتشفير كلمات المرور بعد إزالة نظام المصادقة
 import { z } from "zod";
 import { eq, and, desc, sql, or, like, asc, inArray } from "drizzle-orm";
 import {
@@ -12,7 +12,7 @@ import {
   insertDriverSchema,
   insertMenuItemSchema,
   adminUsers,
-  adminSessions,
+  // تم حذف adminSessions
   categories,
   restaurantSections,
   restaurants,
@@ -39,7 +39,7 @@ const db = dbStorage.db;
 // Schema object for direct database operations
 const schema = {
   adminUsers,
-  adminSessions,
+  // تم حذف adminSessions من schema object
   categories,
   restaurantSections,
   restaurants,
@@ -58,110 +58,12 @@ const schema = {
   favorites
 };
 
-// Middleware للتحقق من صلاحيات المدير
-const requireAdmin = async (req: any, res: any, next: any) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: "غير مصرح" });
-    }
+// تم حذف middleware المصادقة - يمكن الوصول المباشر للبيانات بدون مصادقة
 
-    const token = authHeader.split(' ')[1];
-    const validation = await unifiedAuthService.validateSession(token);
-
-    if (!validation.valid || validation.userType !== 'admin') {
-      return res.status(401).json({ error: "جلسة منتهية الصلاحية أو صلاحيات غير كافية" });
-    }
-
-    req.admin = { id: validation.adminId, userType: validation.userType };
-    next();
-  } catch (error) {
-    console.error("خطأ في التحقق من صلاحيات المدير:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-};
-
-// تسجيل دخول المدير
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: "البريد الإلكتروني وكلمة المرور مطلوبان" });
-    }
-
-    // Use AuthService for login
-    const loginResult = await unifiedAuthService.login(email, password, 'admin');
-    
-    if (loginResult.success) {
-      res.json({
-        success: true,
-        token: loginResult.token,
-        userType: loginResult.userType,
-        message: "تم تسجيل الدخول بنجاح"
-      });
-    } else {
-      res.status(401).json({ message: loginResult.message });
-    }
-  } catch (error) {
-    console.error("خطأ في تسجيل دخول المدير:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-// التحقق من صحة الرمز المميز
-router.post("/verify-token", async (req, res) => {
-  try {
-    const { token } = req.body;
-    
-    if (!token) {
-      return res.status(400).json({ error: "الرمز المميز مطلوب" });
-    }
-
-    const validation = await unifiedAuthService.validateSession(token);
-    
-    if (validation.valid) {
-      const admin = await storage.getAdminById(validation.adminId!);
-      res.json({
-        success: true,
-        userType: validation.userType,
-        adminId: validation.adminId,
-        name: admin?.name || 'مدير النظام',
-        email: admin?.email
-      });
-    } else {
-      res.status(401).json({ error: "رمز غير صحيح أو منتهي الصلاحية" });
-    }
-  } catch (error) {
-    console.error("خطأ في التحقق من الرمز المميز:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-// تسجيل خروج المدير
-router.post("/logout", requireAdmin, async (req: any, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ')[1];
-    
-    if (token) {
-      // Properly revoke the session for security
-      const logoutResult = await unifiedAuthService.logout(token);
-      
-      if (!logoutResult) {
-        console.warn("Failed to revoke session on logout, but proceeding with logout");
-      }
-    }
-
-    res.json({ success: true, message: "تم تسجيل الخروج بنجاح" });
-  } catch (error) {
-    console.error("خطأ في تسجيل الخروج:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
+// تم حذف جميع عمليات المصادقة - الوصول مباشر للبيانات بدون مصادقة
 
 // لوحة المعلومات
-router.get("/dashboard", requireAdmin, async (req, res) => {
+router.get("/dashboard", async (req, res) => {
   try {
     // جلب البيانات من قاعدة البيانات
     const [restaurants, orders, drivers, users] = await Promise.all([
@@ -230,7 +132,7 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
 });
 
 // إدارة التصنيفات
-router.get("/categories", requireAdmin, async (req, res) => {
+router.get("/categories", async (req, res) => {
   try {
     const categories = await storage.getCategories();
     // ترتيب التصنيفات حسب sortOrder ثم الاسم
@@ -249,7 +151,7 @@ router.get("/categories", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/categories", requireAdmin, async (req, res) => {
+router.post("/categories", async (req, res) => {
   try {
     // التحقق من صحة البيانات مع الحقول المطلوبة
     const validatedData = insertCategorySchema.parse({
@@ -273,7 +175,7 @@ router.post("/categories", requireAdmin, async (req, res) => {
   }
 });
 
-router.put("/categories/:id", requireAdmin, async (req, res) => {
+router.put("/categories/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -302,7 +204,7 @@ router.put("/categories/:id", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/categories/:id", requireAdmin, async (req, res) => {
+router.delete("/categories/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -320,7 +222,7 @@ router.delete("/categories/:id", requireAdmin, async (req, res) => {
 });
 
 // إدارة المطاعم
-router.get("/restaurants", requireAdmin, async (req, res) => {
+router.get("/restaurants", async (req, res) => {
   try {
     const { page = 1, limit = 10, search, categoryId } = req.query;
     
@@ -360,7 +262,7 @@ router.get("/restaurants", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/restaurants", requireAdmin, async (req, res) => {
+router.post("/restaurants", async (req, res) => {
   try {
     // التحقق من صحة البيانات مع إضافة الحقول المطلوبة
     const validatedData = insertRestaurantSchema.parse({
@@ -396,7 +298,7 @@ router.post("/restaurants", requireAdmin, async (req, res) => {
   }
 });
 
-router.put("/restaurants/:id", requireAdmin, async (req, res) => {
+router.put("/restaurants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -425,7 +327,7 @@ router.put("/restaurants/:id", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/restaurants/:id", requireAdmin, async (req, res) => {
+router.delete("/restaurants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -443,7 +345,7 @@ router.delete("/restaurants/:id", requireAdmin, async (req, res) => {
 });
 
 // إدارة عناصر القائمة
-router.get("/restaurants/:restaurantId/menu", requireAdmin, async (req, res) => {
+router.get("/restaurants/:restaurantId/menu", async (req, res) => {
   try {
     const { restaurantId } = req.params;
     
@@ -459,7 +361,7 @@ router.get("/restaurants/:restaurantId/menu", requireAdmin, async (req, res) => 
   }
 });
 
-router.post("/menu-items", requireAdmin, async (req, res) => {
+router.post("/menu-items", async (req, res) => {
   try {
     // التحقق من صحة البيانات
     const validatedData = insertMenuItemSchema.parse({
@@ -482,7 +384,7 @@ router.post("/menu-items", requireAdmin, async (req, res) => {
   }
 });
 
-router.put("/menu-items/:id", requireAdmin, async (req, res) => {
+router.put("/menu-items/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -508,7 +410,7 @@ router.put("/menu-items/:id", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/menu-items/:id", requireAdmin, async (req, res) => {
+router.delete("/menu-items/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -526,7 +428,7 @@ router.delete("/menu-items/:id", requireAdmin, async (req, res) => {
 });
 
 // إدارة الطلبات
-router.get("/orders", requireAdmin, async (req, res) => {
+router.get("/orders", async (req, res) => {
   try {
     const { page = 1, limit = 20, status, search } = req.query;
 
@@ -571,7 +473,7 @@ router.get("/orders", requireAdmin, async (req, res) => {
   }
 });
 
-router.put("/orders/:id/status", requireAdmin, async (req: any, res) => {
+router.put("/orders/:id/status", async (req: any, res) => {
   try {
     const { id } = req.params;
     const { status, driverId } = req.body;
@@ -602,7 +504,7 @@ router.put("/orders/:id/status", requireAdmin, async (req: any, res) => {
 });
 
 // إدارة السائقين
-router.get("/drivers", requireAdmin, async (req, res) => {
+router.get("/drivers", async (req, res) => {
   try {
     const drivers = await storage.getDrivers();
     
@@ -618,13 +520,11 @@ router.get("/drivers", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/drivers", requireAdmin, async (req, res) => {
+router.post("/drivers", async (req, res) => {
   try {
     // التحقق من صحة البيانات مع الحقول المطلوبة
     const validatedData = insertDriverSchema.parse({
       ...req.body,
-      // تشفير كلمة المرور
-      password: await bcrypt.hash(req.body.password, 10),
       // التأكد من وجود الحقول الافتراضية
       isAvailable: req.body.isAvailable !== undefined ? req.body.isAvailable : true,
       isActive: req.body.isActive !== undefined ? req.body.isActive : true,
@@ -632,10 +532,7 @@ router.post("/drivers", requireAdmin, async (req, res) => {
     });
     
     const newDriver = await storage.createDriver(validatedData);
-    
-    // إخفاء كلمة المرور في الاستجابة
-    const { password, ...driverWithoutPassword } = newDriver;
-    res.status(201).json(driverWithoutPassword);
+    res.status(201).json(newDriver);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -648,20 +545,12 @@ router.post("/drivers", requireAdmin, async (req, res) => {
   }
 });
 
-router.put("/drivers/:id", requireAdmin, async (req, res) => {
+router.put("/drivers/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
-    // إعداد البيانات للتحديث
-    const updateData = { ...req.body };
-    
-    // تشفير كلمة المرور الجديدة إذا تم تقديمها
-    if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
-    }
-    
     // التحقق من صحة البيانات المحدثة (جزئي)
-    const validatedData = insertDriverSchema.partial().parse(updateData);
+    const validatedData = insertDriverSchema.partial().parse(req.body);
     
     const updatedDriver = await storage.updateDriver(id, validatedData);
     
@@ -669,9 +558,7 @@ router.put("/drivers/:id", requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "السائق غير موجود" });
     }
     
-    // إخفاء كلمة المرور في الاستجابة
-    const { password, ...driverWithoutPassword } = updatedDriver;
-    res.json(driverWithoutPassword);
+    res.json(updatedDriver);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ 
@@ -684,7 +571,7 @@ router.put("/drivers/:id", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/drivers/:id", requireAdmin, async (req, res) => {
+router.delete("/drivers/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -702,7 +589,7 @@ router.delete("/drivers/:id", requireAdmin, async (req, res) => {
 });
 
 // إحصائيات السائق
-router.get("/drivers/:id/stats", requireAdmin, async (req, res) => {
+router.get("/drivers/:id/stats", async (req, res) => {
   try {
     const { id } = req.params;
     const { startDate, endDate } = req.query;
@@ -748,7 +635,7 @@ router.get("/drivers/:id/stats", requireAdmin, async (req, res) => {
 });
 
 // إدارة العروض الخاصة
-router.get("/special-offers", requireAdmin, async (req, res) => {
+router.get("/special-offers", async (req, res) => {
   try {
     const offers = await storage.getSpecialOffers();
     
@@ -764,7 +651,7 @@ router.get("/special-offers", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/special-offers", requireAdmin, async (req, res) => {
+router.post("/special-offers", async (req, res) => {
   try {
     // التحقق من صحة البيانات مع الحقول المطلوبة
     const validatedData = insertSpecialOfferSchema.parse({
@@ -790,7 +677,7 @@ router.post("/special-offers", requireAdmin, async (req, res) => {
   }
 });
 
-router.put("/special-offers/:id", requireAdmin, async (req, res) => {
+router.put("/special-offers/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -816,7 +703,7 @@ router.put("/special-offers/:id", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/special-offers/:id", requireAdmin, async (req, res) => {
+router.delete("/special-offers/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -834,7 +721,7 @@ router.delete("/special-offers/:id", requireAdmin, async (req, res) => {
 });
 
 // إدارة الإشعارات
-router.post("/notifications", requireAdmin, async (req: any, res) => {
+router.post("/notifications", async (req: any, res) => {
   try {
     const notificationData = {
       ...req.body,
@@ -853,7 +740,7 @@ router.post("/notifications", requireAdmin, async (req: any, res) => {
 });
 
 // إعدادات النظام
-router.get("/settings", requireAdmin, async (req, res) => {
+router.get("/settings", async (req, res) => {
   try {
     const settings = await db.select()
       .from(schema.systemSettings)
@@ -865,7 +752,7 @@ router.get("/settings", requireAdmin, async (req, res) => {
   }
 });
 
-router.put("/settings/:key", requireAdmin, async (req, res) => {
+router.put("/settings/:key", async (req, res) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
@@ -899,7 +786,7 @@ router.get("/ui-settings", async (req, res) => {
 });
 
 // تحديث أوقات العمل
-router.put("/business-hours", requireAdmin, async (req, res) => {
+router.put("/business-hours", async (req, res) => {
   try {
     const { opening_time, closing_time, store_status } = req.body;
     
@@ -939,7 +826,7 @@ router.put("/business-hours", requireAdmin, async (req, res) => {
 });
 
 // إدارة المستخدمين الموحدة (عملاء، سائقين، مديرين)
-router.get("/users", requireAdmin, async (req, res) => {
+router.get("/users", async (req, res) => {
   try {
     // جلب العملاء
     const customers = await db.select({
@@ -976,10 +863,10 @@ router.get("/users", requireAdmin, async (req, res) => {
   }
 });
 
-router.patch("/users/:id", requireAdmin, async (req, res) => {
+router.patch("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, password, role, isActive } = req.body;
+    const { name, email, phone, role, isActive } = req.body;
     
     // تحديد الجدول بناءً على الدور الجديد أو الحالي
     let targetTable = 'customers';
@@ -1021,11 +908,7 @@ router.patch("/users/:id", requireAdmin, async (req, res) => {
     if (phone) updateData.phone = phone;
     if (isActive !== undefined) updateData.isActive = isActive;
     
-    // تحديث كلمة المرور إذا تم توفيرها
-    if (password && password.trim()) {
-      const bcrypt = await import('bcrypt');
-      updateData.password = await bcrypt.hash(password, 10);
-    }
+    // تم حذف منطق كلمة المرور
 
     let updatedUser;
     
@@ -1034,14 +917,10 @@ router.patch("/users/:id", requireAdmin, async (req, res) => {
       // إذا كان المستخدم عميل ونريد جعله سائق/مدير
       if (targetTable === 'customers' && (role === 'driver' || role === 'admin')) {
         // إنشاء مستخدم جديد في جدول adminUsers
-        const bcrypt = await import('bcrypt');
-        const hashedPassword = password ? await bcrypt.hash(password, 10) : await bcrypt.hash('123456', 10);
-        
         const [newAdminUser] = await db.insert(schema.adminUsers).values({
           name: name || currentUser.name,
           email: email || currentUser.email,
           phone: phone || currentUser.phone,
-          password: hashedPassword,
           userType: role,
           isActive: isActive !== undefined ? isActive : currentUser.isActive
         }).returning();
@@ -1054,15 +933,11 @@ router.patch("/users/:id", requireAdmin, async (req, res) => {
       // إذا كان سائق/مدير ونريد جعله عميل
       else if (targetTable === 'adminUsers' && role === 'customer') {
         // إنشاء عميل جديد
-        const bcrypt = await import('bcrypt');
-        const hashedPassword = password ? await bcrypt.hash(password, 10) : await bcrypt.hash('123456', 10);
-        
         const [newCustomer] = await db.insert(schema.customers).values({
           name: name || currentUser.name,
           username: (email || currentUser.email).split('@')[0], // استخدام الجزء الأول من البريد كـ username
           email: email || currentUser.email,
           phone: phone || currentUser.phone,
-          password: hashedPassword,
           isActive: isActive !== undefined ? isActive : currentUser.isActive
         }).returning();
         
@@ -1116,7 +991,7 @@ router.patch("/users/:id", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/users/:id", requireAdmin, async (req, res) => {
+router.delete("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -1162,7 +1037,7 @@ router.delete("/users/:id", requireAdmin, async (req, res) => {
 });
 
 // إدارة الملف الشخصي للمدير
-router.get("/profile", requireAdmin, async (req: any, res) => {
+router.get("/profile", async (req: any, res) => {
   try {
     const admin = req.admin;
     // إرجاع بيانات المدير (بدون كلمة المرور)
@@ -1185,7 +1060,7 @@ router.get("/profile", requireAdmin, async (req: any, res) => {
 });
 
 // تحديث الملف الشخصي للمدير
-router.put("/profile", requireAdmin, async (req: any, res) => {
+router.put("/profile", async (req: any, res) => {
   try {
     const { name, email, username, phone } = req.body;
     const adminId = req.admin.id;
@@ -1240,44 +1115,6 @@ router.put("/profile", requireAdmin, async (req: any, res) => {
   }
 });
 
-// تغيير كلمة المرور للمدير
-router.put("/change-password", requireAdmin, async (req: any, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    const adminId = req.admin.id;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: "كلمة المرور الحالية والجديدة مطلوبتان" });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
-    }
-
-    // Get current admin/driver info from storage
-    const currentDriver = await storage.getDriver(adminId);
-    if (!currentDriver) {
-      return res.status(404).json({ error: "المدير غير موجود" });
-    }
-
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, currentDriver.password);
-    if (!isCurrentPasswordValid) {
-      return res.status(400).json({ error: "كلمة المرور الحالية غير صحيحة" });
-    }
-
-    // تشفير كلمة المرور الجديدة
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    // تحديث كلمة المرور باستخدام storage interface
-    await storage.updateDriver(adminId, {
-      password: hashedNewPassword
-    });
-
-    res.json({ message: "تم تغيير كلمة المرور بنجاح" });
-  } catch (error) {
-    console.error("خطأ في تغيير كلمة المرور:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
+// تم حذف مسار تغيير كلمة المرور - لا حاجة له بعد إزالة نظام المصادقة
 
 export { router as adminRoutes };

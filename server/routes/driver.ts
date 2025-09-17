@@ -1,153 +1,62 @@
 import express from "express";
-import { dbStorage } from "../db.js";
-import * as schema from "../../shared/schema.js";
-import { eq, desc, and, or, sql } from "drizzle-orm";
-import bcrypt from "bcrypt";
+import { storage } from "../storage";
+import { z } from "zod";
 
 const router = express.Router();
 
-// Middleware للتحقق من صلاحيات السائق
-const requireDriver = async (req: any, res: any, next: any) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: "غير مصرح" });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const session = await dbStorage.db.query.adminSessions.findFirst({
-      where: eq(schema.adminSessions.token, token),
-    });
-
-    if (!session || session.expiresAt < new Date()) {
-      return res.status(401).json({ error: "جلسة منتهية الصلاحية" });
-    }
-
-    const driver = await dbStorage.db.query.adminUsers.findFirst({
-      where: eq(schema.adminUsers.id, session.adminId!)
-    });
-
-    if (!driver || driver.userType !== 'driver') {
-      return res.status(403).json({ error: "صلاحيات غير كافية" });
-    }
-
-    req.driver = driver;
-    next();
-  } catch (error) {
-    console.error("خطأ في التحقق من صلاحيات السائق:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-};
-
-// تسجيل دخول السائق
-router.post("/login", async (req, res) => {
-  try {
-    console.log('🚛 Driver login attempt:', req.body);
-    const { phone, password } = req.body;
-
-    const driver = await dbStorage.db.query.adminUsers.findFirst({
-      where: and(
-        eq(schema.adminUsers.phone, phone),
-        eq(schema.adminUsers.userType, "driver")
-      )
-    });
-
-    if (!driver) {
-      return res.status(401).json({ error: "بيانات دخول خاطئة" });
-    }
-
-    // مقارنة كلمة المرور بإستخدام bcrypt
-    const isPasswordValid = await bcrypt.compare(password, driver.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: "بيانات دخول خاطئة" });
-    }
-
-    if (!driver.isActive) {
-      return res.status(401).json({ error: "الحساب غير نشط" });
-    }
-
-    // إنشاء جلسة جديدة
-    const token = `driver_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ساعة
-
-    await dbStorage.db.insert(schema.adminSessions).values({
-      adminId: driver.id,
-      token,
-      userType: "driver",
-      expiresAt
-    });
-
-    res.json({
-      success: true,
-      token,
-      driver: {
-        id: driver.id,
-        name: driver.name,
-        phone: driver.phone,
-        userType: driver.userType
-      }
-    });
-  } catch (error) {
-    console.error("خطأ في تسجيل دخول السائق:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-// تسجيل خروج السائق
-router.post("/logout", requireDriver, async (req: any, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader.split(' ')[1];
-
-    await dbStorage.db.delete(schema.adminSessions)
-      .where(eq(schema.adminSessions.token, token));
-
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
+// تم حذف middleware المصادقة للسائق - الوصول مباشر للبيانات بدون مصادقة
+// الآن يتم تمرير driverId كمعامل في الطلبات
 
 // لوحة معلومات السائق
-router.get("/dashboard", requireDriver, async (req: any, res) => {
+router.get("/dashboard", async (req, res) => {
   try {
-    const driverId = req.driver.id;
+    const { driverId } = req.query;
     
-    // إحصائيات السائق
-    const [todayStats] = await dbStorage.db.select({
-      todayOrders: sql<number>`COUNT(CASE WHEN DATE(${schema.orders.createdAt}) = CURRENT_DATE THEN 1 END)`,
-      todayEarnings: sql<number>`COALESCE(SUM(CASE WHEN DATE(${schema.orders.createdAt}) = CURRENT_DATE THEN ${schema.orders.driverEarnings} END), 0)`,
-      completedToday: sql<number>`COUNT(CASE WHEN DATE(${schema.orders.createdAt}) = CURRENT_DATE AND ${schema.orders.status} = 'delivered' THEN 1 END)`,
-      totalOrders: sql<number>`COUNT(*)`,
-      totalEarnings: sql<number>`COALESCE(SUM(${schema.orders.driverEarnings}), 0)`,
-      averageRating: sql<number>`COALESCE(AVG(${schema.orders.rating}), 0)`
-    }).from(schema.orders)
-      .where(eq(schema.orders.driverId, driverId));
+    if (!driverId || typeof driverId !== 'string') {
+      return res.status(400).json({ error: "معرف السائق مطلوب" });
+    }
+
+    // التحقق من وجود السائق
+    const driver = await storage.getDriver(driverId);
+    if (!driver) {
+      return res.status(404).json({ error: "السائق غير موجود" });
+    }
+
+    // جلب جميع الطلبات وفلترتها
+    const allOrders = await storage.getOrders();
+    const driverOrders = allOrders.filter(order => order.driverId === driverId);
+    
+    // حساب الإحصائيات
+    const today = new Date().toDateString();
+    const todayOrders = driverOrders.filter(order => 
+      order.createdAt.toDateString() === today
+    );
+    const completedToday = todayOrders.filter(order => order.status === "delivered");
+    const totalEarnings = driverOrders
+      .filter(order => order.status === "delivered")
+      .reduce((sum, order) => sum + parseFloat(order.driverEarnings || "0"), 0);
+    const todayEarnings = completedToday
+      .reduce((sum, order) => sum + parseFloat(order.driverEarnings || "0"), 0);
 
     // الطلبات المتاحة (غير مُعيَّنة لسائق)
-    const availableOrders = await dbStorage.db.query.orders.findMany({
-      where: and(
-        eq(schema.orders.status, "confirmed"),
-        sql`${schema.orders.driverId} IS NULL`
-      ),
-      orderBy: desc(schema.orders.createdAt),
-      limit: 10
-    });
+    const availableOrders = allOrders
+      .filter(order => order.status === "confirmed" && !order.driverId)
+      .slice(0, 10);
 
     // الطلبات الحالية للسائق
-    const currentOrders = await dbStorage.db.query.orders.findMany({
-      where: and(
-        eq(schema.orders.driverId, driverId),
-        or(
-          eq(schema.orders.status, "picked_up"),
-          eq(schema.orders.status, "ready")
-        )
-      ),
-      orderBy: desc(schema.orders.createdAt)
-    });
+    const currentOrders = driverOrders.filter(order => 
+      order.status === "picked_up" || order.status === "ready"
+    );
 
     res.json({
-      stats: todayStats,
+      stats: {
+        todayOrders: todayOrders.length,
+        todayEarnings,
+        completedToday: completedToday.length,
+        totalOrders: driverOrders.length,
+        totalEarnings,
+        averageRating: 4.5 // قيمة افتراضية حتى يتم تنفيذ نظام التقييم
+      },
       availableOrders,
       currentOrders
     });
@@ -158,50 +67,40 @@ router.get("/dashboard", requireDriver, async (req: any, res) => {
 });
 
 // قبول طلب
-router.post("/orders/:id/accept", requireDriver, async (req: any, res) => {
+router.post("/orders/:id/accept", async (req, res) => {
   try {
     const { id } = req.params;
-    const driverId = req.driver.id;
-
-    // التحقق من أن الطلب متاح
-    const order = await dbStorage.db.query.orders.findFirst({
-      where: and(
-        eq(schema.orders.id, id),
-        eq(schema.orders.status, "confirmed"),
-        sql`${schema.orders.driverId} IS NULL`
-      )
-    });
-
-    if (!order) {
-      return res.status(400).json({ error: "الطلب غير متاح" });
+    const { driverId } = req.body;
+    
+    if (!driverId) {
+      return res.status(400).json({ error: "معرف السائق مطلوب" });
     }
 
-    // تعيين السائق للطلب
-    const [updatedOrder] = await dbStorage.db.update(schema.orders)
-      .set({ 
-        driverId,
-        status: "ready",
-        updatedAt: new Date()
-      })
-      .where(eq(schema.orders.id, id))
-      .returning();
+    // التحقق من وجود السائق
+    const driver = await storage.getDriver(driverId);
+    if (!driver) {
+      return res.status(404).json({ error: "السائق غير موجود" });
+    }
 
-    // حساب أرباح السائق (مثلاً 80% من رسوم التوصيل)
-    const driverEarnings = Number(order.deliveryFee) * 0.8;
-    await dbStorage.db.update(schema.orders)
-      .set({ driverEarnings })
-      .where(eq(schema.orders.id, id));
+    // جلب الطلب
+    const order = await storage.getOrder(id);
+    if (!order) {
+      return res.status(404).json({ error: "الطلب غير موجود" });
+    }
 
-    // إضافة تتبع للطلب
-    await dbStorage.db.insert(schema.orderTracking).values({
-      orderId: id,
+    // التحقق من إمكانية قبول الطلب
+    if (order.status !== "confirmed" || order.driverId) {
+      return res.status(400).json({ error: "لا يمكن قبول هذا الطلب" });
+    }
+
+    // تحديث الطلب
+    const updatedOrder = await storage.updateOrder(id, {
+      driverId,
       status: "ready",
-      message: `تم قبول الطلب من قبل السائق ${req.driver.name}`,
-      createdBy: driverId,
-      createdByType: 'driver'
+      driverEarnings: "10.00" // قيمة افتراضية
     });
 
-    res.json(updatedOrder);
+    res.json({ success: true, order: updatedOrder });
   } catch (error) {
     console.error("خطأ في قبول الطلب:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
@@ -209,166 +108,143 @@ router.post("/orders/:id/accept", requireDriver, async (req: any, res) => {
 });
 
 // تحديث حالة الطلب
-router.put("/orders/:id/status", requireDriver, async (req: any, res) => {
+router.put("/orders/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, location } = req.body;
-    const driverId = req.driver.id;
+    const { driverId, status, location } = req.body;
+    
+    if (!driverId || !status) {
+      return res.status(400).json({ error: "معرف السائق والحالة مطلوبان" });
+    }
 
-    // التحقق من أن الطلب مُعيَّن للسائق
-    const order = await dbStorage.db.query.orders.findFirst({
-      where: and(
-        eq(schema.orders.id, id),
-        eq(schema.orders.driverId, driverId)
-      )
-    });
-
+    // جلب الطلب والتحقق من صلاحية السائق
+    const order = await storage.getOrder(id);
     if (!order) {
+      return res.status(404).json({ error: "الطلب غير موجود" });
+    }
+
+    if (order.driverId !== driverId) {
       return res.status(403).json({ error: "غير مصرح بتحديث هذا الطلب" });
     }
 
-    const updateData: any = { 
-      status, 
-      updatedAt: new Date() 
-    };
+    // التحقق من الحالات المسموحة
+    const allowedStatuses = ["ready", "picked_up", "delivered"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: "حالة غير صحيحة" });
+    }
 
-    if (status === 'delivered') {
+    // إعداد بيانات التحديث
+    const updateData: any = { status };
+    if (status === "delivered") {
       updateData.actualDeliveryTime = new Date();
     }
 
-    const [updatedOrder] = await dbStorage.db.update(schema.orders)
-      .set(updateData)
-      .where(eq(schema.orders.id, id))
-      .returning();
-
-    // إضافة تتبع للطلب
-    await dbStorage.db.insert(schema.orderTracking).values({
-      orderId: id,
-      status,
-      message: getStatusMessage(status),
-      location: location ? JSON.stringify(location) : null,
-      createdBy: driverId,
-      createdByType: 'driver'
-    });
-
-
-    res.json(updatedOrder);
+    const updatedOrder = await storage.updateOrder(id, updateData);
+    res.json({ success: true, order: updatedOrder });
   } catch (error) {
     console.error("خطأ في تحديث حالة الطلب:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
 
-// جلب تفاصيل الطلب
-router.get("/orders/:id", requireDriver, async (req: any, res) => {
+// جلب تفاصيل طلب محدد
+router.get("/orders/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const driverId = req.driver.id;
+    const { driverId } = req.query;
+    
+    if (!driverId || typeof driverId !== 'string') {
+      return res.status(400).json({ error: "معرف السائق مطلوب" });
+    }
 
-    const order = await dbStorage.db.query.orders.findFirst({
-      where: and(
-        eq(schema.orders.id, id),
-        eq(schema.orders.driverId, driverId)
-      ),
-    });
-
+    const order = await storage.getOrder(id);
     if (!order) {
       return res.status(404).json({ error: "الطلب غير موجود" });
     }
 
-    // جلب تتبع الطلب
-    const tracking = await dbStorage.db.query.orderTracking.findMany({
-      where: eq(schema.orderTracking.orderId, id),
-      orderBy: desc(schema.orderTracking.timestamp!)
-    });
+    // التحقق من صلاحية السائق
+    if (order.driverId !== driverId) {
+      return res.status(403).json({ error: "غير مصرح بعرض هذا الطلب" });
+    }
 
-    res.json({
-      ...order,
-      tracking
-    });
+    res.json(order);
   } catch (error) {
     console.error("خطأ في جلب تفاصيل الطلب:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
 
-// جلب تاريخ الطلبات
-router.get("/orders", requireDriver, async (req: any, res) => {
+// جلب طلبات السائق
+router.get("/orders", async (req, res) => {
   try {
-    const driverId = req.driver.id;
-    const { page = 1, limit = 20, status } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
-
-    let whereConditions = [eq(schema.orders.driverId, driverId)];
+    const { driverId, status } = req.query;
     
-    if (status && status !== 'all') {
-      whereConditions.push(eq(schema.orders.status, status as string));
+    if (!driverId || typeof driverId !== 'string') {
+      return res.status(400).json({ error: "معرف السائق مطلوب" });
     }
 
-    const orders = await dbStorage.db.query.orders.findMany({
-      where: and(...whereConditions),
-      limit: Number(limit),
-      offset,
-      orderBy: desc(schema.orders.createdAt)
-    });
+    // جلب جميع الطلبات وفلترتها
+    const allOrders = await storage.getOrders();
+    let driverOrders = allOrders.filter(order => order.driverId === driverId);
+    
+    // فلترة حسب الحالة إذا تم توفيرها
+    if (status && typeof status === 'string') {
+      driverOrders = driverOrders.filter(order => order.status === status);
+    }
+    
+    // ترتيب حسب تاريخ الإنشاء
+    driverOrders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-    res.json(orders);
+    res.json(driverOrders);
   } catch (error) {
-    console.error("خطأ في جلب تاريخ الطلبات:", error);
+    console.error("خطأ في جلب طلبات السائق:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
 
-// إحصائيات السائق المفصلة
-router.get("/stats", requireDriver, async (req: any, res) => {
+// إحصائيات السائق
+router.get("/stats", async (req, res) => {
   try {
-    const driverId = req.driver.id;
-    const { period = 'week' } = req.query;
-
-    let dateFilter;
-    switch (period) {
-      case 'today':
-        dateFilter = sql`DATE(${schema.orders.createdAt}) = CURRENT_DATE`;
-        break;
-      case 'week':
-        dateFilter = sql`${schema.orders.createdAt} >= CURRENT_DATE - INTERVAL '7 days'`;
-        break;
-      case 'month':
-        dateFilter = sql`${schema.orders.createdAt} >= CURRENT_DATE - INTERVAL '30 days'`;
-        break;
-      default:
-        dateFilter = sql`1=1`;
+    const { driverId } = req.query;
+    
+    if (!driverId || typeof driverId !== 'string') {
+      return res.status(400).json({ error: "معرف السائق مطلوب" });
     }
 
-    const [stats] = await dbStorage.db.select({
-      totalOrders: sql<number>`COUNT(*)`,
-      completedOrders: sql<number>`COUNT(CASE WHEN ${schema.orders.status} = 'delivered' THEN 1 END)`,
-      cancelledOrders: sql<number>`COUNT(CASE WHEN ${schema.orders.status} = 'cancelled' THEN 1 END)`,
-      totalEarnings: sql<number>`COALESCE(SUM(${schema.orders.driverEarnings}), 0)`,
-      averageRating: sql<number>`COALESCE(AVG(${schema.orders.rating}), 0)`,
-      totalRevenue: sql<number>`COALESCE(SUM(${schema.orders.total}), 0)`
-    }).from(schema.orders)
-      .where(and(
-        eq(schema.orders.driverId, driverId),
-        dateFilter
-      ));
+    // التحقق من وجود السائق
+    const driver = await storage.getDriver(driverId);
+    if (!driver) {
+      return res.status(404).json({ error: "السائق غير موجود" });
+    }
 
-    // إحصائيات يومية للأسبوع الماضي
-    const dailyStats = await dbStorage.db.select({
-      date: sql<string>`DATE(${schema.orders.createdAt})`,
-      orders: sql<number>`COUNT(*)`,
-      earnings: sql<number>`COALESCE(SUM(${schema.orders.driverEarnings}), 0)`
-    }).from(schema.orders)
-      .where(and(
-        eq(schema.orders.driverId, driverId),
-        sql`${schema.orders.createdAt} >= CURRENT_DATE - INTERVAL '7 days'`
-      ))
-      .groupBy(sql`DATE(${schema.orders.createdAt})`)
-      .orderBy(sql`DATE(${schema.orders.createdAt})`);
+    // جلب طلبات السائق
+    const allOrders = await storage.getOrders();
+    const driverOrders = allOrders.filter(order => order.driverId === driverId);
+    const deliveredOrders = driverOrders.filter(order => order.status === "delivered");
+    
+    // حساب الإحصائيات
+    const totalEarnings = deliveredOrders.reduce((sum, order) => 
+      sum + parseFloat(order.driverEarnings || "0"), 0
+    );
+    
+    const thisMonth = new Date();
+    thisMonth.setDate(1);
+    const monthlyOrders = deliveredOrders.filter(order => 
+      order.createdAt >= thisMonth
+    );
+    const monthlyEarnings = monthlyOrders.reduce((sum, order) => 
+      sum + parseFloat(order.driverEarnings || "0"), 0
+    );
 
     res.json({
-      summary: stats,
-      dailyStats
+      totalOrders: driverOrders.length,
+      completedOrders: deliveredOrders.length,
+      totalEarnings,
+      monthlyOrders: monthlyOrders.length,
+      monthlyEarnings,
+      averageRating: 4.5, // قيمة افتراضية
+      successRate: driverOrders.length > 0 ? 
+        Math.round((deliveredOrders.length / driverOrders.length) * 100) : 0
     });
   } catch (error) {
     console.error("خطأ في جلب إحصائيات السائق:", error);
@@ -377,72 +253,34 @@ router.get("/stats", requireDriver, async (req: any, res) => {
 });
 
 // تحديث الملف الشخصي
-router.put("/profile", requireDriver, async (req: any, res) => {
+router.put("/profile", async (req, res) => {
   try {
-    const driverId = req.driver.id;
-    const updateData = req.body;
+    const { driverId, ...updateData } = req.body;
+    
+    if (!driverId) {
+      return res.status(400).json({ error: "معرف السائق مطلوب" });
+    }
 
-    // إزالة الحقول الحساسة
-    delete updateData.password;
-    delete updateData.userType;
-    delete updateData.id;
+    // إزالة أي حقول غير مسموحة
+    const allowedFields = ['name', 'phone', 'email', 'currentLocation', 'isAvailable'];
+    const sanitizedData: any = {};
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        sanitizedData[field] = updateData[field];
+      }
+    }
 
-    const [updatedDriver] = await dbStorage.db.update(schema.adminUsers)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(schema.adminUsers.id, driverId))
-      .returning();
+    const updatedDriver = await storage.updateDriver(driverId, sanitizedData);
+    
+    if (!updatedDriver) {
+      return res.status(404).json({ error: "السائق غير موجود" });
+    }
 
-    res.json(updatedDriver);
+    res.json({ success: true, driver: updatedDriver });
   } catch (error) {
+    console.error("خطأ في تحديث الملف الشخصي:", error);
     res.status(500).json({ error: "خطأ في الخادم" });
   }
 });
-
-// تغيير كلمة المرور
-router.put("/change-password", requireDriver, async (req: any, res) => {
-  try {
-    const driverId = req.driver.id;
-    const { currentPassword, newPassword } = req.body;
-
-    // التحقق من كلمة المرور الحالية
-    const driver = await dbStorage.db.query.adminUsers.findFirst({
-      where: eq(schema.adminUsers.id, driverId)
-    });
-
-    if (!driver) {
-      return res.status(400).json({ error: "كلمة المرور الحالية خاطئة" });
-    }
-
-    // مقارنة كلمة المرور الحالية بإستخدام bcrypt
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, driver.password);
-    if (!isCurrentPasswordValid) {
-      return res.status(400).json({ error: "كلمة المرور الحالية خاطئة" });
-    }
-
-    // تشفير كلمة المرور الجديدة
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    // تحديث كلمة المرور
-    await dbStorage.db.update(schema.adminUsers)
-      .set({ password: hashedNewPassword, updatedAt: new Date() })
-      .where(eq(schema.adminUsers.id, driverId));
-
-    res.json({ success: true, message: "تم تغيير كلمة المرور بنجاح" });
-  } catch (error) {
-    res.status(500).json({ error: "خطأ في الخادم" });
-  }
-});
-
-// دالة مساعدة لرسائل الحالة
-function getStatusMessage(status: string): string {
-  const messages: { [key: string]: string } = {
-    'ready': 'السائق في الطريق لاستلام الطلب',
-    'picked_up': 'تم استلام الطلب وهو في الطريق إليك',
-    'delivered': 'تم توصيل الطلب بنجاح',
-    'cancelled': 'تم إلغاء الطلب'
-  };
-  
-  return messages[status] || `تم تحديث حالة الطلب إلى: ${status}`;
-}
 
 export default router;

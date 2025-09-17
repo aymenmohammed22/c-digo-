@@ -2,9 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { dbStorage } from "./db";
-import { log } from "./vite";
-import { unifiedAuthService } from "./auth";
-import authRoutes from "./routes/auth";
+import { log } from "./viteServer";
+// تم حذف نظام المصادقة - لا حاجة لهذه الواردات
 import { customerRoutes } from "./routes/customer";
 import driverRoutes from "./routes/driver";
 import ordersRoutes from "./routes/orders";
@@ -35,8 +34,7 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
-  // Add authentication routes
-  app.use("/api/auth", authRoutes);
+  // تم حذف مسارات المصادقة - تم إزالة نظام المصادقة بالكامل
 
 
   // Users
@@ -302,7 +300,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       log("📊 Found offers: " + offers.length + " offers");
       res.json(offers);
     } catch (error) {
-      log("خطأ في جلب العروض الخاصة: " + error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log("خطأ في جلب العروض الخاصة: " + errorMessage);
       res.status(500).json({ message: "Failed to fetch special offers" });
     }
   });
@@ -855,8 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register authentication routes (unified for all user types)
-  app.use("/api/auth", authRoutes);
+  // تم حذف مسارات المصادقة - لا حاجة لها
   
   // Register admin routes
   app.use("/api/admin", adminRoutes);

@@ -12,7 +12,6 @@ import {
   type Cart, type InsertCart,
   type Favorites, type InsertFavorites,
   type AdminUser, type InsertAdminUser,
-  type AdminSession, type InsertAdminSession,
   type Notification, type InsertNotification
 } from "../shared/schema";
 import { randomUUID } from "crypto";
@@ -99,19 +98,16 @@ export interface IStorage {
 
   // Favorites methods
   getFavoriteRestaurants(userId: string): Promise<Restaurant[]>;
-  addToFavorites(userId: string, restaurantId: string): Promise<Favorites>;
+  addToFavorites(favorite: InsertFavorites): Promise<Favorites>;
   removeFromFavorites(userId: string, restaurantId: string): Promise<boolean>;
   isRestaurantFavorite(userId: string, restaurantId: string): Promise<boolean>;
 
-  // Admin methods
+  // Admin methods - بدون مصادقة
   createAdminUser(adminUser: InsertAdminUser): Promise<AdminUser>;
   getAllAdminUsers(): Promise<AdminUser[]>;
   getAdminByEmail(emailOrUsername: string): Promise<AdminUser | undefined>;
   getAdminByPhone(phone: string): Promise<AdminUser | undefined>;
   getAdminById(id: string): Promise<AdminUser | undefined>;
-  createAdminSession(session: InsertAdminSession): Promise<AdminSession>;
-  getAdminSession(token: string): Promise<AdminSession | undefined>;
-  deleteAdminSession(token: string): Promise<boolean>;
 
   // Notification methods
   getNotifications(recipientId?: string, type?: string): Promise<Notification[]>;
@@ -136,7 +132,7 @@ export class MemStorage implements IStorage {
   private cartItems: Map<string, Cart>;
   private favorites: Map<string, Favorites>;
   private adminUsers: Map<string, AdminUser>;
-  private adminSessions: Map<string, AdminSession>;
+  // تم حذف adminSessions - لا حاجة لها بعد إزالة نظام المصادقة
   private notifications: Map<string, Notification>;
 
   // Add db property for compatibility with routes that access it directly
@@ -158,7 +154,7 @@ export class MemStorage implements IStorage {
     this.cartItems = new Map();
     this.favorites = new Map();
     this.adminUsers = new Map();
-    this.adminSessions = new Map();
+    // تم حذف adminSessions من المنشئ
     this.notifications = new Map();
     
     this.initializeData();
@@ -992,31 +988,7 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
     return this.adminUsers.get(id);
   }
 
-  async createAdminSession(session: InsertAdminSession): Promise<AdminSession> {
-    const id = randomUUID();
-    const newSession: AdminSession = {
-      ...session,
-      id,
-      createdAt: new Date(),
-    };
-    this.adminSessions.set(id, newSession);
-    return newSession;
-  }
-
-  async getAdminSession(token: string): Promise<AdminSession | undefined> {
-    return Array.from(this.adminSessions.values())
-      .find(session => session.token === token);
-  }
-
-  async deleteAdminSession(token: string): Promise<boolean> {
-    const session = Array.from(this.adminSessions.entries())
-      .find(([_, sess]) => sess.token === token);
-    
-    if (session) {
-      return this.adminSessions.delete(session[0]);
-    }
-    return false;
-  }
+  // تم حذف جميع طرق إدارة الجلسات - لا حاجة لها بعد إزالة نظام المصادقة
 
   // Notification methods
   async getNotifications(recipientId?: string, type?: string): Promise<Notification[]> {

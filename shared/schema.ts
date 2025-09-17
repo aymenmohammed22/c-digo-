@@ -2,11 +2,10 @@ import { pgTable, text, uuid, timestamp, boolean, integer, decimal, varchar } fr
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table (customers)
+// Users table (customers) - بدون مصادقة
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   username: varchar("username", { length: 50 }).notNull().unique(),
-  password: text("password").notNull(),
   name: text("name").notNull(),
   phone: varchar("phone", { length: 20 }),
   email: varchar("email", { length: 100 }),
@@ -86,14 +85,13 @@ export const menuItems = pgTable("menu_items", {
   restaurantId: uuid("restaurant_id").references(() => restaurants.id),
 });
 
-// Drivers table
+// Drivers table - بدون مصادقة
 export const drivers = pgTable("drivers", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 100 }).notNull(),
   username: varchar("username", { length: 50 }).unique(),
   email: varchar("email", { length: 100 }).unique(),
   phone: varchar("phone", { length: 20 }).notNull().unique(),
-  password: text("password").notNull(),
   userType: varchar("user_type", { length: 50 }).default("driver").notNull(),
   isAvailable: boolean("is_available").default(true).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
@@ -141,28 +139,19 @@ export const specialOffers = pgTable("special_offers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Admin users table
+// Admin users table - بدون مصادقة
 export const adminUsers = pgTable("admin_users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 100 }).notNull(),
   username: varchar("username", { length: 50 }).unique(),
   email: varchar("email", { length: 100 }).notNull().unique(),
   phone: varchar("phone", { length: 20 }),
-  password: text("password").notNull(),
   userType: varchar("user_type", { length: 50 }).default("admin").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Admin sessions table
-export const adminSessions = pgTable("admin_sessions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  adminId: uuid("admin_id").references(() => adminUsers.id).notNull(),
-  token: text("token").notNull().unique(),
-  userType: varchar("user_type", { length: 50 }).notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+// تم حذف جدول admin_sessions - لا حاجة له بعد إزالة نظام المصادقة
 
 // System settings table
 export const systemSettings = pgTable("system_settings", {
@@ -225,10 +214,7 @@ export const selectAdminUserSchema = createSelectSchema(adminUsers);
 export type AdminUser = z.infer<typeof selectAdminUserSchema>;
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
 
-export const insertAdminSessionSchema = createInsertSchema(adminSessions);
-export const selectAdminSessionSchema = createSelectSchema(adminSessions);
-export type AdminSession = z.infer<typeof selectAdminSessionSchema>;
-export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
+// تم حذف AdminSession schemas - لا حاجة لها بعد إزالة نظام المصادقة
 
 // Restaurant sections table
 export const restaurantSections = pgTable("restaurant_sections", {

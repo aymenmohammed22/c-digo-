@@ -249,7 +249,7 @@ export default function Layout({ children }: LayoutProps) {
                 
                 if (newCount === 4) {
                   setLogoClickCount(0);
-                  window.location.href = '/admin-login';
+                  window.location.href = '/admin';
                 } else if (newCount > 4) {
                   setLogoClickCount(0);
                 }
@@ -262,7 +262,7 @@ export default function Layout({ children }: LayoutProps) {
             <h1 className="text-xl font-bold text-white">السريع ون</h1>
             <div className="flex items-center justify-center gap-1 text-sm text-white/90">
               <MapPin className="h-4 w-4" />
-              <span>اختيار العنوان</span>
+              <span> بخدمتك دايما</span>
             </div>
             
             {logoClickCount > 0 && logoClickCount < 4 && (

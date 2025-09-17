@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, Package, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,27 +34,72 @@ export default function AdminMenuItems() {
     restaurantId: '',
   });
 
-  const { data: restaurants } = useQuery<Restaurant[]>({
+  const { data: restaurantsData } = useQuery<{restaurants: Restaurant[]}>({
     queryKey: ['/api/admin/restaurants'],
   });
 
+  const restaurants = restaurantsData?.restaurants || [];
+
+  // Set first restaurant as default when restaurants load
+  useEffect(() => {
+    if (restaurants && restaurants.length > 0 && !selectedRestaurant) {
+      setSelectedRestaurant(restaurants[0].id);
+    }
+  }, [restaurants, selectedRestaurant]);
+
   const { data: menuItems, isLoading } = useQuery<MenuItem[]>({
-    queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`],
+    queryKey: ['/api/admin/menu-items', selectedRestaurant],
     enabled: !!selectedRestaurant,
   });
 
   const createMenuItemMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      // Validate required fields
+      if (!data.name.trim()) {
+        throw new Error('اسم الوجبة مطلوب');
+      }
+      if (!data.price.trim()) {
+        throw new Error('سعر الوجبة مطلوب');
+      }
+      if (!data.image.trim()) {
+        throw new Error('صورة الوجبة مطلوبة');
+      }
+      if (!data.category.trim()) {
+        throw new Error('تصنيف الوجبة مطلوب');
+      }
+      if (!data.restaurantId) {
+        throw new Error('يجب اختيار مطعم');
+      }
+
+      // Parse and validate numbers
+      const price = parseFloat(data.price);
+      if (isNaN(price) || price <= 0) {
+        throw new Error('سعر الوجبة يجب أن يكون رقم صحيح أكبر من صفر');
+      }
+
+      let originalPrice = null;
+      if (data.originalPrice && data.originalPrice.trim()) {
+        originalPrice = parseFloat(data.originalPrice);
+        if (isNaN(originalPrice) || originalPrice <= 0) {
+          throw new Error('السعر الأصلي يجب أن يكون رقم صحيح أكبر من صفر');
+        }
+      }
+
       const submitData = {
         ...data,
-        price: parseFloat(data.price),
-        originalPrice: data.originalPrice ? parseFloat(data.originalPrice) : null,
+        name: data.name.trim(),
+        description: data.description.trim(),
+        image: data.image.trim(),
+        category: data.category.trim(),
+        price: price.toString(), // Send as string to match decimal type
+        originalPrice: originalPrice ? originalPrice.toString() : null,
       };
+      
       const response = await apiRequest('POST', '/api/admin/menu-items', submitData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/menu-items', selectedRestaurant] });
       toast({
         title: "تم إضافة الوجبة",
         description: "تم إضافة الوجبة الجديدة بنجاح",
@@ -62,20 +107,63 @@ export default function AdminMenuItems() {
       resetForm();
       setIsDialogOpen(false);
     },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "خطأ في إضافة الوجبة",
+        description: error.message,
+      });
+    },
   });
 
   const updateMenuItemMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      // Validate required fields
+      if (!data.name.trim()) {
+        throw new Error('اسم الوجبة مطلوب');
+      }
+      if (!data.price.trim()) {
+        throw new Error('سعر الوجبة مطلوب');
+      }
+      if (!data.image.trim()) {
+        throw new Error('صورة الوجبة مطلوبة');
+      }
+      if (!data.category.trim()) {
+        throw new Error('تصنيف الوجبة مطلوب');
+      }
+      if (!data.restaurantId) {
+        throw new Error('يجب اختيار مطعم');
+      }
+
+      // Parse and validate numbers
+      const price = parseFloat(data.price);
+      if (isNaN(price) || price <= 0) {
+        throw new Error('سعر الوجبة يجب أن يكون رقم صحيح أكبر من صفر');
+      }
+
+      let originalPrice = null;
+      if (data.originalPrice && data.originalPrice.trim()) {
+        originalPrice = parseFloat(data.originalPrice);
+        if (isNaN(originalPrice) || originalPrice <= 0) {
+          throw new Error('السعر الأصلي يجب أن يكون رقم صحيح أكبر من صفر');
+        }
+      }
+
       const submitData = {
         ...data,
-        price: parseFloat(data.price),
-        originalPrice: data.originalPrice ? parseFloat(data.originalPrice) : null,
+        name: data.name.trim(),
+        description: data.description.trim(),
+        image: data.image.trim(),
+        category: data.category.trim(),
+        price: price.toString(), // Send as string to match decimal type
+        originalPrice: originalPrice ? originalPrice.toString() : null,
       };
+      
       const response = await apiRequest('PUT', `/api/admin/menu-items/${id}`, submitData);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/menu-items', selectedRestaurant] });
       toast({
         title: "تم تحديث الوجبة",
         description: "تم تحديث الوجبة بنجاح",
@@ -83,6 +171,13 @@ export default function AdminMenuItems() {
       resetForm();
       setEditingItem(null);
       setIsDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "خطأ في تحديث الوجبة",
+        description: error.message,
+      });
     },
   });
 
@@ -92,7 +187,7 @@ export default function AdminMenuItems() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/admin/menu-items?restaurantId=${selectedRestaurant}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/menu-items', selectedRestaurant] });
       toast({
         title: "تم حذف الوجبة",
         description: "تم حذف الوجبة بنجاح",
@@ -120,8 +215,8 @@ export default function AdminMenuItems() {
     setFormData({
       name: item.name,
       description: item.description || '',
-      price: item.price,
-      originalPrice: item.originalPrice || '',
+      price: item.price?.toString() || '',
+      originalPrice: item.originalPrice?.toString() || '',
       image: item.image,
       category: item.category,
       isAvailable: item.isAvailable,
@@ -170,8 +265,8 @@ export default function AdminMenuItems() {
     const dataWithRestaurant = { 
       ...formData, 
       restaurantId: selectedRestaurant,
-      // Ensure originalPrice is either null or a valid string
-      originalPrice: formData.originalPrice.trim() || null
+      // Ensure originalPrice is a string or empty string 
+      originalPrice: formData.originalPrice.trim() || ''
     };
 
     if (editingItem) {
@@ -186,10 +281,14 @@ export default function AdminMenuItems() {
       id: item.id,
       data: { 
         name: item.name,
-        price: item.price,
+        description: item.description || '',
+        price: item.price || '',
+        originalPrice: item.originalPrice || '',
+        image: item.image,
         category: item.category,
-        restaurantId: item.restaurantId,
-        [field]: !item[field] 
+        isAvailable: field === 'isAvailable' ? !item[field] : item.isAvailable,
+        isSpecialOffer: field === 'isSpecialOffer' ? !item[field] : item.isSpecialOffer,
+        restaurantId: item.restaurantId || ''
       }
     });
   };

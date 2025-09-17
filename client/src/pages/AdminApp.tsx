@@ -9,6 +9,7 @@ import AdminCategories from "./AdminCategories";
 import AdminUsers from "./AdminUsers";
 import AdminProfile from "./AdminProfile";
 import AdminBusinessHours from "./AdminBusinessHours";
+import AdminUiSettings from "./admin/AdminUiSettings";
 import NotFound from "./not-found";
 
 // Admin Overview Page Component
@@ -173,6 +174,7 @@ export const AdminApp: React.FC<AdminAppProps> = () => {
         <Route path="/admin/categories" component={AdminCategories} />
         <Route path="/admin/profile" component={AdminProfile} />
         <Route path="/admin/business-hours" component={AdminBusinessHours} />
+        <Route path="/admin/ui-settings" component={AdminUiSettings} />
         <Route component={NotFound} />
       </Switch>
     </AdminLayout>

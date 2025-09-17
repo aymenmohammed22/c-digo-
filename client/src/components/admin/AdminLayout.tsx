@@ -88,6 +88,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       path: '/admin/business-hours',
       description: 'إدارة أوقات فتح وإغلاق المتجر'
     },
+    { 
+      icon: Settings, 
+      label: 'إعدادات الواجهة', 
+      path: '/admin/ui-settings',
+      description: 'إدارة إعدادات التطبيق والواجهة'
+    },
   ];
 
   const handleNavigation = (path: string) => {

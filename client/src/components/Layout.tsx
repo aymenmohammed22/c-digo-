@@ -136,7 +136,7 @@ export default function Layout({ children }: LayoutProps) {
       });
       
       // الانتقال إلى صفحة تسجيل الدخول
-      window.location.href = '/admin-login';
+      window.location.href = '/admin';
       setProfileClickCount(0);
     } else if (profileClickCount + 1 > 2) {
       // إشعار بعد النقرات الأولى

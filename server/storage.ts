@@ -315,27 +315,23 @@ export class MemStorage implements IStorage {
       {
         id: "1",
         name: "أحمد محمد",
-        username: "ahmed_driver",
-        email: "ahmed@drivers.com",
         phone: "+967771234567",
-        userType: "driver",
+        password: "password123",
         isAvailable: true,
         isActive: true,
         currentLocation: "صنعاء",
-        earnings: "2500",
+        earnings: "2500", // تغيير إلى string
         createdAt: new Date(),
       },
       {
         id: "2", 
         name: "علي حسن",
-        username: "ali_driver",
-        email: "ali@drivers.com",
         phone: "+967779876543",
-        userType: "driver",
+        password: "password123",
         isAvailable: true,
         isActive: true,
         currentLocation: "تعز",
-        earnings: "3200",
+        earnings: "3200", // تغيير إلى string
         createdAt: new Date(),
       }
     ];
@@ -687,10 +683,7 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
       isActive: driver.isActive ?? true,
       isAvailable: driver.isAvailable ?? true,
       currentLocation: driver.currentLocation ?? null,
-      earnings: driver.earnings?.toString() ?? "0",
-      username: driver.username ?? null,
-      email: driver.email ?? null,
-      userType: driver.userType ?? "driver"
+      earnings: driver.earnings?.toString() ?? "0" // تحويل إلى string
     };
     this.drivers.set(id, newDriver);
     return newDriver;
@@ -911,11 +904,11 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
     return newCartItem;
   }
 
-  async updateCartItem(cartId: string, quantity: number): Promise<Cart | undefined> {
-    const existing = this.cartItems.get(cartId);
+  async updateCartItem(id: string, updates: Partial<InsertCart>): Promise<Cart | undefined> {
+    const existing = this.cartItems.get(id);
     if (!existing) return undefined;
-    const updated = { ...existing, quantity };
-    this.cartItems.set(cartId, updated);
+    const updated = { ...existing, ...updates };
+    this.cartItems.set(id, updated);
     return updated;
   }
 
@@ -935,12 +928,8 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
   }
 
   // Favorites methods
-  async getFavoriteRestaurants(userId: string): Promise<Restaurant[]> {
-    const userFavorites = Array.from(this.favorites.values()).filter(fav => fav.userId === userId);
-    const favoriteRestaurants = userFavorites
-      .map(fav => this.restaurants.get(fav.restaurantId))
-      .filter((restaurant): restaurant is Restaurant => restaurant !== undefined);
-    return favoriteRestaurants;
+  async getFavoriteRestaurants(userId: string): Promise<Favorites[]> {
+    return Array.from(this.favorites.values()).filter(fav => fav.userId === userId);
   }
 
   async addToFavorites(favorite: InsertFavorites): Promise<Favorites> {
@@ -976,10 +965,6 @@ async updateRestaurant(id: string, restaurant: Partial<InsertRestaurant>): Promi
       ...adminUser,
       id,
       createdAt: new Date(),
-      username: adminUser.username ?? null,
-      phone: adminUser.phone ?? null,
-      isActive: adminUser.isActive ?? true,
-      userType: adminUser.userType ?? "admin"
     };
     this.adminUsers.set(id, newAdmin);
     return newAdmin;

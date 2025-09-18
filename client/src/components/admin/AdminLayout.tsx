@@ -15,6 +15,7 @@ import {
   Users,
   Bell,
   User,
+  Clock,
   Tag
 } from 'lucide-react';
 
@@ -80,6 +81,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: 'الملف الشخصي', 
       path: '/admin/profile',
       description: 'إدارة معلومات الحساب'
+    },
+    { 
+      icon: Clock, 
+      label: 'أوقات العمل', 
+      path: '/admin/business-hours',
+      description: 'إدارة أوقات فتح وإغلاق المتجر'
     },
     { 
       icon: Settings, 

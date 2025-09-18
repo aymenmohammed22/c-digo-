@@ -55,10 +55,14 @@ export default function AdminBusinessHours() {
   // تحديث أوقات العمل
   const updateBusinessHours = useMutation({
     mutationFn: async (data: BusinessHoursSettings) => {
-      return await apiRequest('/api/admin/business-hours', {
-        method: 'PUT',
-        body: data
-      });
+      // Update each setting individually
+      const updates = [
+        apiRequest('PUT', `/api/ui-settings/opening_time`, { value: data.opening_time }),
+        apiRequest('PUT', `/api/ui-settings/closing_time`, { value: data.closing_time }),
+        apiRequest('PUT', `/api/ui-settings/store_status`, { value: data.store_status })
+      ];
+      
+      await Promise.all(updates);
     },
     onSuccess: () => {
       toast({

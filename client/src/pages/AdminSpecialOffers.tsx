@@ -10,7 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import ImageUpload from '@/components/ImageUpload';
 import type { SpecialOffer } from '@shared/schema';
 
 export function AdminSpecialOffers() {
@@ -236,12 +235,12 @@ export function AdminSpecialOffers() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="image">صورة العرض (اختياري)</Label>
-                  <ImageUpload
+                  <Label htmlFor="image">رابط الصورة (اختياري)</Label>
+                  <Input
+                    id="image"
                     value={formData.image}
-                    onChange={(url) => setFormData({ ...formData, image: url })}
-                    placeholder="اختر صورة العرض..."
-                    maxSize={5}
+                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
                   />
                 </div>
               </div>

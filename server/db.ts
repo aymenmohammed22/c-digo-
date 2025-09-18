@@ -508,15 +508,7 @@ export class DatabaseStorage {
         baseQuery = baseQuery.orderBy(restaurants.name);
     }
     
-    let result;
-    try {
-      result = await baseQuery;
-    } catch (error) {
-      console.error('Error executing restaurants query:', error);
-      return [];
-    }
-    
-    // Handle null/undefined results from Neon database
+    const result = await baseQuery;
     const restaurants_list = Array.isArray(result) ? result : [];
     
     // If user location is provided and we're sorting by distance

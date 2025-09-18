@@ -8,6 +8,7 @@ import { customerRoutes } from "./routes/customer";
 import driverRoutes from "./routes/driver";
 import ordersRoutes from "./routes/orders";
 import { adminRoutes } from "./routes/admin";
+import uploadRoutes from "./routes/upload";
 import { 
   insertRestaurantSchema, 
   insertMenuItemSchema, 
@@ -1013,6 +1014,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register orders routes
   app.use("/api/orders", ordersRoutes);
+
+  // Image upload routes
+  app.use("/api/upload", uploadRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

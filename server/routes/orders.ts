@@ -67,67 +67,21 @@ router.post("/", async (req, res) => {
       }
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Create order error:", error);
-    
-    // Handle invalid UUID format
-    if (error.code === '22P02') {
-      return res.status(400).json({ 
-        error: "معرف المطعم غير صحيح", 
-        message: "Invalid restaurant ID format",
-        restaurantId: req.body.restaurantId 
-      });
-    }
-    
-    // Handle foreign key constraint violations
-    if (error.code === '23503') {
-      if (error.constraint_name === 'orders_restaurant_id_restaurants_id_fk') {
-        return res.status(400).json({ 
-          error: "المطعم المحدد غير موجود", 
-          message: "Restaurant not found",
-          restaurantId: req.body.restaurantId 
-        });
-      }
-    }
-    
-    // Handle other specific database errors
-    if (error.code) {
-      return res.status(400).json({ 
-        error: "خطأ في البيانات المرسلة", 
-        message: "Invalid data provided",
-        details: error.message 
-      });
-    }
-    
-    res.status(500).json({ error: "حدث خطأ في الخادم" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // الحصول على طلبات العميل
 router.get("/customer/:phone", async (req, res) => {
   try {
-    const phone = req.params.phone.trim();
-    
-    if (!phone) {
-      return res.status(400).json({ 
-        error: "رقم الهاتف مطلوب",
-        message: "Phone number is required" 
-      });
-    }
-    
+    const { phone } = req.params;
     const orders = await storage.getOrders();
-    
-    // فلترة الطلبات حسب رقم هاتف العميل فقط - إصلاح مشكلة أمنية مهمة
-    const customerOrders = orders.filter(order => 
-      order.customerPhone === phone || 
-      order.customerPhone === phone.replace(/\s+/g, '') ||
-      order.customerPhone.replace(/\s+/g, '') === phone.replace(/\s+/g, '')
-    );
-    
-    res.json(customerOrders);
+    res.json(orders);
   } catch (error) {
-    console.error("خطأ في الحصول على طلبات العميل:", error);
-    res.status(500).json({ error: "خطأ في الخادم" });
+    console.error("Get customer orders error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

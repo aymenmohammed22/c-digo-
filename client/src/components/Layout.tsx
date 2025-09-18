@@ -11,13 +11,6 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-interface NavigationItem {
-  icon: React.ComponentType<any>;
-  label: string;
-  path: string;
-  testId: string;
-  className?: string;
-}
 
 export default function Layout({ children }: LayoutProps) {
   const [location, setLocation] = useLocation();
@@ -27,9 +20,6 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   
-  // States for profile click counter
-  const [profileClickCount, setProfileClickCount] = useState(0);
-  const [lastProfileClickTime, setLastProfileClickTime] = useState(0);
   
   // States for admin panel and delivery app visibility
   const [showAdminPanel, setShowAdminPanel] = useState(true);
@@ -92,7 +82,13 @@ export default function Layout({ children }: LayoutProps) {
   ];
   
   // Admin and delivery buttons (conditionally added)
-  const adminDeliveryItems = [];
+  const adminDeliveryItems: Array<{
+    icon: React.ComponentType<any>;
+    label: string;
+    path: string;
+    testId: string;
+    className?: string;
+  }> = [];
   if (showAdminPanel) {
     adminDeliveryItems.push({ 
       icon: UserCog, 
@@ -106,7 +102,7 @@ export default function Layout({ children }: LayoutProps) {
     adminDeliveryItems.push({ 
       icon: Truck, 
       label: 'تطبيق التوصيل', 
-      path: '/driver/dashboard', 
+      path: '/driver', 
       testId: 'sidebar-delivery',
       className: 'text-green-600 border-l-4 border-green-600 bg-green-50 dark:bg-green-900/20' 
     });
@@ -115,48 +111,17 @@ export default function Layout({ children }: LayoutProps) {
   // Complete sidebar menu items
   const sidebarMenuItems = [...baseSidebarMenuItems, ...adminDeliveryItems];
 
-  // وظيفة التعامل مع النقر على أيقونة الملف الشخصي
+  // وظيفة التعامل مع النقر على أيقونة الملف الشخصي - الانتقال إلى تطبيق التوصيل الحقيقي
   const handleProfileIconClick = () => {
-    const currentTime = Date.now();
+    toast({
+      title: "الانتقال إلى تطبيق التوصيل",
+      description: "مرحباً بك في تطبيق السائق",
+    });
     
-    // إذا مر أكثر من ثانيتين منذ آخر نقرة، نعيد العداد
-    if (currentTime - lastProfileClickTime > 2000) {
-      setProfileClickCount(1);
-    } else {
-      setProfileClickCount(prev => prev + 1);
-    }
-    
-    setLastProfileClickTime(currentTime);
-
-    // إذا وصل إلى 5 نقرات
-    if (profileClickCount + 1 === 5) {
-      toast({
-        title: "الوصول إلى صفحة تسجيل الدخول",
-        description: "سيتم الانتقال إلى صفحة تسجيل الدخول للإدارة",
-      });
-      
-      // الانتقال إلى صفحة تسجيل الدخول
-      window.location.href = '/admin';
-      setProfileClickCount(0);
-    } else if (profileClickCount + 1 > 2) {
-      // إشعار بعد النقرات الأولى
-      toast({
-        title: `نقرة ${profileClickCount + 1} من 5`,
-        description: "استمر للنقل للوصول إلى صفحة تسجيل الدخول",
-      });
-    }
+    // الانتقال المباشر إلى تطبيق التوصيل الحقيقي
+    window.location.href = '/driver';
   };
 
-  // إعادة تعيين عداد النقرات بعد 2 ثانية
-  useEffect(() => {
-    if (profileClickCount > 0) {
-      const timer = setTimeout(() => {
-        setProfileClickCount(0);
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [profileClickCount, lastProfileClickTime]);
 
   return (
     <div className="max-w-md mx-auto bg-background min-h-screen shadow-xl relative">
@@ -220,15 +185,10 @@ export default function Layout({ children }: LayoutProps) {
               size="icon"
               onClick={handleProfileIconClick}
               className="relative text-white hover:bg-white/20"
-              title="النقر 5 مرات للوصول إلى صفحة تسجيل الدخول"
+              title="الانتقال إلى تطبيق التوصيل"
               data-testid="button-profile"
             >
               <User className="h-6 w-6" />
-              {profileClickCount > 0 && (
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full text-xs text-primary flex items-center justify-center">
-                  {profileClickCount}
-                </div>
-              )}
             </Button>
             
             <Button

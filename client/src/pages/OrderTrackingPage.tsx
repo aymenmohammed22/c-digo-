@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useQuery } from '@tanstack/react-query';
-import { Skeleton } from '@/components/ui/skeleton';
 
 interface OrderStatus {
   id: string;
@@ -33,44 +31,30 @@ export default function OrderTrackingPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const [, setLocation] = useLocation();
   
-  // جلب بيانات الطلب الحقيقية من API
-  const { data: orderData, isLoading, error } = useQuery<{order: OrderDetails, tracking: OrderStatus[]}>({
-    queryKey: [`/api/orders/${orderId}/track`],
-    enabled: !!orderId,
-    refetchInterval: 30000, // تحديث كل 30 ثانية للإشعارات الفورية
+  // Mock order data - in real app this would come from API
+  const [order] = useState<OrderDetails>({
+    id: orderId || '12345',
+    customerName: 'محمد أحمد',
+    customerPhone: '+967771234567',
+    deliveryAddress: 'صنعاء، شارع الزبيري، بجانب مسجد النور',
+    items: [
+      { name: 'عربكة بالقشطة والعسل', quantity: 2, price: 55 },
+      { name: 'مياه معدنية', quantity: 1, price: 3 },
+    ],
+    total: 113,
+    status: 'on_way',
+    estimatedTime: '25 دقيقة',
+    driverName: 'أحمد محمد',
+    driverPhone: '+967771234567',
+    createdAt: new Date(),
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 p-4">
-        <div className="max-w-md mx-auto space-y-4">
-          <Skeleton className="h-8 w-3/4" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !orderData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 p-4">
-        <div className="max-w-md mx-auto">
-          <Card className="text-center p-6">
-            <Package className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h2 className="text-xl font-bold text-gray-800 mb-2">الطلب غير موجود</h2>
-            <p className="text-gray-600 mb-4">لم نتمكن من العثور على هذا الطلب</p>
-            <Button onClick={() => setLocation('/')} data-testid="button-back-home">
-              العودة للرئيسية
-            </Button>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  const { order, tracking } = orderData;
+  const [orderHistory] = useState<OrderStatus[]>([
+    { id: '1', status: 'pending', timestamp: new Date(Date.now() - 30 * 60000), description: 'تم استلام الطلب' },
+    { id: '2', status: 'confirmed', timestamp: new Date(Date.now() - 25 * 60000), description: 'تم تأكيد الطلب من المطعم' },
+    { id: '3', status: 'preparing', timestamp: new Date(Date.now() - 15 * 60000), description: 'جاري تحضير الطلب' },
+    { id: '4', status: 'on_way', timestamp: new Date(Date.now() - 5 * 60000), description: 'الطلب في الطريق إليك' },
+  ]);
 
   const getStatusProgress = (status: string) => {
     const statusMap = {
@@ -249,15 +233,15 @@ export default function OrderTrackingPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {tracking.map((status, index) => (
+              {orderHistory.map((status, index) => (
                 <div key={status.id} className="flex items-start gap-3">
                   <div className={`w-4 h-4 rounded-full ${getStatusColor(status.status)} mt-1 flex-shrink-0`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-foreground font-medium" data-testid={`timeline-description-${index}`}>
-                      {status.description || status.message || 'تحديث الطلب'}
+                      {status.description}
                     </p>
                     <p className="text-sm text-muted-foreground" data-testid={`timeline-time-${index}`}>
-                      {new Date(status.timestamp).toLocaleTimeString('ar-YE', { 
+                      {status.timestamp.toLocaleTimeString('ar-YE', { 
                         hour: '2-digit', 
                         minute: '2-digit' 
                       })}

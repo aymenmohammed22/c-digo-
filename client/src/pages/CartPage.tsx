@@ -29,22 +29,17 @@ export default function CartPage() {
   });
 
   const placeOrderMutation = useMutation({
-    mutationFn: async (orderData: InsertOrder) => {
+    mutationFn: async (orderData: NewOrder) => {
       const response = await apiRequest('POST', '/api/orders', orderData);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
         title: "تم تأكيد طلبك بنجاح!",
         description: "سيتم التواصل معك قريباً",
       });
       clearCart();
-      // توجيه العميل لصفحة تتبع الطلب
-      if (data?.order?.id) {
-        setLocation(`/order-tracking/${data.order.id}`);
-      } else {
-        setLocation('/');
-      }
+      setLocation('/');
     },
     onError: () => {
       toast({

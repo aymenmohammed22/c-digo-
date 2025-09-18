@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
 import { 
   adminUsers, categories, restaurantSections, restaurants, 
   menuItems, users, customers, userAddresses, orders, specialOffers, 
@@ -37,11 +37,11 @@ function getDb() {
       throw new Error("DATABASE_URL must be defined in environment variables");
     }
     
-    console.log("🗺️ Using PostgreSQL database connection...");  // Debug log
+    console.log("🗺️ Using database connection...");  // Debug log
     console.log("🔗 DATABASE_URL exists:", !!databaseUrl);
     
-    // Use DATABASE_URL for PostgreSQL connection
-    const sqlClient = postgres(databaseUrl);
+    // Use DATABASE_URL as-is for secure Neon connection
+    const sqlClient = neon(databaseUrl);
     
     // Pass schema to enable db.query functionality
     const schema = {
@@ -508,7 +508,15 @@ export class DatabaseStorage {
         baseQuery = baseQuery.orderBy(restaurants.name);
     }
     
-    const result = await baseQuery;
+    let result;
+    try {
+      result = await baseQuery;
+    } catch (error) {
+      console.error('Error executing restaurants query:', error);
+      return [];
+    }
+    
+    // Handle null/undefined results from Neon database
     const restaurants_list = Array.isArray(result) ? result : [];
     
     // If user location is provided and we're sorting by distance

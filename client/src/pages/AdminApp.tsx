@@ -8,7 +8,6 @@ import AdminOffers from "./AdminOffers";
 import AdminCategories from "./AdminCategories";
 import AdminUsers from "./AdminUsers";
 import AdminProfile from "./AdminProfile";
-import AdminBusinessHours from "./AdminBusinessHours";
 import AdminUiSettings from "./admin/AdminUiSettings";
 import NotFound from "./not-found";
 
@@ -95,65 +94,6 @@ const AdminOverview = () => {
 };
 
 
-// Admin Settings Page Component
-const AdminSettings = () => {
-  return (
-    <div className="p-6" data-testid="page-admin-settings">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">إعدادات النظام</h1>
-        <p className="text-gray-600">إدارة إعدادات النظام والتطبيق</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-6 border-b">
-            <h3 className="text-lg font-semibold text-gray-900">إعدادات التوصيل</h3>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="flex justify-between items-center p-3 border rounded-lg">
-              <span>رسوم التوصيل الأساسية</span>
-              <span className="font-semibold">5.00 ر.ي</span>
-            </div>
-            <div className="flex justify-between items-center p-3 border rounded-lg">
-              <span>رسوم التوصيل لكل كيلومتر</span>
-              <span className="font-semibold">1.50 ر.ي</span>
-            </div>
-            <div className="flex justify-between items-center p-3 border rounded-lg">
-              <span>الحد الأدنى للطلبات</span>
-              <span className="font-semibold">15.00 ر.ي</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-6 border-b">
-            <h3 className="text-lg font-semibold text-gray-900">إعدادات الدفع</h3>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="flex justify-between items-center p-3 border rounded-lg">
-              <span>المحفظة الإلكترونية</span>
-              <span className="px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
-                مفعل
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 border rounded-lg">
-              <span>الدفع النقدي</span>
-              <span className="px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
-                مفعل
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 border rounded-lg">
-              <span>الدفع بالبطاقة</span>
-              <span className="px-2 py-1 text-xs font-medium text-gray-800 bg-gray-100 rounded-full">
-                غير مفعل
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 interface AdminAppProps {
   onLogout: () => void;
@@ -173,7 +113,6 @@ export const AdminApp: React.FC<AdminAppProps> = () => {
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/admin/categories" component={AdminCategories} />
         <Route path="/admin/profile" component={AdminProfile} />
-        <Route path="/admin/business-hours" component={AdminBusinessHours} />
         <Route path="/admin/ui-settings" component={AdminUiSettings} />
         <Route component={NotFound} />
       </Switch>

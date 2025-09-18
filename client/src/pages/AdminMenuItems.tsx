@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import type { MenuItem, Restaurant } from '@shared/schema';
-import ImageUpload from '@/components/ImageUpload';
 
 export default function AdminMenuItems() {
   const { toast } = useToast();
@@ -385,12 +384,14 @@ export default function AdminMenuItems() {
                 </div>
 
                 <div>
-                  <Label>صورة الوجبة</Label>
-                  <ImageUpload
+                  <Label htmlFor="image">رابط صورة الوجبة</Label>
+                  <Input
+                    id="image"
                     value={formData.image}
-                    onChange={(url) => setFormData(prev => ({ ...prev, image: url }))}
-                    placeholder="اختر صورة الوجبة..."
-                    maxSize={10}
+                    onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
+                    placeholder="https://example.com/food-image.jpg"
+                    required
+                    data-testid="input-menu-item-image"
                   />
                 </div>
 

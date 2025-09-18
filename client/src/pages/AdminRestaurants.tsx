@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import type { Restaurant, Category } from '@shared/schema';
-import ImageUpload from '@/components/ImageUpload';
 
 export default function AdminRestaurants() {
   const { toast } = useToast();
@@ -356,12 +355,14 @@ export default function AdminRestaurants() {
               </div>
 
               <div>
-                <Label>صورة المطعم</Label>
-                <ImageUpload
+                <Label htmlFor="image">رابط الصورة</Label>
+                <Input
+                  id="image"
                   value={formData.image}
-                  onChange={(url) => setFormData(prev => ({ ...prev, image: url }))}
-                  placeholder="اختر صورة المطعم..."
-                  maxSize={10}
+                  onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.value }))}
+                  placeholder="https://example.com/image.jpg"
+                  required
+                  data-testid="input-restaurant-image"
                 />
               </div>
 
